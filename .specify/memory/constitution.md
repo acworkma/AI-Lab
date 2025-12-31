@@ -38,7 +38,7 @@ This constitution defines the governing principles for building and managing Azu
 - **.gitignore**: Ensure local parameter files with secrets are excluded from version control
 
 ### 5. Deployment Standards
-- **Azure Deploy**: All deployments use Azure CLI (`az deployment`) or Azure PowerShell
+- **Azure Deploy**: All deployments use Azure CLI (`az deployment`)
 - **What-If Analysis**: Run `--what-if` before applying changes to production resources
 - **Validation**: Deployment validation gates must pass before applying
 - **Rollback Procedures**: Document rollback steps for each deployment
