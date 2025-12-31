@@ -1,0 +1,115 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "16086844942172414045"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the resource group"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for the resource group"
+      }
+    },
+    "environment": {
+      "type": "string",
+      "allowedValues": [
+        "dev",
+        "test",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment tag (dev, test, prod)"
+      }
+    },
+    "purpose": {
+      "type": "string",
+      "metadata": {
+        "description": "Purpose of the resource group"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "metadata": {
+        "description": "Owner of the resource group (team or individual)"
+      }
+    },
+    "deployedBy": {
+      "type": "string",
+      "defaultValue": "manual",
+      "allowedValues": [
+        "manual",
+        "automation"
+      ],
+      "metadata": {
+        "description": "How deployment was triggered"
+      }
+    },
+    "additionalTags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Additional custom tags"
+      }
+    },
+    "deploymentTimestamp": {
+      "type": "string",
+      "defaultValue": "[utcNow('yyyy-MM-ddTHH:mm:ssZ')]",
+      "metadata": {
+        "description": "Deployment timestamp (auto-generated)"
+      }
+    }
+  },
+  "variables": {
+    "tags": "[union(createObject('environment', parameters('environment'), 'purpose', parameters('purpose'), 'owner', parameters('owner'), 'deployedBy', parameters('deployedBy'), 'deployedDate', parameters('deploymentTimestamp')), parameters('additionalTags'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2023-07-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]"
+    }
+  ],
+  "outputs": {
+    "name": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group name"
+      },
+      "value": "[parameters('name')]"
+    },
+    "id": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group ID"
+      },
+      "value": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('name'))]"
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group location"
+      },
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('name')), '2023-07-01', 'full').location]"
+    },
+    "tags": {
+      "type": "object",
+      "metadata": {
+        "description": "Resource group tags"
+      },
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('name')), '2023-07-01', 'full').tags]"
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2",
+      "metadata": {
+        "description": "Azure region for all resources. Default: eastus2"
+      }
+    },
+    "environment": {
+      "value": "dev",
+      "metadata": {
+        "description": "Environment tag. Allowed values: dev, test, prod"
+      }
+    },
+    "owner": {
+      "value": "AI-Lab Team",
+      "metadata": {
+        "description": "Owner identifier for resource tagging (1-100 characters)"
+      }
+    },
+    "resourceGroupName": {
+      "value": "rg-ai-core",
+      "metadata": {
+        "description": "Resource group name (fixed per constitution). Default: rg-ai-core"
+      }
+    },
+    "vwanName": {
+      "value": "vwan-ai-hub",
+      "metadata": {
+        "description": "Virtual WAN name. Default: vwan-ai-hub"
+      }
+    },
+    "vhubName": {
+      "value": "hub-ai-eastus2",
+      "metadata": {
+        "description": "Virtual Hub name. Default: hub-ai-eastus2"
+      }
+    },
+    "vhubAddressPrefix": {
+      "value": "10.0.0.0/16",
+      "metadata": {
+        "description": "Virtual Hub address prefix (CIDR). Must not overlap with spoke VNets. Recommended spoke ranges: 10.1.0.0/16, 10.2.0.0/16, etc."
+      }
+    },
+    "vpnGatewayName": {
+      "value": "vpngw-ai-hub",
+      "metadata": {
+        "description": "VPN Gateway name. Default: vpngw-ai-hub"
+      }
+    },
+    "vpnGatewayScaleUnit": {
+      "value": 1,
+      "metadata": {
+        "description": "VPN Gateway scale units (1 unit = 500 Mbps, max 20 units = 10 Gbps). Default: 1"
+      }
+    },
+    "enableBgp": {
+      "value": true,
+      "metadata": {
+        "description": "Enable BGP for VPN Gateway (REQUIRED for Global Secure Access). Default: true"
+      }
+    },
+    "bgpAsn": {
+      "value": 65515,
+      "metadata": {
+        "description": "BGP Autonomous System Number (65000-65535). Default: 65515 (Azure default)"
+      }
+    },
+    "keyVaultName": {
+      "value": "kv-ai-core-CHANGEME",
+      "metadata": {
+        "description": "Key Vault name (MUST be globally unique, 3-24 characters, alphanumeric and hyphens). REQUIRED: Change 'CHANGEME' to a unique suffix."
+      }
+    },
+    "keyVaultSku": {
+      "value": "standard",
+      "metadata": {
+        "description": "Key Vault SKU. Allowed values: standard, premium. Default: standard"
+      }
+    },
+    "enablePurgeProtection": {
+      "value": false,
+      "metadata": {
+        "description": "Enable purge protection for Key Vault (recommended for production). Default: false"
+      }
+    },
+    "deployedBy": {
+      "value": "manual",
+      "metadata": {
+        "description": "Deployment method tag. Default: manual"
+      }
+    },
+    "tags": {
+      "value": {},
+      "metadata": {
+        "description": "Additional custom tags (optional). Example: {\"project\": \"AI-Lab\", \"costCenter\": \"Engineering\"}"
+      }
+    }
+  }
+}

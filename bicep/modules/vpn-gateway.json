@@ -1,0 +1,118 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "14189339966417499835"
+    }
+  },
+  "parameters": {
+    "vpnGatewayName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the VPN Gateway resource"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "virtualHubId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Virtual Hub to attach the VPN Gateway"
+      }
+    },
+    "vpnGatewayScaleUnit": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "maxValue": 20,
+      "metadata": {
+        "description": "VPN Gateway scale units (1 unit = 500 Mbps, max 20 units)"
+      }
+    },
+    "enableBgp": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable BGP for dynamic routing (required for Global Secure Access)"
+      }
+    },
+    "bgpAsn": {
+      "type": "int",
+      "defaultValue": 65515,
+      "minValue": 65000,
+      "maxValue": 65535,
+      "metadata": {
+        "description": "BGP Autonomous System Number (default Azure ASN)"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to resources"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/vpnGateways",
+      "apiVersion": "2023-11-01",
+      "name": "[parameters('vpnGatewayName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "virtualHub": {
+          "id": "[parameters('virtualHubId')]"
+        },
+        "vpnGatewayScaleUnit": "[parameters('vpnGatewayScaleUnit')]",
+        "bgpSettings": "[if(parameters('enableBgp'), createObject('asn', parameters('bgpAsn'), 'peerWeight', 0), null())]",
+        "enableBgpRouteTranslationForNat": false,
+        "isRoutingPreferenceInternet": false
+      }
+    }
+  ],
+  "outputs": {
+    "vpnGatewayId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the VPN Gateway"
+      },
+      "value": "[resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName'))]"
+    },
+    "vpnGatewayName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the VPN Gateway"
+      },
+      "value": "[parameters('vpnGatewayName')]"
+    },
+    "vpnGatewayBgpSettings": {
+      "type": "object",
+      "metadata": {
+        "description": "VPN Gateway BGP settings for Global Secure Access integration"
+      },
+      "value": "[if(parameters('enableBgp'), createObject('asn', reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').bgpSettings.asn, 'bgpPeeringAddress', reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').bgpSettings.bgpPeeringAddresses[0].defaultBgpIpAddresses[0], 'peerWeight', reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').bgpSettings.peerWeight), createObject())]"
+    },
+    "vpnGatewayScaleUnit": {
+      "type": "int",
+      "metadata": {
+        "description": "VPN Gateway scale units (aggregate throughput capacity)"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').vpnGatewayScaleUnit]"
+    },
+    "provisioningState": {
+      "type": "string",
+      "metadata": {
+        "description": "VPN Gateway provisioning state"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').provisioningState]"
+    }
+  }
+}

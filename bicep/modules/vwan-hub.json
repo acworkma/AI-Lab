@@ -1,0 +1,122 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "13813703834399175814"
+    }
+  },
+  "parameters": {
+    "vwanName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual WAN resource"
+      }
+    },
+    "vhubName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual Hub resource"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "vhubAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16",
+      "minLength": 9,
+      "maxLength": 18,
+      "metadata": {
+        "description": "Virtual Hub address prefix (CIDR notation)"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to resources"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualWans",
+      "apiVersion": "2023-11-01",
+      "name": "[parameters('vwanName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "type": "Standard",
+        "allowBranchToBranchTraffic": true,
+        "disableVpnEncryption": false
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualHubs",
+      "apiVersion": "2023-11-01",
+      "name": "[parameters('vhubName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "virtualWan": {
+          "id": "[resourceId('Microsoft.Network/virtualWans', parameters('vwanName'))]"
+        },
+        "addressPrefix": "[parameters('vhubAddressPrefix')]",
+        "sku": "Standard"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualWans', parameters('vwanName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "vwanId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Virtual WAN"
+      },
+      "value": "[resourceId('Microsoft.Network/virtualWans', parameters('vwanName'))]"
+    },
+    "vwanName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual WAN"
+      },
+      "value": "[parameters('vwanName')]"
+    },
+    "vhubId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Virtual Hub"
+      },
+      "value": "[resourceId('Microsoft.Network/virtualHubs', parameters('vhubName'))]"
+    },
+    "vhubName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual Hub"
+      },
+      "value": "[parameters('vhubName')]"
+    },
+    "vhubAddressPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual Hub address prefix"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/virtualHubs', parameters('vhubName')), '2023-11-01').addressPrefix]"
+    },
+    "vhubRoutingState": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual Hub routing state (Provisioned when ready for connections)"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/virtualHubs', parameters('vhubName')), '2023-11-01').routingState]"
+    }
+  }
+}
