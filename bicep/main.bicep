@@ -120,6 +120,9 @@ module resourceGroup 'modules/resource-group.bicep' = {
 module vwanHub 'modules/vwan-hub.bicep' = {
   name: 'deploy-vwan-hub'
   scope: az.resourceGroup(resourceGroupName)
+  dependsOn: [
+    resourceGroup
+  ]
   params: {
     vwanName: vwanName
     vhubName: vhubName
@@ -162,6 +165,9 @@ module vpnGateway 'modules/vpn-gateway.bicep' = {
 module keyVault 'modules/key-vault.bicep' = {
   name: 'deploy-key-vault'
   scope: az.resourceGroup(resourceGroupName)
+  dependsOn: [
+    resourceGroup
+  ]
   params: {
     keyVaultName: keyVaultName
     location: location
