@@ -1,0 +1,119 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "1496262866009470941"
+    }
+  },
+  "parameters": {
+    "vpnServerConfigName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the VPN Server Configuration resource"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "vpnAuthenticationTypes": {
+      "type": "array",
+      "defaultValue": [
+        "AAD"
+      ],
+      "metadata": {
+        "description": "VPN authentication types (Certificate, Radius, or AAD)"
+      }
+    },
+    "vpnProtocols": {
+      "type": "array",
+      "defaultValue": [
+        "OpenVPN"
+      ],
+      "metadata": {
+        "description": "VPN protocols to enable (IkeV2, OpenVPN, or both)"
+      }
+    },
+    "aadTenant": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Entra ID Tenant ID for authentication"
+      }
+    },
+    "aadAudience": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Entra ID Audience (Application ID)"
+      }
+    },
+    "aadIssuer": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Entra ID Issuer URL"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to resources"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/vpnServerConfigurations",
+      "apiVersion": "2023-11-01",
+      "name": "[parameters('vpnServerConfigName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "vpnAuthenticationTypes": "[parameters('vpnAuthenticationTypes')]",
+        "vpnProtocols": "[parameters('vpnProtocols')]",
+        "aadAuthenticationParameters": "[if(contains(parameters('vpnAuthenticationTypes'), 'AAD'), createObject('aadTenant', parameters('aadTenant'), 'aadAudience', parameters('aadAudience'), 'aadIssuer', parameters('aadIssuer')), null())]"
+      }
+    }
+  ],
+  "outputs": {
+    "vpnServerConfigId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the VPN Server Configuration"
+      },
+      "value": "[resourceId('Microsoft.Network/vpnServerConfigurations', parameters('vpnServerConfigName'))]"
+    },
+    "vpnServerConfigName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the VPN Server Configuration"
+      },
+      "value": "[parameters('vpnServerConfigName')]"
+    },
+    "vpnAuthenticationTypes": {
+      "type": "array",
+      "metadata": {
+        "description": "VPN authentication types configured"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/vpnServerConfigurations', parameters('vpnServerConfigName')), '2023-11-01').vpnAuthenticationTypes]"
+    },
+    "vpnProtocols": {
+      "type": "array",
+      "metadata": {
+        "description": "VPN protocols enabled"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/vpnServerConfigurations', parameters('vpnServerConfigName')), '2023-11-01').vpnProtocols]"
+    },
+    "provisioningState": {
+      "type": "string",
+      "metadata": {
+        "description": "VPN Server Configuration provisioning state"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/vpnServerConfigurations', parameters('vpnServerConfigName')), '2023-11-01').provisioningState]"
+    }
+  }
+}

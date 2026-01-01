@@ -5,14 +5,14 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "14189339966417499835"
+      "templateHash": "12655058841707437786"
     }
   },
   "parameters": {
     "vpnGatewayName": {
       "type": "string",
       "metadata": {
-        "description": "Name of the VPN Gateway resource"
+        "description": "Name of the P2S VPN Gateway resource"
       }
     },
     "location": {
@@ -24,7 +24,20 @@
     "virtualHubId": {
       "type": "string",
       "metadata": {
-        "description": "Resource ID of the Virtual Hub to attach the VPN Gateway"
+        "description": "Resource ID of the Virtual Hub to attach the P2S VPN Gateway"
+      }
+    },
+    "vpnServerConfigurationId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the VPN Server Configuration (defines auth methods and protocols)"
+      }
+    },
+    "vpnClientAddressPool": {
+      "type": "string",
+      "defaultValue": "172.16.0.0/24",
+      "metadata": {
+        "description": "VPN client address pool (CIDR notation) - addresses assigned to VPN clients"
       }
     },
     "vpnGatewayScaleUnit": {
@@ -33,23 +46,21 @@
       "minValue": 1,
       "maxValue": 20,
       "metadata": {
-        "description": "VPN Gateway scale units (1 unit = 500 Mbps, max 20 units)"
+        "description": "P2S VPN Gateway scale units (1 unit = 500 Mbps, max 20 units)"
       }
     },
-    "enableBgp": {
+    "customDnsServers": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Custom DNS servers for VPN clients (optional)"
+      }
+    },
+    "isRoutingPreferenceInternet": {
       "type": "bool",
-      "defaultValue": true,
+      "defaultValue": false,
       "metadata": {
-        "description": "Enable BGP for dynamic routing (required for Global Secure Access)"
-      }
-    },
-    "bgpAsn": {
-      "type": "int",
-      "defaultValue": 65515,
-      "minValue": 65000,
-      "maxValue": 65535,
-      "metadata": {
-        "description": "BGP Autonomous System Number (default Azure ASN)"
+        "description": "Enable internet routing preference (default: use Azure backbone)"
       }
     },
     "tags": {
@@ -62,7 +73,7 @@
   },
   "resources": [
     {
-      "type": "Microsoft.Network/vpnGateways",
+      "type": "Microsoft.Network/p2svpnGateways",
       "apiVersion": "2023-11-01",
       "name": "[parameters('vpnGatewayName')]",
       "location": "[parameters('location')]",
@@ -71,10 +82,25 @@
         "virtualHub": {
           "id": "[parameters('virtualHubId')]"
         },
+        "vpnServerConfiguration": {
+          "id": "[parameters('vpnServerConfigurationId')]"
+        },
+        "p2SConnectionConfigurations": [
+          {
+            "name": "p2s-connection-config",
+            "properties": {
+              "vpnClientAddressPool": {
+                "addressPrefixes": [
+                  "[parameters('vpnClientAddressPool')]"
+                ]
+              },
+              "enableInternetSecurity": false
+            }
+          }
+        ],
         "vpnGatewayScaleUnit": "[parameters('vpnGatewayScaleUnit')]",
-        "bgpSettings": "[if(parameters('enableBgp'), createObject('asn', parameters('bgpAsn'), 'peerWeight', 0), null())]",
-        "enableBgpRouteTranslationForNat": false,
-        "isRoutingPreferenceInternet": false
+        "customDnsServers": "[parameters('customDnsServers')]",
+        "isRoutingPreferenceInternet": "[parameters('isRoutingPreferenceInternet')]"
       }
     }
   ],
@@ -82,37 +108,37 @@
     "vpnGatewayId": {
       "type": "string",
       "metadata": {
-        "description": "Resource ID of the VPN Gateway"
+        "description": "Resource ID of the P2S VPN Gateway"
       },
-      "value": "[resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName'))]"
+      "value": "[resourceId('Microsoft.Network/p2svpnGateways', parameters('vpnGatewayName'))]"
     },
     "vpnGatewayName": {
       "type": "string",
       "metadata": {
-        "description": "Name of the VPN Gateway"
+        "description": "Name of the P2S VPN Gateway"
       },
       "value": "[parameters('vpnGatewayName')]"
-    },
-    "vpnGatewayBgpSettings": {
-      "type": "object",
-      "metadata": {
-        "description": "VPN Gateway BGP settings for Global Secure Access integration"
-      },
-      "value": "[if(parameters('enableBgp'), createObject('asn', reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').bgpSettings.asn, 'bgpPeeringAddress', reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').bgpSettings.bgpPeeringAddresses[0].defaultBgpIpAddresses[0], 'peerWeight', reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').bgpSettings.peerWeight), createObject())]"
     },
     "vpnGatewayScaleUnit": {
       "type": "int",
       "metadata": {
-        "description": "VPN Gateway scale units (aggregate throughput capacity)"
+        "description": "P2S VPN Gateway scale units (aggregate throughput capacity)"
       },
-      "value": "[reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').vpnGatewayScaleUnit]"
+      "value": "[reference(resourceId('Microsoft.Network/p2svpnGateways', parameters('vpnGatewayName')), '2023-11-01').vpnGatewayScaleUnit]"
+    },
+    "vpnClientAddressPool": {
+      "type": "string",
+      "metadata": {
+        "description": "VPN client address pool"
+      },
+      "value": "[parameters('vpnClientAddressPool')]"
     },
     "provisioningState": {
       "type": "string",
       "metadata": {
-        "description": "VPN Gateway provisioning state"
+        "description": "P2S VPN Gateway provisioning state"
       },
-      "value": "[reference(resourceId('Microsoft.Network/vpnGateways', parameters('vpnGatewayName')), '2023-11-01').provisioningState]"
+      "value": "[reference(resourceId('Microsoft.Network/p2svpnGateways', parameters('vpnGatewayName')), '2023-11-01').provisioningState]"
     }
   }
 }

@@ -53,3 +53,7 @@ ENV/
 .terraform/
 *.tfstate
 *.tfstate.backup
+# Bicep parameter files - keep environment-specific configs private
+bicep/main.parameters.json
+bicep/main.parameters.*.json
+

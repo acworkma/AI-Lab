@@ -4,118 +4,85 @@ Azure Infrastructure Lab for building and demonstrating Azure services using Inf
 
 ## 🎯 Overview
 
-This repository contains modular Azure infrastructure deployed as independent labs, all connected through a centralized Virtual WAN hub with **Microsoft Entra Global Secure Access** integration. All infrastructure is defined using Bicep templates following Infrastructure as Code (IaC) best practices.
+AI-Lab is a collection of modular Azure infrastructure projects, all connected through a centralized **Virtual WAN hub** for secure networking and remote access. Each project is independently deployable, fully documented, and follows Infrastructure as Code (IaC) best practices.
 
-### Key Features
+### Core Concept: Hub-Spoke Architecture
 
-- ✅ **Hub-Spoke Network Topology**: Centralized vWAN hub with spoke virtual networks
-- ✅ **Global Secure Access**: Security Service Edge (SSE) integration for zero-trust access
-- ✅ **Infrastructure as Code**: 100% Bicep, no manual portal changes
-- ✅ **Centralized Secrets**: Azure Key Vault with RBAC for all labs
-- ✅ **Modular Labs**: Independently deployable and deletable spoke labs
-- ✅ **Constitutional Governance**: 7 core principles enforced across all infrastructure
+```
+                    ┌─────────────────────────┐
+                    │   Remote VPN Clients    │
+                    │ (Entra ID Authentication)│
+                    └───────────┬─────────────┘
+                                │
+                    ┌───────────▼─────────────┐
+                    │   Virtual WAN Hub       │
+                    │   (rg-ai-core)          │
+                    │ • P2S VPN Gateway       │
+                    │ • Key Vault (shared)    │
+                    └────────┬────────────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+         ┌────▼────┐    ┌────▼────┐   ┌────▼────┐
+         │ Project │    │ Project │   │ Project │
+         │   #1    │    │   #2    │   │   #3    │
+         │ (Spoke) │    │ (Spoke) │   │ (Spoke) │
+         └─────────┘    └─────────┘   └─────────┘
+```
 
-## 🏗️ Architecture
+**Benefits**:
+- 🔒 **Centralized Security**: Single VPN gateway and Key Vault for all projects
+- 🔌 **Easy Connectivity**: New projects auto-connect to the hub
+- 🧩 **Modular Design**: Deploy/delete projects independently
+- 🎛️ **Simplified Management**: One hub to rule them all
 
-**Hub-Spoke Network Topology**:
-- **Core Hub** (`rg-ai-core`): Virtual WAN hub with site-to-site VPN Gateway for Global Secure Access integration
-- **Spoke Labs**: Independent service labs (e.g., `rg-ai-storage`, `rg-ai-ml`) connected to the hub
-- **Centralized Security**: Azure Key Vault in core for secrets management across all labs
+## 📚 Projects
 
-### Global Secure Access Integration
+### 🏗️ Core Infrastructure (Foundation)
 
-The core infrastructure integrates with **Microsoft Entra Global Secure Access** to provide Security Service Edge (SSE) capabilities:
-- **Private Access**: Secure access to private Azure resources
-- **Internet Access**: Secure web access with threat protection
-- **Microsoft 365 Access**: Optimized connectivity to Microsoft services
-- **Zero Trust**: Conditional access policies and continuous evaluation
+**Status**: ✅ Ready  
+**Location**: [`docs/core-infrastructure/`](docs/core-infrastructure/)
 
-**Architecture Diagram**: See [docs/core-infrastructure/architecture-diagram.md](docs/core-infrastructure/architecture-diagram.md)
+The foundational Virtual WAN hub that all other projects connect to. Includes:
+- Virtual WAN hub with Point-to-Site VPN
+- Microsoft Entra ID authentication for remote access
+- Centralized Azure Key Vault for secrets management
+- Network routing for spoke connectivity
 
-## 🚀 Quick Start
+**[📖 Full Documentation →](docs/core-infrastructure/README.md)**
 
-### Prerequisites
-
-- Azure CLI 2.50.0 or later ([Install](https://aka.ms/azure-cli))
-- Azure subscription with Contributor role
-- jq (for JSON parsing in scripts)
-
-### Deploy Core Infrastructure
-
+**Quick Deploy**:
 ```bash
-# 1. Clone repository
-git clone https://github.com/acworkma/AI-Lab.git
-cd AI-Lab
-
-# 2. Login to Azure
-az login
-
-# 3. Customize parameters
-nano bicep/main.parameters.json
-# Change keyVaultName to a globally unique value
-
-# 4. Deploy core infrastructure (25-30 minutes)
 ./scripts/deploy-core.sh
-
-# 5. Validate deployment
-./scripts/validate-core.sh
 ```
 
-**Full Documentation**: [docs/core-infrastructure/README.md](docs/core-infrastructure/README.md)
+---
 
-### Configure Global Secure Access (Optional)
+### 🚧 Future Projects
 
-Follow the step-by-step guide to integrate with Microsoft Entra Global Secure Access:
+Additional spoke projects will be added here as they're developed. Each project will have:
+- Dedicated resource group
+- Virtual network connected to the hub
+- Project-specific documentation
+- Independent lifecycle (deploy/delete without affecting others)
 
-[docs/core-infrastructure/global-secure-access.md](docs/core-infrastructure/global-secure-access.md)
+**Example Future Projects**:
+- 💾 Storage Lab - Azure Storage services demonstration
+- 🤖 ML Lab - Machine Learning and AI services
+- 🗄️ Database Lab - Cosmos DB, SQL, PostgreSQL examples
+- 🌐 Web Apps Lab - App Service, Functions, Static Web Apps
 
-### Deploy Spoke Labs
-
-After core infrastructure is deployed, add spoke labs following the contributing guide:
-
-[CONTRIBUTING.md](CONTRIBUTING.md)
-
-## 📁 Project Structure
-
-```
-bicep/                      # Bicep Infrastructure as Code
-├── modules/               # Reusable Bicep modules
-│   ├── resource-group.bicep
-│   ├── vwan-hub.bicep
-│   ├── vpn-gateway.bicep
-│   └── key-vault.bicep
-├── main.bicep            # Main orchestration template
-└── main.parameters.json  # Default parameters
-
-scripts/                   # Deployment automation
-├── deploy-core.sh        # Deploy core infrastructure
-├── validate-core.sh      # Validate deployment
-└── cleanup-core.sh       # Clean up resources
-
-docs/                      # Documentation
-└── core-infrastructure/  # Core hub documentation
-    ├── README.md
-    ├── architecture-diagram.md
-    ├── global-secure-access.md
-    └── troubleshooting.md
-
-specs/                     # Feature specifications (Speckit)
-└── 001-vwan-core/        # Core vWAN feature
-    ├── spec.md
-    ├── plan.md
-    ├── tasks.md
-    └── ...
-```
-
-## Quick Start
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Azure CLI installed (`az --version`)
-- Azure subscription with Contributor permissions
-- Git for cloning repository
+- **Azure CLI** 2.50.0+ ([Install](https://aka.ms/azure-cli))
+- **Azure Subscription** with Contributor access
+- **jq** for JSON parsing (used in scripts)
 
-### Deploy Core Infrastructure
+### 1️⃣ Deploy Core Infrastructure (Required)
+
+The core infrastructure must be deployed first as it provides networking and security for all projects.
 
 ```bash
 # Clone repository
@@ -125,141 +92,90 @@ cd AI-Lab
 # Login to Azure
 az login
 
-# Deploy core hub infrastructure
+# Create your parameters file from the template
+cp bicep/main.parameters.example.json bicep/main.parameters.json
+
+# Edit parameters (set your Entra tenant ID)
+nano bicep/main.parameters.json
+
+# Deploy (takes ~25-30 minutes)
 ./scripts/deploy-core.sh
-
-# Validate deployment
-./scripts/validate-core.sh
 ```
 
-See [docs/core-infrastructure/README.md](docs/core-infrastructure/README.md) for detailed deployment instructions.
+📖 **Detailed Instructions**: [docs/core-infrastructure/README.md](docs/core-infrastructure/README.md)
 
-## Governance
+### 2️⃣ Configure VPN Access (Optional)
 
-This project follows strict Infrastructure as Code principles defined in the [Constitution](.specify/memory/constitution.md):
+Set up VPN client access to connect to your Azure resources:
 
-1. **Bicep Only**: All Azure resources defined in Bicep templates
-2. **No Manual Changes**: Portal modifications prohibited
-3. **Version Control**: All infrastructure tracked in Git
-4. **No Secrets in Source**: Secrets stored in Azure Key Vault only
-5. **Hub-Spoke Architecture**: Core hub deployed first, spoke labs connect to hub
-6. **Modular Design**: Each lab independently deployable and deletable
+📖 **VPN Setup Guide**: [docs/core-infrastructure/vpn-client-setup.md](docs/core-infrastructure/vpn-client-setup.md)
 
-## Resource Naming Convention
+### 3️⃣ Deploy Spoke Projects
 
-- Resource Groups: `rg-ai-[service]` (e.g., `rg-ai-core`, `rg-ai-storage`)
-- Required Tags: `environment`, `purpose`, `owner`
+Once the core is deployed, you can add any spoke projects independently. Each project has its own deployment instructions in its documentation folder.
 
-## 📖 Documentation
+## 🏛️ Governance & Principles
 
-- **[Core Infrastructure Guide](docs/core-infrastructure/README.md)**: Complete deployment and configuration guide
-- **[Architecture Diagram](docs/core-infrastructure/architecture-diagram.md)**: Network topology and data flow
-- **[Global Secure Access Integration](docs/core-infrastructure/global-secure-access.md)**: SSE configuration steps
-- **[Troubleshooting Guide](docs/core-infrastructure/troubleshooting.md)**: Common issues and solutions
-- **[Contributing Guide](CONTRIBUTING.md)**: How to add new spoke labs
-- **[Constitution](.specify/memory/constitution.md)**: Governance principles and standards
+All infrastructure follows the **7 Constitutional Principles** defined in [CONTRIBUTING.md](CONTRIBUTING.md):
 
-## 🛠️ Available Scripts
+1. **Infrastructure as Code First** - No manual changes, 100% Bicep
+2. **Modular & Reusable** - DRY principle, reusable modules
+3. **Resource Organization** - Consistent naming, tagging, grouping
+4. **Security by Default** - No secrets in code, RBAC over keys
+5. **Cost Conscious** - Right-sizing, auto-shutdown, monitoring
+6. **Documentation Required** - Every resource documented
+7. **Validation & Testing** - Pre-deployment validation mandatory
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `deploy-core.sh` | Deploy core infrastructure | `./scripts/deploy-core.sh` |
-| `validate-core.sh` | Validate deployment | `./scripts/validate-core.sh` |
-| `cleanup-core.sh` | Delete all resources | `./scripts/cleanup-core.sh` |
-| `scan-secrets.sh` | Scan for hardcoded secrets | `./scripts/scan-secrets.sh` |
+## 📁 Repository Structure
 
-## 💡 Common Tasks
-
-### Validate Deployment
-
-```bash
-# Check all resources and configuration
-./scripts/validate-core.sh
-
-# Check for secrets in repository
-./scripts/scan-secrets.sh
 ```
-
-### Store Secret in Key Vault
-
-```bash
-# Example: VPN shared key
-az keyvault secret set \
-  --vault-name kv-ai-core-lab1 \
-  --name vpn-shared-key \
-  --value "$(openssl rand -base64 32)"
+AI-Lab/
+├── bicep/                          # Infrastructure as Code
+│   ├── modules/                    # Reusable Bicep modules
+│   │   ├── vwan-hub.bicep
+│   │   ├── vpn-gateway.bicep
+│   │   ├── vpn-server-configuration.bicep
+│   │   └── key-vault.bicep
+│   ├── main.bicep                  # Core infrastructure template
+│   └── main.parameters.example.json # Parameter template
+│
+├── scripts/                        # Deployment automation
+│   ├── deploy-core.sh              # Deploy core infrastructure
+│   ├── validate-core.sh            # Validate deployment
+│   └── cleanup-core.sh             # Delete resources
+│
+├── docs/                           # Documentation by project
+│   └── core-infrastructure/        # Core hub documentation
+│       ├── README.md               # Main guide
+│       ├── vpn-client-setup.md     # VPN setup guide
+│       ├── architecture-diagram.md # Architecture details
+│       └── troubleshooting.md      # Common issues
+│
+├── specs/                          # Project specifications
+│   └── 001-vwan-core/              # Core infrastructure spec
+│
+├── README.md                       # This file
+└── CONTRIBUTING.md                 # Development guidelines
 ```
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on adding new spoke labs.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development workflow
+- Constitutional principles
+- Branch naming conventions
+- Pull request guidelines
 
-**Before submitting a PR**:
-1. ✅ Follow the [constitution](.specify/memory/constitution.md)
-2. ✅ Run `./scripts/scan-secrets.sh` (must pass)
-3. ✅ Validate Bicep with `az bicep build`
-4. ✅ Document address space allocation
+## 📄 License
 
-## 📝 License
+This project is licensed under the terms specified in the repository.
 
-[MIT License](LICENSE) - Feel free to use this infrastructure pattern for your own projects.
+## 🆘 Support
 
-## 🙋 Support
-
-- **Documentation**: See [docs/core-infrastructure/](docs/core-infrastructure/)
-- **Issues**: Open a [GitHub Issue](https://github.com/acworkma/AI-Lab/issues)
-- **Discussions**: Join [GitHub Discussions](https://github.com/acworkma/AI-Lab/discussions)
+- **Issues**: [GitHub Issues](https://github.com/acworkma/AI-Lab/issues)
+- **Documentation**: Check project-specific docs in [`docs/`](docs/)
+- **Troubleshooting**: See individual project troubleshooting guides
 
 ---
 
-**Built with ❤️ using Bicep and Azure Virtual WAN**
-
-**Status**: ✅ Production Ready | **Version**: 1.0.0 | **Last Updated**: 2025-12-31
-- Virtual WAN: `vwan-ai-hub`
-- Virtual Hub: `hub-ai-eastus2`
-- VPN Gateway: `vpngw-ai-hub`
-- Key Vault: `kv-ai-core-{random}`
-
-## Security
-
-**Critical**: Never commit secrets, passwords, API keys, or connection strings to this repository.
-
-- Secrets must be stored in Azure Key Vault (`kv-ai-core-*`)
-- Local parameter files (`*.local.parameters.json`) are gitignored
-- Parameter files use Key Vault references for sensitive values
-- Review [Security Guidelines](docs/core-infrastructure/README.md#security) before deployment
-
-## Deployment Workflow
-
-1. **Core Infrastructure**: Deploy vWAN hub, VPN Gateway, and Key Vault (required first)
-2. **Global Secure Access**: Configure Microsoft Entra Global Secure Access integration
-3. **Spoke Labs**: Deploy individual service labs that connect to hub
-4. **Validation**: Run validation scripts to verify configuration
-
-## Contributing
-
-New lab deployments should:
-1. Create new resource group: `rg-ai-[service-name]`
-2. Deploy resources in separate resource group
-3. Connect to vWAN hub via VNet connection
-4. Reference Key Vault for secrets: `kv-ai-core-*`
-5. Follow naming conventions and tagging requirements
-
-See CONTRIBUTING.md for detailed guidelines.
-
-## Troubleshooting
-
-Common issues and solutions:
-- [Core Infrastructure Troubleshooting](docs/core-infrastructure/troubleshooting.md)
-- [Global Secure Access Integration](docs/core-infrastructure/global-secure-access.md)
-
-## License
-
-This project is for demonstration and learning purposes.
-
-## Resources
-
-- [Azure Virtual WAN Documentation](https://learn.microsoft.com/en-us/azure/virtual-wan/)
-- [Microsoft Entra Global Secure Access](https://learn.microsoft.com/en-us/entra/global-secure-access/)
-- [Bicep Documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/)
-- [Project Constitution](.specify/memory/constitution.md)
+**Current Status**: Core infrastructure complete ✅ | Projects in development 🚧
