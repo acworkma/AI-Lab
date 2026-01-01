@@ -46,17 +46,17 @@ log_info() {
 
 log_success() {
     echo -e "${GREEN}[✓ PASS]${NC} $1"
-    ((CHECKS_PASSED++))
+    ((CHECKS_PASSED++)) || true
 }
 
 log_fail() {
     echo -e "${RED}[✗ FAIL]${NC} $1"
-    ((CHECKS_FAILED++))
+    ((CHECKS_FAILED++)) || true
 }
 
 log_warning() {
     echo -e "${YELLOW}[⚠ WARN]${NC} $1"
-    ((CHECKS_WARNING++))
+    ((CHECKS_WARNING++)) || true
 }
 
 usage() {
@@ -93,6 +93,15 @@ check_prerequisites() {
     if ! az account show &> /dev/null; then
         log_fail "Not logged in to Azure. Run: az login"
         exit 1
+    fi
+
+    # Configure Azure CLI to auto-install extensions without prompting
+    az config set extension.use_dynamic_install=yes_without_prompt &> /dev/null || true
+
+    # Ensure virtual-wan extension is installed
+    if ! az extension show --name virtual-wan &> /dev/null; then
+        log_info "Installing Azure CLI virtual-wan extension..."
+        az extension add --name virtual-wan &> /dev/null
     fi
 
     log_success "Prerequisites validated"
@@ -161,7 +170,7 @@ validate_virtual_wan() {
     fi
 
     # Check SKU (should be Standard)
-    local vwan_type=$(az network vwan show --resource-group "$RESOURCE_GROUP" --name "$vwan_name" --query 'type' -o tsv)
+    local vwan_type=$(az network vwan show --resource-group "$RESOURCE_GROUP" --name "$vwan_name" --query 'typePropertiesType' -o tsv)
     if [ "$vwan_type" == "Standard" ]; then
         log_success "Virtual WAN SKU: Standard"
     else
@@ -276,13 +285,13 @@ validate_key_vault() {
         log_warning "Key Vault soft-delete disabled (recommended to enable)"
     fi
 
-    # Test access with secret operations
+    # Test access with secret operations (with timeout to prevent hanging)
     log_info "Testing Key Vault access..."
-    if az keyvault secret set --vault-name "$kv_name" --name "validation-test" --value "success" &> /dev/null; then
+    if timeout 10 az keyvault secret set --vault-name "$kv_name" --name "validation-test" --value "success" &> /dev/null; then
         log_success "Key Vault write access verified"
         
         # Test read
-        local secret_value=$(az keyvault secret show --vault-name "$kv_name" --name "validation-test" --query value -o tsv)
+        local secret_value=$(timeout 10 az keyvault secret show --vault-name "$kv_name" --name "validation-test" --query value -o tsv 2>/dev/null)
         if [ "$secret_value" == "success" ]; then
             log_success "Key Vault read access verified"
         else
@@ -290,7 +299,7 @@ validate_key_vault() {
         fi
         
         # Cleanup test secret
-        az keyvault secret delete --vault-name "$kv_name" --name "validation-test" &> /dev/null
+        timeout 10 az keyvault secret delete --vault-name "$kv_name" --name "validation-test" &> /dev/null || true
     else
         log_warning "Key Vault write access denied (may need RBAC role assignment)"
         log_info "  ℹ Assign role: az role assignment create --role 'Key Vault Secrets Officer' --assignee <user> --scope <vault-id>"

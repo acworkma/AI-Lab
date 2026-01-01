@@ -98,6 +98,16 @@ check_prerequisites() {
     local account_name=$(az account show --query name -o tsv)
     log_success "Logged in to Azure subscription: $account_name"
 
+    # Configure Azure CLI to auto-install extensions without prompting
+    az config set extension.use_dynamic_install=yes_without_prompt &> /dev/null || true
+
+    # Ensure virtual-wan extension is installed
+    if ! az extension show --name virtual-wan &> /dev/null; then
+        log_info "Installing Azure CLI virtual-wan extension..."
+        az extension add --name virtual-wan &> /dev/null
+    fi
+    log_success "Azure CLI virtual-wan extension ready"
+
     # Check template file exists
     if [ ! -f "$TEMPLATE_FILE" ]; then
         log_error "Template file not found: $TEMPLATE_FILE"
