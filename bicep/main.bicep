@@ -172,9 +172,6 @@ module vpnServerConfig 'modules/vpn-server-configuration.bicep' = {
 module vpnGateway 'modules/vpn-gateway.bicep' = {
   name: 'deploy-vpn-gateway'
   scope: az.resourceGroup(resourceGroupName)
-  dependsOn: [
-    vpnServerConfig
-  ]
   params: {
     vpnGatewayName: vpnGatewayName
     location: location
