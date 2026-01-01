@@ -108,7 +108,7 @@ Private Access enables secure connectivity to Azure resources and on-premises ap
    
 2. **BGP Configuration**:
    - **Remote BGP ASN**: `65515` (from Azure VPN Gateway)
-   - **Remote BGP Peering Address**: `10.0.0.x` (from deployment outputs)
+   - **Remote BGP Peering Address**: `10.0.0.12` (from deployment outputs)
    
    **WHERE TO FIND**: Run this command to get BGP peering address:
    ```bash
@@ -117,11 +117,26 @@ Private Access enables secure connectivity to Azure resources and on-premises ap
      --query 'properties.outputs.vpnGatewayBgpSettings.value.bgpPeeringAddress' -o tsv
    ```
 
-3. **Link Configuration**:
+3. **Domain Configuration** (when prompted):
+   - **Domain name**: `<your-tenant>.onmicrosoft.com` (your tenant's default domain)
+   - **Resolved to IP address type**: **IP address** (single VPN endpoint)
+   - **IP address version**: **IPv4** (matches Virtual Hub's IPv4 addressing)
+   - **Resolved to IP address value**: The VPN Gateway public IPs (comma-separated)
+   
+   **Get VPN Gateway Public IPs**:
+   ```bash
+   az network vpn-gateway show \
+     --resource-group rg-ai-core \
+     --name vpngw-ai-hub \
+     --query 'ipConfigurations[].publicIpAddress' -o tsv
+   ```
+   Format example: `203.0.113.10, 203.0.113.20` (both IPs for HA)
+
+4. **Link Configuration**:
    - **Link Name**: `Primary-Link`
    - **Link Speed**: `500` (Mbps, matching 1 scale unit)
 
-4. Click **Review + create**, then **Create**
+5. Click **Review + create**, then **Create**
 
 ### Step 5: Establish VPN Connection from Azure Side
 
