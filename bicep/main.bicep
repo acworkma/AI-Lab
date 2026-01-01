@@ -156,7 +156,7 @@ module vpnServerConfig 'modules/vpn-server-configuration.bicep' = {
     location: location
     vpnAuthenticationTypes: ['AAD']
     vpnProtocols: ['OpenVPN']
-    aadTenant: aadTenantId
+    aadTenant: 'https://login.microsoftonline.com/${aadTenantId}/'
     aadAudience: aadAudience
     aadIssuer: aadIssuer
     tags: allTags

@@ -21,7 +21,7 @@ param vpnProtocols array = [
   'OpenVPN'
 ]
 
-@description('Microsoft Entra ID Tenant ID for authentication')
+@description('Microsoft Entra ID Tenant URL for authentication (e.g., https://login.microsoftonline.com/{tenant-id}/)')
 param aadTenant string
 
 @description('Microsoft Entra ID Audience (Application ID)')
