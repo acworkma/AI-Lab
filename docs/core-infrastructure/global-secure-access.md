@@ -121,16 +121,14 @@ Private Access enables secure connectivity to Azure resources and on-premises ap
    - **Domain name**: `<your-tenant>.onmicrosoft.com` (your tenant's default domain)
    - **Resolved to IP address type**: **IP address** (single VPN endpoint)
    - **IP address version**: **IPv4** (matches Virtual Hub's IPv4 addressing)
-   - **Resolved to IP address value**: The VPN Gateway public IPs (comma-separated)
+   - **Resolved to IP address value**: `10.0.0.12` (BGP peering address from deployment)
    
-   **Get VPN Gateway Public IPs**:
+   **Get BGP Peering Address**:
    ```bash
-   az network vpn-gateway show \
-     --resource-group rg-ai-core \
-     --name vpngw-ai-hub \
-     --query 'ipConfigurations[].publicIpAddress' -o tsv
+   az deployment sub show \
+     --name <your-deployment-name> \
+     --query 'properties.outputs.vpnGatewayBgpSettings.value.bgpPeeringAddress' -o tsv
    ```
-   Format example: `203.0.113.10, 203.0.113.20` (both IPs for HA)
 
 4. **Link Configuration**:
    - **Link Name**: `Primary-Link`
