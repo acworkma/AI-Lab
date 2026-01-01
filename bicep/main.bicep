@@ -1,6 +1,6 @@
-// Main Bicep Template - Core Azure vWAN Infrastructure with Global Secure Access
-// Orchestrates deployment of resource group, Virtual WAN hub, site-to-site VPN Gateway, and Key Vault
-// Purpose: Foundation hub infrastructure for AI lab spoke connections with SSE capabilities
+// Main Bicep Template - Core Azure vWAN Infrastructure with P2S VPN
+// Orchestrates deployment of resource group, Virtual WAN hub, Point-to-Site VPN Gateway, and Key Vault
+// Purpose: Foundation hub infrastructure for AI lab spoke connections with secure remote access
 
 targetScope = 'subscription'
 
@@ -44,13 +44,20 @@ param vpnGatewayName string = 'vpngw-ai-hub'
 @maxValue(20)
 param vpnGatewayScaleUnit int = 1
 
-@description('Enable BGP for VPN Gateway (required for Global Secure Access)')
-param enableBgp bool = true
+@description('VPN Server Configuration name')
+param vpnServerConfigName string = 'vpnconfig-ai-hub'
 
-@description('BGP Autonomous System Number')
-@minValue(65000)
-@maxValue(65535)
-param bgpAsn int = 65515
+@description('VPN client address pool (CIDR notation)')
+param vpnClientAddressPool string = '172.16.0.0/24'
+
+@description('Microsoft Entra ID Tenant ID for VPN authentication')
+param aadTenantId string
+
+@description('Azure VPN Client Application ID (Microsoft Entra ID)')
+param aadAudience string = '41b23e61-6c1e-4545-b367-cd054e0ed4b4'
+
+@description('Microsoft Entra ID Issuer URL')
+param aadIssuer string
 
 @description('Key Vault name (must be globally unique, 3-24 characters)')
 @minLength(3)
@@ -133,23 +140,48 @@ module vwanHub 'modules/vwan-hub.bicep' = {
 }
 
 // ============================================================================
+// VPN SERVER CONFIGURATION
+// ============================================================================
+
+// VPN Server Configuration - Authentication and protocol settings for P2S VPN
+// Deployment time: ~1 minute
+module vpnServerConfig 'modules/vpn-server-configuration.bicep' = {
+  name: 'deploy-vpn-server-config'
+  scope: az.resourceGroup(resourceGroupName)
+  dependsOn: [
+    resourceGroup
+  ]
+  params: {
+    vpnServerConfigName: vpnServerConfigName
+    location: location
+    vpnAuthenticationTypes: ['AAD']
+    vpnProtocols: ['OpenVPN']
+    aadTenant: aadTenantId
+    aadAudience: aadAudience
+    aadIssuer: aadIssuer
+    tags: allTags
+  }
+}
+
+// ============================================================================
 // VPN GATEWAY
 // ============================================================================
 
-// Site-to-Site VPN Gateway - Global Secure Access integration
+// Point-to-Site VPN Gateway - Secure remote client access
 // Deployment time: ~15-20 minutes (longest resource)
-// CRITICAL: Must be site-to-site with BGP enabled for Microsoft Entra Global Secure Access
-// See research.md: Decision to deploy site-to-site VPN Gateway (not point-to-site)
 module vpnGateway 'modules/vpn-gateway.bicep' = {
   name: 'deploy-vpn-gateway'
   scope: az.resourceGroup(resourceGroupName)
+  dependsOn: [
+    vpnServerConfig
+  ]
   params: {
     vpnGatewayName: vpnGatewayName
     location: location
     virtualHubId: vwanHub.outputs.vhubId
+    vpnServerConfigurationId: vpnServerConfig.outputs.vpnServerConfigId
+    vpnClientAddressPool: vpnClientAddressPool
     vpnGatewayScaleUnit: vpnGatewayScaleUnit
-    enableBgp: enableBgp
-    bgpAsn: bgpAsn
     tags: allTags
   }
 }
@@ -215,15 +247,22 @@ output vhubAddressPrefix string = vwanHub.outputs.vhubAddressPrefix
 @description('Virtual Hub routing state (Provisioned when ready for spoke connections)')
 output vhubRoutingState string = vwanHub.outputs.vhubRoutingState
 
-// VPN Gateway Outputs - Critical for Global Secure Access configuration
-@description('Resource ID of the VPN Gateway')
+// VPN Server Configuration Outputs
+@description('Resource ID of the VPN Server Configuration')
+output vpnServerConfigId string = vpnServerConfig.outputs.vpnServerConfigId
+
+@description('Name of the VPN Server Configuration')
+output vpnServerConfigName string = vpnServerConfig.outputs.vpnServerConfigName
+
+// VPN Gateway Outputs
+@description('Resource ID of the P2S VPN Gateway')
 output vpnGatewayId string = vpnGateway.outputs.vpnGatewayId
 
-@description('Name of the VPN Gateway')
+@description('Name of the P2S VPN Gateway')
 output vpnGatewayName string = vpnGateway.outputs.vpnGatewayName
 
-@description('VPN Gateway BGP settings for Global Secure Access integration')
-output vpnGatewayBgpSettings object = vpnGateway.outputs.vpnGatewayBgpSettings
+@description('VPN client address pool')
+output vpnClientAddressPool string = vpnGateway.outputs.vpnClientAddressPool
 
 @description('VPN Gateway scale units')
 output vpnGatewayScaleUnit int = vpnGateway.outputs.vpnGatewayScaleUnit

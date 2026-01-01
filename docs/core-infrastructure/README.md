@@ -1,14 +1,15 @@
-# Core Azure vWAN Infrastructure with Global Secure Access
+# Core Azure vWAN Infrastructure with Point-to-Site VPN
 
 ## Overview
 
-This infrastructure establishes the foundational hub-spoke network topology for all AI lab projects using Azure Virtual WAN. The core infrastructure includes a Virtual WAN hub with site-to-site VPN Gateway configured for **Microsoft Entra Global Secure Access** integration, providing Security Service Edge (SSE) capabilities.
+This infrastructure establishes the foundational hub-spoke network topology for all AI lab projects using Azure Virtual WAN. The core infrastructure includes a Virtual WAN hub with **Point-to-Site (P2S) VPN Gateway** configured for secure remote access using Microsoft Entra ID authentication.
 
 **Key Components**:
 - **Resource Group**: `rg-ai-core` - Container for all core infrastructure
 - **Virtual WAN**: `vwan-ai-hub` - Central networking hub (Standard SKU)
 - **Virtual Hub**: `hub-ai-eastus2` - Regional hub instance (10.0.0.0/16 address space)
-- **VPN Gateway**: `vpngw-ai-hub` - Site-to-site VPN with BGP for Global Secure Access
+- **P2S VPN Gateway**: `vpngw-ai-hub` - Point-to-Site VPN with Azure AD authentication
+- **VPN Server Configuration**: `vpnconfig-ai-hub` - Authentication and protocol settings
 - **Key Vault**: `kv-ai-core-*` - Centralized secrets management
 
 **Deployment Region**: East US 2
@@ -60,10 +61,10 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Microsoft Entra Global Secure Access         │
-│         (Private Access | Internet Access | M365 Access)        │
+│                    Remote VPN Clients                           │
+│         (Azure AD Authentication via Azure VPN Client)          │
 └──────────────────────────┬──────────────────────────────────────┘
-                           │ Site-to-Site VPN with BGP
+                           │ OpenVPN P2S Tunnel
                            │
 ┌──────────────────────────▼──────────────────────────────────────┐
 │                   rg-ai-core (Resource Group)                   │
@@ -73,11 +74,12 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 │  │  Address Space: 10.0.0.0/16                            │    │
 │  │                                                          │    │
 │  │  ┌──────────────────────────────────────────────┐      │    │
-│  │  │  VPN Gateway (vpngw-ai-hub)                  │      │    │
-│  │  │  - Type: Site-to-Site                        │      │    │
-│  │  │  - BGP Enabled (ASN: 65515)                  │      │    │
+│  │  │  P2S VPN Gateway (vpngw-ai-hub)              │      │    │
+│  │  │  - Type: Point-to-Site                       │      │    │
+│  │  │  - Authentication: Microsoft Entra ID        │      │    │
+│  │  │  - Protocol: OpenVPN                         │      │    │
+│  │  │  - Client Pool: 172.16.0.0/24                │      │    │
 │  │  │  - Scale Units: 1 (500 Mbps)                 │      │    │
-│  │  │  - Secure Access: Global Secure Access       │      │    │
 │  │  └──────────────────────────────────────────────┘      │    │
 │  │                                                          │    │
 │  └────────────────┬─────────────────────────────────────────┤    │
@@ -104,16 +106,17 @@ This infrastructure establishes the foundational hub-spoke network topology for 
    10.1.0.0/16       10.2.0.0/16       10.3.0.0/16
 ```
 
-### Global Secure Access Integration
+### Point-to-Site VPN Access
 
-The site-to-site VPN Gateway enables **Microsoft Entra Global Secure Access** for Security Service Edge (SSE) capabilities:
+The P2S VPN Gateway enables secure remote access to Azure lab resources:
 
-- **Private Access**: Secure access to Azure resources and on-premises applications
-- **Internet Access**: Web content filtering and threat protection
-- **Microsoft 365 Access**: Optimized connectivity to Microsoft 365 services
-- **Zero Trust**: Continuous verification with conditional access policies
+- **Microsoft Entra ID Authentication**: Use organizational credentials to connect
+- **OpenVPN Protocol**: Works through most firewalls, encrypted tunnels
+- **Client Address Pool**: VPN clients receive IPs from 172.16.0.0/24
+- **No On-Premises Hardware**: Client software only, no VPN appliances needed
+- **Flexible Access**: Connect from Windows, macOS, Linux, or mobile devices
 
-For configuration steps, see [global-secure-access.md](global-secure-access.md).
+For VPN client setup instructions, see [vpn-client-setup.md](vpn-client-setup.md).
 
 ## Deployment
 
@@ -180,15 +183,15 @@ Virtual WAN: vwan-ai-hub
 Virtual Hub: hub-ai-eastus2
   - Address Prefix: 10.0.0.0/16
   - Routing State: Provisioned
-VPN Gateway: vpngw-ai-hub
+VPN Server Config: vpnconfig-ai-hub
+  - Authentication: Microsoft Entra ID
+  - Protocols: OpenVPN
+P2S VPN Gateway: vpngw-ai-hub
   - Scale Units: 1
-  - BGP ASN: 65515
-  - BGP Peering Address: 10.0.0.x
+  - Client Address Pool: 172.16.0.0/24
 Key Vault: kv-ai-core-lab1
   - URI: https://kv-ai-core-lab1.vault.azure.net/
 ```
-
-Save the **VPN Gateway BGP settings** for Global Secure Access configuration.
 
 ### Advanced: Custom Deployment
 
@@ -207,9 +210,11 @@ Save the **VPN Gateway BGP settings** for Global Secure Access configuration.
 
 ### Post-Deployment Tasks
 
-1. **Configure Global Secure Access** (optional):
-   - Follow [global-secure-access.md](global-secure-access.md) for step-by-step integration
-   - Requires VPN Gateway BGP peering address from deployment outputs
+1. **Configure VPN Client Access**:
+   - Follow [vpn-client-setup.md](vpn-client-setup.md) for step-by-step client configuration
+   - Download VPN client profile
+   - Install Azure VPN Client on your device
+   - Connect using Microsoft Entra ID credentials
 
 2. **Assign Key Vault RBAC Roles**:
    ```bash

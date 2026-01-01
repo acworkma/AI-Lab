@@ -6,7 +6,7 @@ This guide explains how to configure and use the **Point-to-Site (P2S) VPN Gatew
 
 **Point-to-Site VPN** provides:
 - **Secure Remote Access**: Connect individual client devices to Azure resources via encrypted VPN tunnel
-- **Azure AD Authentication**: Use your organizational identity to authenticate VPN connections
+- **Microsoft Entra ID Authentication**: Use your organizational identity to authenticate VPN connections
 - **Flexible Connectivity**: Connect from anywhere using the Azure VPN Client
 - **No On-Premises Hardware**: Client-based solution requiring no additional infrastructure
 
@@ -17,14 +17,14 @@ This guide explains how to configure and use the **Point-to-Site (P2S) VPN Gatew
 ✅ Core infrastructure deployed (see [README.md](README.md)):
 - Virtual WAN hub (hub-ai-eastus2)
 - **Point-to-Site VPN Gateway** (vpngw-ai-hub)
-- **VPN Server Configuration** with Azure AD authentication (vpnconfig-ai-hub)
+- **VPN Server Configuration** with Microsoft Entra ID authentication (vpnconfig-ai-hub)
 - VPN client address pool: 172.16.0.0/24
 
 ### Client Requirements
 
 - **Windows 10/11**, **macOS**, or **Linux** device
 - **Azure VPN Client** installed (download links below)
-- **Azure AD Account** with access to the Azure subscription
+- **Microsoft Entra ID Account** with access to the Azure subscription
 - **Internet Connection** for VPN connectivity
 
 ## Architecture
@@ -50,7 +50,7 @@ This guide explains how to configure and use the **Point-to-Site (P2S) VPN Gatew
 │  ┌────────────────────────────────────────────────────────┐    │
 │  │  P2S VPN Gateway (vpngw-ai-hub)                        │    │
 │  │  - Type: Point-to-Site                                 │    │
-│  │  - Authentication: Azure AD                            │    │
+│  │  - Authentication: Microsoft Entra ID                  │    │
 │  │  - Protocols: OpenVPN                                  │    │
 │  │  - Client Address Pool: 172.16.0.0/24                  │    │
 │  └────────────────────────────────────────────────────────┘    │
@@ -119,9 +119,9 @@ Download and install the Azure VPN Client for your operating system:
 
 2. **Click "Connect"**
 
-3. **Sign in with Azure AD**:
+3. **Sign in with Microsoft Entra ID**:
    - A browser window will open
-   - Sign in with your Azure AD credentials
+   - Sign in with your Microsoft Entra ID credentials
    - You may be prompted for MFA if configured
 
 4. **Connection established**:
@@ -145,7 +145,7 @@ Download and install the Azure VPN Client for your operating system:
 **Issue**: Authentication fails or browser doesn't open
 
 **Solutions**:
-1. Verify you're using the correct Azure AD account
+1. Verify you're using the correct Microsoft Entra ID account
 2. Check that your account has access to the subscription
 3. Ensure Azure VPN Client is up to date
 4. Clear browser cache and try again
@@ -222,7 +222,7 @@ Download and install the Azure VPN Client for your operating system:
 
 ### 1. Enable Conditional Access
 
-Configure Conditional Access policies in Azure AD to control VPN access:
+Configure Conditional Access policies in Microsoft Entra ID to control VPN access:
 - Require MFA for VPN connections
 - Restrict by location, device compliance, or risk level
 - Limit access to specific user groups
@@ -242,7 +242,7 @@ az network p2s-vpn-gateway show \
 
 - Regenerate VPN profiles periodically
 - Distribute updated profiles to users
-- Revoke access for departed users via Azure AD
+- Revoke access for departed users via Microsoft Entra ID
 
 ### 4. Network Segmentation
 
@@ -282,7 +282,7 @@ After configuring VPN access:
 
 - [Azure Point-to-Site VPN Documentation](https://learn.microsoft.com/azure/vpn-gateway/point-to-site-about)
 - [Azure VPN Client Documentation](https://learn.microsoft.com/azure/vpn-gateway/point-to-site-vpn-client-cert-windows)
-- [Azure AD Authentication for VPN](https://learn.microsoft.com/azure/vpn-gateway/openvpn-azure-ad-tenant)
+- [Microsoft Entra ID Authentication for VPN](https://learn.microsoft.com/azure/vpn-gateway/openvpn-azure-ad-tenant)
 - [VPN Gateway Monitoring](https://learn.microsoft.com/azure/vpn-gateway/monitor-vpn-gateway)
 
 ### Step 4: Configure VPN Site Connection

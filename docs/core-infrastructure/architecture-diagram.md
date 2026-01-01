@@ -1,18 +1,13 @@
 # Architecture Diagram: Core Azure vWAN Infrastructure
 
-## Hub-Spoke Network Topology with Global Secure Access
+## Hub-Spoke Network Topology with Point-to-Site VPN
 
 ```mermaid
 graph TB
-    subgraph "Microsoft Entra Global Secure Access (SSE)"
-        GSA[Global Secure Access]
-        PA[Private Access]
-        IA[Internet Access]
-        M365[M365 Access]
-        
-        GSA --> PA
-        GSA --> IA
-        GSA --> M365
+    subgraph "Remote VPN Clients"
+        CLIENT1[Laptop<br/>Azure VPN Client]
+        CLIENT2[Desktop<br/>Azure VPN Client]
+        CLIENT3[Mobile<br/>Azure VPN Client]
     end
     
     subgraph "Azure Subscription"
@@ -20,10 +15,12 @@ graph TB
             subgraph "Virtual WAN Hub (10.0.0.0/16)"
                 VWAN[vwan-ai-hub<br/>Standard SKU]
                 VHUB[hub-ai-eastus2<br/>Address: 10.0.0.0/16]
-                VPNGW[vpngw-ai-hub<br/>Site-to-Site VPN<br/>BGP Enabled (ASN: 65515)<br/>1 Scale Unit (500 Mbps)]
+                VPNCONFIG[vpnconfig-ai-hub<br/>VPN Server Config<br/>Auth: Microsoft Entra ID<br/>Protocol: OpenVPN]
+                VPNGW[vpngw-ai-hub<br/>Point-to-Site VPN<br/>Client Pool: 172.16.0.0/24<br/>1 Scale Unit (500 Mbps)]
                 
                 VWAN --> VHUB
                 VHUB --> VPNGW
+                VPNCONFIG --> VPNGW
             end
             
             KV[kv-ai-core-*<br/>Key Vault<br/>RBAC Authorization<br/>Soft-Delete: 90 days]
@@ -48,27 +45,27 @@ graph TB
         end
     end
     
-    subgraph "User Devices"
-        CLIENT[Entra Client<br/>with Global Secure<br/>Access Agent]
-    end
-    
     %% Connections
-    GSA -->|Site-to-Site VPN<br/>with BGP| VPNGW
+    CLIENT1 -->|OpenVPN Tunnel<br/>Entra ID Auth| VPNGW
+    CLIENT2 -->|OpenVPN Tunnel<br/>Entra ID Auth| VPNGW
+    CLIENT3 -->|OpenVPN Tunnel<br/>Entra ID Auth| VPNGW
     VHUB -.->|VNet Connection| VNET1
     VHUB -.->|VNet Connection| VNET2
     VHUB -.->|VNet Connection| VNET3
     KV -.->|Secret References| VNET1
     KV -.->|Secret References| VNET2
     KV -.->|Secret References| VNET3
-    CLIENT -->|Zero Trust Access| GSA
     
-    style GSA fill:#0078d4,color:#fff
     style VPNGW fill:#f25022,color:#fff
+    style VPNCONFIG fill:#0078d4,color:#fff
     style VHUB fill:#7fba00,color:#000
     style KV fill:#ffb900,color:#000
     style VNET1 fill:#e3e3e3,color:#000
     style VNET2 fill:#e3e3e3,color:#000
     style VNET3 fill:#e3e3e3,color:#000
+    style CLIENT1 fill:#0078d4,color:#fff
+    style CLIENT2 fill:#0078d4,color:#fff
+    style CLIENT3 fill:#0078d4,color:#fff
 ```
 
 ## Network Topology Details
@@ -78,6 +75,7 @@ graph TB
 | Resource | Address Space | Purpose | Notes |
 |----------|---------------|---------|-------|
 | Virtual Hub | 10.0.0.0/16 | Hub services, VPN Gateway | 65,536 addresses |
+| VPN Client Pool | 172.16.0.0/24 | P2S VPN client addresses | 254 clients max |
 | Spoke 1 (Storage) | 10.1.0.0/16 | Storage lab resources | Non-overlapping |
 | Spoke 2 (ML) | 10.2.0.0/16 | Machine learning lab | Non-overlapping |
 | Spoke 3 (Other) | 10.3.0.0/16 | Future labs | Non-overlapping |
@@ -86,14 +84,15 @@ graph TB
 ### Routing
 
 **Virtual Hub Default Route Table**:
-- Automatically propagates spoke routes via BGP
+- Automatically propagates spoke routes to connected VNets
 - Hub-to-spoke traffic enabled by default
 - Spoke-to-spoke traffic controlled by `allowBranchToBranchTraffic` (enabled)
+- VPN clients can access all connected spoke VNets
 
-**BGP Route Propagation**:
-- VPN Gateway (ASN: 65515) advertises hub and spoke routes to Global Secure Access
-- Global Secure Access advertises remote network routes to Azure hub
-- Dynamic routing enables automatic failover and load balancing
+**P2S VPN Client Routing**:
+- Clients receive IP addresses from 172.16.0.0/24 pool
+- Routes to all spoke VNets (10.x.0.0/16) automatically pushed to clients
+- Split tunneling: only Azure traffic routed through VPN (internet via local)
 
 ### Security Boundaries
 

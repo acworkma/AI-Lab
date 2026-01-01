@@ -53,19 +53,37 @@
     "vpnGatewayScaleUnit": {
       "value": 1,
       "metadata": {
-        "description": "VPN Gateway scale units (1 unit = 500 Mbps, max 20 units = 10 Gbps). Default: 1"
+        "description": "P2S VPN Gateway scale units (1 unit = 500 Mbps, max 20 units = 10 Gbps). Default: 1"
       }
     },
-    "enableBgp": {
-      "value": true,
+    "vpnServerConfigName": {
+      "value": "vpnconfig-ai-hub",
       "metadata": {
-        "description": "Enable BGP for VPN Gateway (REQUIRED for Global Secure Access). Default: true"
+        "description": "VPN Server Configuration name. Default: vpnconfig-ai-hub"
       }
     },
-    "bgpAsn": {
-      "value": 65515,
+    "vpnClientAddressPool": {
+      "value": "172.16.0.0/24",
       "metadata": {
-        "description": "BGP Autonomous System Number (65000-65535). Default: 65515 (Azure default)"
+        "description": "VPN client address pool (CIDR notation). IP addresses assigned to VPN clients. Default: 172.16.0.0/24"
+      }
+    },
+    "aadTenantId": {
+      "value": "YOUR_ENTRA_TENANT_ID",
+      "metadata": {
+        "description": "Microsoft Entra ID Tenant ID for VPN authentication. Find at: Azure Portal > Microsoft Entra ID > Overview > Tenant ID. REQUIRED: Replace with your tenant ID."
+      }
+    },
+    "aadAudience": {
+      "value": "41b23e61-6c1e-4545-b367-cd054e0ed4b4",
+      "metadata": {
+        "description": "Azure VPN Client Application ID (fixed for Azure VPN). Default: 41b23e61-6c1e-4545-b367-cd054e0ed4b4"
+      }
+    },
+    "aadIssuer": {
+      "value": "https://sts.windows.net/YOUR_ENTRA_TENANT_ID/",
+      "metadata": {
+        "description": "Microsoft Entra ID Issuer URL. Replace YOUR_ENTRA_TENANT_ID with your tenant ID. Format: https://sts.windows.net/{tenantId}/"
       }
     },
     "keyVaultName": {

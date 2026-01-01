@@ -1,39 +1,42 @@
-// VPN Gateway Module - Site-to-Site VPN for Global Secure Access
-// Creates VPN Gateway attached to Virtual Hub for Microsoft Entra Global Secure Access integration
-// Purpose: Enable Security Service Edge (SSE) capabilities via site-to-site VPN
+// Point-to-Site VPN Gateway Module
+// Creates P2S VPN Gateway attached to Virtual Hub for remote client connectivity
+// Purpose: Enable secure remote access to Azure resources via VPN clients
 
 targetScope = 'resourceGroup'
 
 // Parameters
-@description('Name of the VPN Gateway resource')
+@description('Name of the P2S VPN Gateway resource')
 param vpnGatewayName string
 
 @description('Azure region for deployment')
 param location string
 
-@description('Resource ID of the Virtual Hub to attach the VPN Gateway')
+@description('Resource ID of the Virtual Hub to attach the P2S VPN Gateway')
 param virtualHubId string
 
-@description('VPN Gateway scale units (1 unit = 500 Mbps, max 20 units)')
+@description('Resource ID of the VPN Server Configuration (defines auth methods and protocols)')
+param vpnServerConfigurationId string
+
+@description('VPN client address pool (CIDR notation) - addresses assigned to VPN clients')
+param vpnClientAddressPool string = '172.16.0.0/24'
+
+@description('P2S VPN Gateway scale units (1 unit = 500 Mbps, max 20 units)')
 @minValue(1)
 @maxValue(20)
 param vpnGatewayScaleUnit int = 1
 
-@description('Enable BGP for dynamic routing (required for Global Secure Access)')
-param enableBgp bool = true
+@description('Custom DNS servers for VPN clients (optional)')
+param customDnsServers array = []
 
-@description('BGP Autonomous System Number (default Azure ASN)')
-@minValue(65000)
-@maxValue(65535)
-param bgpAsn int = 65515
+@description('Enable internet routing preference (default: use Azure backbone)')
+param isRoutingPreferenceInternet bool = false
 
 @description('Tags to apply to resources')
 param tags object = {}
 
-// VPN Gateway - Site-to-Site configuration for Global Secure Access integration
-// CRITICAL: Must be site-to-site (not point-to-site) for Global Secure Access
-// See research.md: Decision to use site-to-site VPN Gateway for Microsoft Entra Global Secure Access
-resource vpnGateway 'Microsoft.Network/vpnGateways@2023-11-01' = {
+// Point-to-Site VPN Gateway for remote client connectivity
+// Supports Microsoft Entra ID authentication, certificate-based auth, and RADIUS
+resource p2sVpnGateway 'Microsoft.Network/p2sVpnGateways@2023-11-01' = {
   name: vpnGatewayName
   location: location
   tags: tags
@@ -42,41 +45,48 @@ resource vpnGateway 'Microsoft.Network/vpnGateways@2023-11-01' = {
     virtualHub: {
       id: virtualHubId
     }
+    // Reference to VPN Server Configuration (auth methods, protocols, etc.)
+    vpnServerConfiguration: {
+      id: vpnServerConfigurationId
+    }
+    // P2S connection configuration
+    p2SConnectionConfigurations: [
+      {
+        name: 'p2s-connection-config'
+        properties: {
+          // VPN client address pool - IP addresses assigned to connecting clients
+          vpnClientAddressPool: {
+            addressPrefixes: [
+              vpnClientAddressPool
+            ]
+          }
+          // Enable internet security to route client internet traffic through Azure
+          enableInternetSecurity: false
+        }
+      }
+    ]
     // Scale units determine aggregate throughput
     // 1 scale unit = 500 Mbps aggregate (can scale up to 20 units = 10 Gbps)
-    // Start with 1 unit for lab environment, scale as needed
     vpnGatewayScaleUnit: vpnGatewayScaleUnit
-    // BGP Configuration - REQUIRED for Global Secure Access integration
-    // Enables dynamic route propagation between Azure and Microsoft Entra SSE
-    bgpSettings: enableBgp ? {
-      // Azure default ASN for hub VPN gateways
-      asn: bgpAsn
-      // Peer weight for route preference (0 = default)
-      peerWeight: 0
-    } : null
-    // NAT settings - not required for Global Secure Access
-    enableBgpRouteTranslationForNat: false
-    // Routing preference - use default Azure backbone (not internet)
-    isRoutingPreferenceInternet: false
+    // Custom DNS servers for VPN clients (optional)
+    customDnsServers: customDnsServers
+    // Routing preference - use Azure backbone (false) or internet routing (true)
+    isRoutingPreferenceInternet: isRoutingPreferenceInternet
   }
 }
 
-// Outputs for use by main template, validation scripts, and Global Secure Access configuration
-@description('Resource ID of the VPN Gateway')
-output vpnGatewayId string = vpnGateway.id
+// Outputs for use by main template and validation scripts
+@description('Resource ID of the P2S VPN Gateway')
+output vpnGatewayId string = p2sVpnGateway.id
 
-@description('Name of the VPN Gateway')
-output vpnGatewayName string = vpnGateway.name
+@description('Name of the P2S VPN Gateway')
+output vpnGatewayName string = p2sVpnGateway.name
 
-@description('VPN Gateway BGP settings for Global Secure Access integration')
-output vpnGatewayBgpSettings object = enableBgp ? {
-  asn: vpnGateway.properties.bgpSettings.asn
-  bgpPeeringAddress: vpnGateway.properties.bgpSettings.bgpPeeringAddresses[0].defaultBgpIpAddresses[0]
-  peerWeight: vpnGateway.properties.bgpSettings.peerWeight
-} : {}
+@description('P2S VPN Gateway scale units (aggregate throughput capacity)')
+output vpnGatewayScaleUnit int = p2sVpnGateway.properties.vpnGatewayScaleUnit
 
-@description('VPN Gateway scale units (aggregate throughput capacity)')
-output vpnGatewayScaleUnit int = vpnGateway.properties.vpnGatewayScaleUnit
+@description('VPN client address pool')
+output vpnClientAddressPool string = vpnClientAddressPool
 
-@description('VPN Gateway provisioning state')
-output provisioningState string = vpnGateway.properties.provisioningState
+@description('P2S VPN Gateway provisioning state')
+output provisioningState string = p2sVpnGateway.properties.provisioningState
