@@ -50,6 +50,15 @@ param vpnServerConfigName string = 'vpnconfig-ai-hub'
 @description('VPN client address pool (CIDR notation)')
 param vpnClientAddressPool string = '172.16.0.0/24'
 
+@description('Shared services VNet name')
+param sharedServicesVnetName string = 'vnet-ai-shared'
+
+@description('Shared services VNet address prefix (CIDR notation)')
+param sharedServicesVnetAddressPrefix string = '10.0.1.0/24'
+
+@description('Private endpoint subnet address prefix')
+param privateEndpointSubnetPrefix string = '10.0.1.0/26'
+
 @description('Microsoft Entra ID Tenant ID for VPN authentication')
 param aadTenantId string
 
@@ -211,6 +220,53 @@ module keyVault 'modules/key-vault.bicep' = {
 }
 
 // ============================================================================
+// SHARED SERVICES VNET
+// ============================================================================
+
+// Shared Services VNet - First spoke for shared infrastructure
+// Deployment time: ~2-3 minutes
+// Hosts private endpoints for ACR, Key Vault, Storage, and other shared services
+module sharedServicesVnet 'modules/shared-services-vnet.bicep' = {
+  name: 'deploy-shared-services-vnet'
+  scope: az.resourceGroup(resourceGroupName)
+  dependsOn: [
+    resourceGroup
+    vwanHub
+  ]
+  params: {
+    vnetName: sharedServicesVnetName
+    location: location
+    vnetAddressPrefix: sharedServicesVnetAddressPrefix
+    privateEndpointSubnetPrefix: privateEndpointSubnetPrefix
+    virtualHubId: vwanHub.outputs.vhubId
+    vpnClientAddressPool: vpnClientAddressPool
+    tags: allTags
+  }
+}
+
+// ============================================================================
+// PRIVATE DNS ZONES
+// ============================================================================
+
+// Private DNS Zones - Name resolution for private endpoints
+// Deployment time: ~1 minute
+// Enables DNS resolution for ACR, Key Vault, Storage, SQL from VPN clients
+module privateDnsZones 'modules/private-dns-zones.bicep' = {
+  name: 'deploy-private-dns-zones'
+  scope: az.resourceGroup(resourceGroupName)
+  dependsOn: [
+    resourceGroup
+    sharedServicesVnet
+  ]
+  params: {
+    location: location
+    vnetId: sharedServicesVnet.outputs.vnetId
+    vnetName: sharedServicesVnet.outputs.vnetName
+    tags: allTags
+  }
+}
+
+// ============================================================================
 // OUTPUTS
 // ============================================================================
 
@@ -273,6 +329,38 @@ output keyVaultName string = keyVault.outputs.keyVaultName
 
 @description('Key Vault URI for secret references in parameter files')
 output keyVaultUri string = keyVault.outputs.keyVaultUri
+
+// Shared Services VNet Outputs
+@description('Resource ID of the shared services VNet')
+output sharedServicesVnetId string = sharedServicesVnet.outputs.vnetId
+
+@description('Name of the shared services VNet')
+output sharedServicesVnetName string = sharedServicesVnet.outputs.vnetName
+
+@description('Shared services VNet address prefix')
+output sharedServicesVnetAddressPrefix string = sharedServicesVnet.outputs.vnetAddressPrefix
+
+@description('Resource ID of the private endpoint subnet')
+output privateEndpointSubnetId string = sharedServicesVnet.outputs.privateEndpointSubnetId
+
+@description('Name of the private endpoint subnet')
+output privateEndpointSubnetName string = sharedServicesVnet.outputs.privateEndpointSubnetName
+
+// Private DNS Zones Outputs
+@description('Resource ID of the ACR private DNS zone')
+output acrDnsZoneId string = privateDnsZones.outputs.acrDnsZoneId
+
+@description('Resource ID of the Key Vault private DNS zone')
+output keyVaultDnsZoneId string = privateDnsZones.outputs.keyVaultDnsZoneId
+
+@description('Resource ID of the Blob Storage private DNS zone')
+output blobDnsZoneId string = privateDnsZones.outputs.blobDnsZoneId
+
+@description('Resource ID of the File Storage private DNS zone')
+output fileDnsZoneId string = privateDnsZones.outputs.fileDnsZoneId
+
+@description('Resource ID of the SQL Database private DNS zone')
+output sqlDnsZoneId string = privateDnsZones.outputs.sqlDnsZoneId
 
 // Deployment Metadata
 @description('All applied tags')
