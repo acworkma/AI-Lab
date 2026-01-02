@@ -1,0 +1,301 @@
+# Script Interface Contract: configure-wsl-dns.sh
+
+**Version**: 1.0  
+**Created**: 2026-01-02  
+**Purpose**: Define the interface contract for the WSL DNS configuration script
+
+## Script Metadata
+
+**Script Name**: `configure-wsl-dns.sh`  
+**Location**: `/scripts/configure-wsl-dns.sh`  
+**Language**: Bash 4.0+  
+**Dependencies**: Standard Linux utilities (sudo, grep, cat, ping, nslookup)  
+**Required Permissions**: sudo access (for modifying /etc files)
+
+## Command Line Interface
+
+### Synopsis
+
+```bash
+./scripts/configure-wsl-dns.sh [OPTIONS]
+```
+
+### Options
+
+| Option | Short | Description | Default | Required |
+|--------|-------|-------------|---------|----------|
+| `--help` | `-h` | Display help message and exit | N/A | No |
+| `--force` | `-f` | Force reconfiguration even if already configured | false | No |
+| `--skip-backup` | N/A | Skip backup of existing configuration files | false | No |
+| `--verify-only` | `-v` | Only verify existing configuration, don't modify | false | No |
+| `--dns-server` | `-d` | Custom DNS server (overrides default 168.63.129.16) | 168.63.129.16 | No |
+
+### Usage Examples
+
+```bash
+# Standard configuration (recommended)
+./scripts/configure-wsl-dns.sh
+
+# Force reconfiguration
+./scripts/configure-wsl-dns.sh --force
+
+# Verify existing configuration without changes
+./scripts/configure-wsl-dns.sh --verify-only
+
+# Use custom DNS server (advanced)
+./scripts/configure-wsl-dns.sh --dns-server 10.0.0.5
+```
+
+## Exit Codes
+
+| Code | Meaning | Description |
+|------|---------|-------------|
+| 0 | Success | Configuration applied successfully or already configured |
+| 1 | General Error | Unspecified error occurred |
+| 2 | Permission Denied | Insufficient permissions (sudo required) |
+| 3 | VPN Not Connected | Azure DNS not reachable (warning only with --verify-only) |
+| 4 | Backup Failed | Unable to create backup of existing files |
+| 5 | Configuration Failed | Unable to write configuration files |
+| 10 | Already Configured | DNS already configured (info exit, not error) |
+
+## Input Requirements
+
+### Prerequisites
+- WSL2 distribution running (WSL1 supported with limitations)
+- User has sudo privileges
+- Azure VPN connected (recommended, not enforced)
+
+### Environment Variables
+None required. Script is self-contained.
+
+### File System Requirements
+- Write access to `/etc/` directory (via sudo)
+- Minimum 1KB free space in `/etc/` partition
+- Existing files must not have immutable attribute set
+
+## Output Specifications
+
+### Standard Output (stdout)
+
+```
+Configuring WSL DNS for Azure Private DNS Zones
+================================================
+
+[INFO] Checking prerequisites...
+[OK] Sudo access available
+[OK] Required utilities present
+
+[INFO] Checking current configuration...
+[INFO] Configuration not present, proceeding with setup
+
+[INFO] Backing up existing configuration...
+[OK] Backed up /etc/wsl.conf to /etc/wsl.conf.backup.20260102-153045
+[OK] Backed up /etc/resolv.conf to /etc/resolv.conf.backup.20260102-153045
+
+[INFO] Configuring /etc/wsl.conf...
+[OK] WSL.conf configured (generateResolvConf = false)
+
+[INFO] Configuring /etc/resolv.conf...
+[OK] Resolv.conf configured (nameserver 168.63.129.16)
+
+[INFO] Verifying Azure DNS reachability...
+[OK] Azure DNS (168.63.129.16) is reachable
+
+[SUCCESS] WSL DNS configuration complete!
+
+Next Steps:
+-----------
+1. Exit all WSL terminals
+2. Open PowerShell (as Administrator) and run:
+   wsl --shutdown
+3. Restart your WSL distribution
+4. Verify DNS resolution:
+   nslookup acraihubk2lydtz5uba3q.azurecr.io
+   (should resolve to private IP: 10.x.x.x)
+
+For troubleshooting, see: docs/core-infrastructure/wsl-dns-setup.md
+```
+
+### Standard Error (stderr)
+
+```
+[ERROR] Insufficient permissions. Please run with sudo:
+  sudo ./scripts/configure-wsl-dns.sh
+
+[ERROR] Failed to backup /etc/wsl.conf
+  Ensure /etc/ is writable and has sufficient space
+
+[WARNING] Azure DNS (168.63.129.16) not reachable
+  Is Azure VPN connected? Configuration will proceed but may not work until VPN is connected.
+```
+
+### Output Format Rules
+- `[INFO]` prefix for informational messages
+- `[OK]` prefix for successful checks
+- `[SUCCESS]` prefix for completion message
+- `[WARNING]` prefix for non-fatal issues (to stderr)
+- `[ERROR]` prefix for fatal errors (to stderr)
+- Colored output if terminal supports it (optional enhancement)
+
+## File Modifications
+
+### Created/Modified Files
+
+| File Path | Action | Backup Created | Permissions |
+|-----------|--------|----------------|-------------|
+| `/etc/wsl.conf` | Create or modify | Yes | 644 (rw-r--r--) |
+| `/etc/resolv.conf` | Overwrite | Yes | 644 (rw-r--r--) |
+| `/etc/wsl.conf.backup.<timestamp>` | Create | N/A | 644 (rw-r--r--) |
+| `/etc/resolv.conf.backup.<timestamp>` | Create | N/A | 644 (rw-r--r--) |
+
+### Configuration File Content
+
+**/etc/wsl.conf**:
+```ini
+# WSL Configuration for Azure Private DNS
+# Generated by: configure-wsl-dns.sh
+# Date: <ISO-8601-timestamp>
+
+[network]
+# Disable automatic /etc/resolv.conf generation
+# This allows manual DNS configuration for Azure private DNS zones
+generateResolvConf = false
+```
+
+**/etc/resolv.conf**:
+```
+# DNS Configuration for Azure Private DNS Zones
+# Generated by: configure-wsl-dns.sh
+# Date: <ISO-8601-timestamp>
+# VPN Required: Azure VPN must be connected for private DNS resolution
+
+# Primary: Azure DNS Resolver (required for private DNS zones)
+nameserver 168.63.129.16
+
+# Fallback: Google DNS (used when Azure DNS unavailable)
+nameserver 8.8.8.8
+
+# Search domain: Azure internal domain
+search <preserved-from-original-or-default>
+```
+
+## Idempotency Contract
+
+**Guarantee**: Script can be run multiple times safely without adverse effects
+
+### Idempotency Checks
+1. **Before configuration**: Check if `generateResolvConf = false` already exists in /etc/wsl.conf
+2. **If already configured**: 
+   - Without `--force`: Log "Already configured" and exit 0
+   - With `--force`: Proceed with reconfiguration
+3. **Backup behavior**: Always create new timestamped backups (no overwrite of existing backups)
+
+### State Preservation
+- Existing search domains in /etc/resolv.conf are preserved if present
+- Custom comments in original files are not preserved (files are regenerated)
+- Backup files accumulate (manual cleanup may be needed over time)
+
+## Error Handling
+
+### Pre-Flight Checks
+```bash
+# 1. Check sudo access
+if ! sudo -n true 2>/dev/null; then
+    if ! sudo true; then
+        echo "[ERROR] Insufficient permissions" >&2
+        exit 2
+    fi
+fi
+
+# 2. Check required utilities
+for cmd in grep cat ping nslookup; do
+    if ! command -v $cmd &> /dev/null; then
+        echo "[ERROR] Required command not found: $cmd" >&2
+        exit 1
+    fi
+done
+
+# 3. Check VPN connectivity (warning only)
+if ! ping -c 1 -W 2 168.63.129.16 &>/dev/null; then
+    echo "[WARNING] Azure DNS not reachable. Is VPN connected?" >&2
+fi
+```
+
+### Atomic Operations
+- Write to temporary file first: `/etc/wsl.conf.tmp`
+- Validate syntax if applicable
+- Move to final location: `sudo mv /etc/wsl.conf.tmp /etc/wsl.conf`
+- If move fails, temporary file is cleaned up
+
+### Rollback on Failure
+- If configuration fails after backup, original files can be restored:
+  ```bash
+  sudo cp /etc/wsl.conf.backup.<timestamp> /etc/wsl.conf
+  sudo cp /etc/resolv.conf.backup.<timestamp> /etc/resolv.conf
+  ```
+
+## Integration Points
+
+### Called By
+- Manual execution by developers during WSL setup
+- Potentially referenced in core infrastructure deployment documentation
+- Could be invoked by future automation/onboarding scripts
+
+### Calls
+- Standard Linux utilities (no external APIs)
+- No network calls except DNS reachability check (ping)
+
+### Dependencies on Other Scripts
+None. Script is self-contained.
+
+### Documentation References
+- Script outputs reference: `docs/core-infrastructure/wsl-dns-setup.md`
+- Troubleshooting guide: `docs/core-infrastructure/troubleshooting.md` (updated section)
+
+## Testing Contract
+
+### Unit Test Coverage (Conceptual)
+```bash
+# Test 1: Help displays correctly
+./configure-wsl-dns.sh --help
+# Expected: Help text displayed, exit 0
+
+# Test 2: Verify-only mode doesn't modify files
+cp /etc/wsl.conf /tmp/wsl.conf.before
+./configure-wsl-dns.sh --verify-only
+diff /etc/wsl.conf /tmp/wsl.conf.before
+# Expected: No changes, exit code based on current config state
+
+# Test 3: Force flag forces reconfiguration
+./configure-wsl-dns.sh  # First run
+./configure-wsl-dns.sh --force  # Should reconfigure
+# Expected: Both succeed, second creates new backups
+
+# Test 4: Idempotency check
+./configure-wsl-dns.sh
+./configure-wsl-dns.sh
+# Expected: First configures, second detects existing config, both exit 0
+
+# Test 5: Permission check
+sudo -k  # Clear sudo cache
+./configure-wsl-dns.sh
+# Expected: Prompt for password or exit 2 if sudo not available
+```
+
+### Integration Test
+```bash
+# End-to-end test
+1. Run configure-wsl-dns.sh
+2. Restart WSL (wsl --shutdown from PowerShell)
+3. Verify private DNS resolution:
+   nslookup acraihubk2lydtz5uba3q.azurecr.io
+4. Verify ACR connectivity:
+   curl -s -o /dev/null -w "%{http_code}" https://acraihubk2lydtz5uba3q.azurecr.io/v2/
+# Expected: Private IP resolution, 401 or 200 HTTP code (not 403)
+```
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-01-02 | Initial contract definition |
