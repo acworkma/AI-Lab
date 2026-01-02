@@ -54,10 +54,10 @@ param vpnClientAddressPool string = '172.16.0.0/24'
 param sharedServicesVnetName string = 'vnet-ai-shared'
 
 @description('Shared services VNet address prefix (CIDR notation)')
-param sharedServicesVnetAddressPrefix string = '10.0.1.0/24'
+param sharedServicesVnetAddressPrefix string = '10.1.0.0/24'
 
 @description('Private endpoint subnet address prefix')
-param privateEndpointSubnetPrefix string = '10.0.1.0/26'
+param privateEndpointSubnetPrefix string = '10.1.0.0/26'
 
 @description('Microsoft Entra ID Tenant ID for VPN authentication')
 param aadTenantId string
@@ -226,6 +226,7 @@ module keyVault 'modules/key-vault.bicep' = {
 // Shared Services VNet - First spoke for shared infrastructure
 // Deployment time: ~2-3 minutes
 // Hosts private endpoints for ACR, Key Vault, Storage, and other shared services
+// Address space: 10.1.0.0/24 (first spoke, does not overlap with hub 10.0.0.0/16)
 module sharedServicesVnet 'modules/shared-services-vnet.bicep' = {
   name: 'deploy-shared-services-vnet'
   scope: az.resourceGroup(resourceGroupName)

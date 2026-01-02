@@ -12,10 +12,10 @@ param vnetName string
 param location string
 
 @description('VNet address space (CIDR notation)')
-param vnetAddressPrefix string = '10.0.1.0/24'
+param vnetAddressPrefix string = '10.1.0.0/24'
 
 @description('Private endpoint subnet address prefix')
-param privateEndpointSubnetPrefix string = '10.0.1.0/26'
+param privateEndpointSubnetPrefix string = '10.1.0.0/26'
 
 @description('Virtual Hub resource ID to connect this spoke VNet')
 param virtualHubId string
@@ -42,7 +42,7 @@ resource privateEndpointNsg 'Microsoft.Network/networkSecurityGroups@2023-11-01'
           sourcePortRange: '*'
           destinationPortRange: '*'
           sourceAddressPrefix: vpnClientAddressPool
-          destinationAddressPrefix: privateEndpointSubnetPrefix
+          destinationAddressPrefix: '10.1.0.0/26'
           access: 'Allow'
           priority: 100
           direction: 'Inbound'
@@ -81,7 +81,7 @@ resource privateEndpointNsg 'Microsoft.Network/networkSecurityGroups@2023-11-01'
 }
 
 // Shared Services VNet - First spoke for shared infrastructure
-// Address space: 10.0.1.0/24 provides 256 addresses
+// Address space: 10.1.0.0/24 provides 256 addresses
 resource sharedServicesVnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
   name: vnetName
   location: location
