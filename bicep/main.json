@@ -1,0 +1,1159 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "5323922970213873705"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus2",
+      "metadata": {
+        "description": "Azure region for all resources"
+      }
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "test",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment tag (dev, test, or prod)"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "metadata": {
+        "description": "Owner identifier for resource tagging"
+      }
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "rg-ai-core",
+      "metadata": {
+        "description": "Resource group name (fixed per constitution)"
+      }
+    },
+    "vwanName": {
+      "type": "string",
+      "defaultValue": "vwan-ai-hub",
+      "metadata": {
+        "description": "Virtual WAN name"
+      }
+    },
+    "vhubName": {
+      "type": "string",
+      "defaultValue": "hub-ai-eastus2",
+      "metadata": {
+        "description": "Virtual Hub name"
+      }
+    },
+    "vhubAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16",
+      "metadata": {
+        "description": "Virtual Hub address prefix (CIDR notation, must not overlap with spoke VNets)"
+      }
+    },
+    "vpnGatewayName": {
+      "type": "string",
+      "defaultValue": "vpngw-ai-hub",
+      "metadata": {
+        "description": "VPN Gateway name"
+      }
+    },
+    "vpnGatewayScaleUnit": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "maxValue": 20,
+      "metadata": {
+        "description": "VPN Gateway scale units (1 unit = 500 Mbps, max 20)"
+      }
+    },
+    "vpnServerConfigName": {
+      "type": "string",
+      "defaultValue": "vpnconfig-ai-hub",
+      "metadata": {
+        "description": "VPN Server Configuration name"
+      }
+    },
+    "vpnClientAddressPool": {
+      "type": "string",
+      "defaultValue": "172.16.0.0/24",
+      "metadata": {
+        "description": "VPN client address pool (CIDR notation)"
+      }
+    },
+    "aadTenantId": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Entra ID Tenant ID for VPN authentication"
+      }
+    },
+    "aadAudience": {
+      "type": "string",
+      "defaultValue": "41b23e61-6c1e-4545-b367-cd054e0ed4b4",
+      "metadata": {
+        "description": "Azure VPN Client Application ID (Microsoft Entra ID)"
+      }
+    },
+    "aadIssuer": {
+      "type": "string",
+      "metadata": {
+        "description": "Microsoft Entra ID Issuer URL"
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Key Vault name (must be globally unique, 3-24 characters)"
+      }
+    },
+    "keyVaultSku": {
+      "type": "string",
+      "defaultValue": "standard",
+      "allowedValues": [
+        "standard",
+        "premium"
+      ],
+      "metadata": {
+        "description": "Key Vault SKU (standard or premium)"
+      }
+    },
+    "enablePurgeProtection": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable purge protection for Key Vault (recommended for production)"
+      }
+    },
+    "deployedBy": {
+      "type": "string",
+      "defaultValue": "manual",
+      "metadata": {
+        "description": "Deployment method for tagging (manual or automation)"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Additional custom tags"
+      }
+    },
+    "deploymentTimestamp": {
+      "type": "string",
+      "defaultValue": "[utcNow('yyyy-MM-ddTHH:mm:ssZ')]",
+      "metadata": {
+        "description": "Deployment timestamp (auto-generated)"
+      }
+    }
+  },
+  "variables": {
+    "allTags": "[union(createObject('environment', parameters('environment'), 'purpose', 'Core hub infrastructure for AI labs', 'owner', parameters('owner'), 'deployedBy', parameters('deployedBy'), 'deployedDate', parameters('deploymentTimestamp')), parameters('tags'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-rg-ai-core",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[parameters('resourceGroupName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "purpose": {
+            "value": "Core hub infrastructure for AI labs"
+          },
+          "owner": {
+            "value": "[parameters('owner')]"
+          },
+          "deployedBy": {
+            "value": "[parameters('deployedBy')]"
+          },
+          "deploymentTimestamp": {
+            "value": "[parameters('deploymentTimestamp')]"
+          },
+          "additionalTags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16086844942172414045"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the resource group"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for the resource group"
+              }
+            },
+            "environment": {
+              "type": "string",
+              "allowedValues": [
+                "dev",
+                "test",
+                "prod"
+              ],
+              "metadata": {
+                "description": "Environment tag (dev, test, prod)"
+              }
+            },
+            "purpose": {
+              "type": "string",
+              "metadata": {
+                "description": "Purpose of the resource group"
+              }
+            },
+            "owner": {
+              "type": "string",
+              "metadata": {
+                "description": "Owner of the resource group (team or individual)"
+              }
+            },
+            "deployedBy": {
+              "type": "string",
+              "defaultValue": "manual",
+              "allowedValues": [
+                "manual",
+                "automation"
+              ],
+              "metadata": {
+                "description": "How deployment was triggered"
+              }
+            },
+            "additionalTags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Additional custom tags"
+              }
+            },
+            "deploymentTimestamp": {
+              "type": "string",
+              "defaultValue": "[utcNow('yyyy-MM-ddTHH:mm:ssZ')]",
+              "metadata": {
+                "description": "Deployment timestamp (auto-generated)"
+              }
+            }
+          },
+          "variables": {
+            "tags": "[union(createObject('environment', parameters('environment'), 'purpose', parameters('purpose'), 'owner', parameters('owner'), 'deployedBy', parameters('deployedBy'), 'deployedDate', parameters('deploymentTimestamp')), parameters('additionalTags'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Resources/resourceGroups",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]"
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource group name"
+              },
+              "value": "[parameters('name')]"
+            },
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource group ID"
+              },
+              "value": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('name'))]"
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource group location"
+              },
+              "value": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('name')), '2023-07-01', 'full').location]"
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource group tags"
+              },
+              "value": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('name')), '2023-07-01', 'full').tags]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-vwan-hub",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vwanName": {
+            "value": "[parameters('vwanName')]"
+          },
+          "vhubName": {
+            "value": "[parameters('vhubName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vhubAddressPrefix": {
+            "value": "[parameters('vhubAddressPrefix')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "13813703834399175814"
+            }
+          },
+          "parameters": {
+            "vwanName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Virtual WAN resource"
+              }
+            },
+            "vhubName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Virtual Hub resource"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for deployment"
+              }
+            },
+            "vhubAddressPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/16",
+              "minLength": 9,
+              "maxLength": 18,
+              "metadata": {
+                "description": "Virtual Hub address prefix (CIDR notation)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualWans",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('vwanName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "type": "Standard",
+                "allowBranchToBranchTraffic": true,
+                "disableVpnEncryption": false
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualHubs",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('vhubName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "virtualWan": {
+                  "id": "[resourceId('Microsoft.Network/virtualWans', parameters('vwanName'))]"
+                },
+                "addressPrefix": "[parameters('vhubAddressPrefix')]",
+                "sku": "Standard"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualWans', parameters('vwanName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "vwanId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Virtual WAN"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualWans', parameters('vwanName'))]"
+            },
+            "vwanName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Virtual WAN"
+              },
+              "value": "[parameters('vwanName')]"
+            },
+            "vhubId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Virtual Hub"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualHubs', parameters('vhubName'))]"
+            },
+            "vhubName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Virtual Hub"
+              },
+              "value": "[parameters('vhubName')]"
+            },
+            "vhubAddressPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual Hub address prefix"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualHubs', parameters('vhubName')), '2023-11-01').addressPrefix]"
+            },
+            "vhubRoutingState": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual Hub routing state (Provisioned when ready for connections)"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualHubs', parameters('vhubName')), '2023-11-01').routingState]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-rg-ai-core')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-vpn-server-config",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vpnServerConfigName": {
+            "value": "[parameters('vpnServerConfigName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vpnAuthenticationTypes": {
+            "value": [
+              "AAD"
+            ]
+          },
+          "vpnProtocols": {
+            "value": [
+              "OpenVPN"
+            ]
+          },
+          "aadTenant": {
+            "value": "[parameters('aadTenantId')]"
+          },
+          "aadAudience": {
+            "value": "[parameters('aadAudience')]"
+          },
+          "aadIssuer": {
+            "value": "[parameters('aadIssuer')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "1496262866009470941"
+            }
+          },
+          "parameters": {
+            "vpnServerConfigName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the VPN Server Configuration resource"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for deployment"
+              }
+            },
+            "vpnAuthenticationTypes": {
+              "type": "array",
+              "defaultValue": [
+                "AAD"
+              ],
+              "metadata": {
+                "description": "VPN authentication types (Certificate, Radius, or AAD)"
+              }
+            },
+            "vpnProtocols": {
+              "type": "array",
+              "defaultValue": [
+                "OpenVPN"
+              ],
+              "metadata": {
+                "description": "VPN protocols to enable (IkeV2, OpenVPN, or both)"
+              }
+            },
+            "aadTenant": {
+              "type": "string",
+              "metadata": {
+                "description": "Microsoft Entra ID Tenant ID for authentication"
+              }
+            },
+            "aadAudience": {
+              "type": "string",
+              "metadata": {
+                "description": "Microsoft Entra ID Audience (Application ID)"
+              }
+            },
+            "aadIssuer": {
+              "type": "string",
+              "metadata": {
+                "description": "Microsoft Entra ID Issuer URL"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/vpnServerConfigurations",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('vpnServerConfigName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "vpnAuthenticationTypes": "[parameters('vpnAuthenticationTypes')]",
+                "vpnProtocols": "[parameters('vpnProtocols')]",
+                "aadAuthenticationParameters": "[if(contains(parameters('vpnAuthenticationTypes'), 'AAD'), createObject('aadTenant', parameters('aadTenant'), 'aadAudience', parameters('aadAudience'), 'aadIssuer', parameters('aadIssuer')), null())]"
+              }
+            }
+          ],
+          "outputs": {
+            "vpnServerConfigId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the VPN Server Configuration"
+              },
+              "value": "[resourceId('Microsoft.Network/vpnServerConfigurations', parameters('vpnServerConfigName'))]"
+            },
+            "vpnServerConfigName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the VPN Server Configuration"
+              },
+              "value": "[parameters('vpnServerConfigName')]"
+            },
+            "vpnAuthenticationTypes": {
+              "type": "array",
+              "metadata": {
+                "description": "VPN authentication types configured"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/vpnServerConfigurations', parameters('vpnServerConfigName')), '2023-11-01').vpnAuthenticationTypes]"
+            },
+            "vpnProtocols": {
+              "type": "array",
+              "metadata": {
+                "description": "VPN protocols enabled"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/vpnServerConfigurations', parameters('vpnServerConfigName')), '2023-11-01').vpnProtocols]"
+            },
+            "provisioningState": {
+              "type": "string",
+              "metadata": {
+                "description": "VPN Server Configuration provisioning state"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/vpnServerConfigurations', parameters('vpnServerConfigName')), '2023-11-01').provisioningState]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-rg-ai-core')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-vpn-gateway",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vpnGatewayName": {
+            "value": "[parameters('vpnGatewayName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "virtualHubId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub'), '2025-04-01').outputs.vhubId.value]"
+          },
+          "vpnServerConfigurationId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpn-server-config'), '2025-04-01').outputs.vpnServerConfigId.value]"
+          },
+          "vpnClientAddressPool": {
+            "value": "[parameters('vpnClientAddressPool')]"
+          },
+          "vpnGatewayScaleUnit": {
+            "value": "[parameters('vpnGatewayScaleUnit')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "12655058841707437786"
+            }
+          },
+          "parameters": {
+            "vpnGatewayName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the P2S VPN Gateway resource"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for deployment"
+              }
+            },
+            "virtualHubId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Virtual Hub to attach the P2S VPN Gateway"
+              }
+            },
+            "vpnServerConfigurationId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the VPN Server Configuration (defines auth methods and protocols)"
+              }
+            },
+            "vpnClientAddressPool": {
+              "type": "string",
+              "defaultValue": "172.16.0.0/24",
+              "metadata": {
+                "description": "VPN client address pool (CIDR notation) - addresses assigned to VPN clients"
+              }
+            },
+            "vpnGatewayScaleUnit": {
+              "type": "int",
+              "defaultValue": 1,
+              "minValue": 1,
+              "maxValue": 20,
+              "metadata": {
+                "description": "P2S VPN Gateway scale units (1 unit = 500 Mbps, max 20 units)"
+              }
+            },
+            "customDnsServers": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Custom DNS servers for VPN clients (optional)"
+              }
+            },
+            "isRoutingPreferenceInternet": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable internet routing preference (default: use Azure backbone)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/p2svpnGateways",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('vpnGatewayName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "virtualHub": {
+                  "id": "[parameters('virtualHubId')]"
+                },
+                "vpnServerConfiguration": {
+                  "id": "[parameters('vpnServerConfigurationId')]"
+                },
+                "p2SConnectionConfigurations": [
+                  {
+                    "name": "p2s-connection-config",
+                    "properties": {
+                      "vpnClientAddressPool": {
+                        "addressPrefixes": [
+                          "[parameters('vpnClientAddressPool')]"
+                        ]
+                      },
+                      "enableInternetSecurity": false
+                    }
+                  }
+                ],
+                "vpnGatewayScaleUnit": "[parameters('vpnGatewayScaleUnit')]",
+                "customDnsServers": "[parameters('customDnsServers')]",
+                "isRoutingPreferenceInternet": "[parameters('isRoutingPreferenceInternet')]"
+              }
+            }
+          ],
+          "outputs": {
+            "vpnGatewayId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the P2S VPN Gateway"
+              },
+              "value": "[resourceId('Microsoft.Network/p2svpnGateways', parameters('vpnGatewayName'))]"
+            },
+            "vpnGatewayName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the P2S VPN Gateway"
+              },
+              "value": "[parameters('vpnGatewayName')]"
+            },
+            "vpnGatewayScaleUnit": {
+              "type": "int",
+              "metadata": {
+                "description": "P2S VPN Gateway scale units (aggregate throughput capacity)"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/p2svpnGateways', parameters('vpnGatewayName')), '2023-11-01').vpnGatewayScaleUnit]"
+            },
+            "vpnClientAddressPool": {
+              "type": "string",
+              "metadata": {
+                "description": "VPN client address pool"
+              },
+              "value": "[parameters('vpnClientAddressPool')]"
+            },
+            "provisioningState": {
+              "type": "string",
+              "metadata": {
+                "description": "P2S VPN Gateway provisioning state"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/p2svpnGateways', parameters('vpnGatewayName')), '2023-11-01').provisioningState]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpn-server-config')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-key-vault",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "keyVaultSku": {
+            "value": "[parameters('keyVaultSku')]"
+          },
+          "enableRbacAuthorization": {
+            "value": true
+          },
+          "enableSoftDelete": {
+            "value": true
+          },
+          "softDeleteRetentionInDays": {
+            "value": 90
+          },
+          "enablePurgeProtection": {
+            "value": "[parameters('enablePurgeProtection')]"
+          },
+          "networkAclsDefaultAction": {
+            "value": "Allow"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "12715234504988347681"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 24,
+              "metadata": {
+                "description": "Name of the Key Vault (must be globally unique, 3-24 characters)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for deployment"
+              }
+            },
+            "keyVaultSku": {
+              "type": "string",
+              "defaultValue": "standard",
+              "allowedValues": [
+                "standard",
+                "premium"
+              ],
+              "metadata": {
+                "description": "Key Vault SKU (standard or premium)"
+              }
+            },
+            "enableRbacAuthorization": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable RBAC authorization (recommended over access policies)"
+              }
+            },
+            "enableSoftDelete": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable soft-delete with 90-day retention (cannot be disabled per Azure policy)"
+              }
+            },
+            "softDeleteRetentionInDays": {
+              "type": "int",
+              "defaultValue": 90,
+              "minValue": 7,
+              "maxValue": 90,
+              "metadata": {
+                "description": "Soft-delete retention period in days"
+              }
+            },
+            "enablePurgeProtection": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable purge protection (recommended for production environments)"
+              }
+            },
+            "networkAclsDefaultAction": {
+              "type": "string",
+              "defaultValue": "Allow",
+              "allowedValues": [
+                "Allow",
+                "Deny"
+              ],
+              "metadata": {
+                "description": "Network access default action (Allow or Deny)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('keyVaultName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "tenantId": "[subscription().tenantId]",
+                "sku": {
+                  "family": "A",
+                  "name": "[parameters('keyVaultSku')]"
+                },
+                "enableRbacAuthorization": "[parameters('enableRbacAuthorization')]",
+                "enableSoftDelete": "[parameters('enableSoftDelete')]",
+                "softDeleteRetentionInDays": "[parameters('softDeleteRetentionInDays')]",
+                "enablePurgeProtection": "[if(parameters('enablePurgeProtection'), true(), null())]",
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "[parameters('networkAclsDefaultAction')]",
+                  "ipRules": [],
+                  "virtualNetworkRules": []
+                },
+                "publicNetworkAccess": "Enabled"
+              }
+            }
+          ],
+          "outputs": {
+            "keyVaultId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Key Vault"
+              },
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Key Vault"
+              },
+              "value": "[parameters('keyVaultName')]"
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault URI for secret references"
+              },
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
+            },
+            "keyVaultTenantId": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault tenant ID"
+              },
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').tenantId]"
+            },
+            "enableRbacAuthorization": {
+              "type": "bool",
+              "metadata": {
+                "description": "Is RBAC authorization enabled"
+              },
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').enableRbacAuthorization]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-rg-ai-core')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "resourceGroupId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the resource group"
+      },
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-rg-ai-core'), '2025-04-01').outputs.id.value]"
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the resource group"
+      },
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-rg-ai-core'), '2025-04-01').outputs.name.value]"
+    },
+    "resourceGroupLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Location of the resource group"
+      },
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-rg-ai-core'), '2025-04-01').outputs.location.value]"
+    },
+    "vwanId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Virtual WAN"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub'), '2025-04-01').outputs.vwanId.value]"
+    },
+    "vwanName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual WAN"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub'), '2025-04-01').outputs.vwanName.value]"
+    },
+    "vhubId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Virtual Hub"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub'), '2025-04-01').outputs.vhubId.value]"
+    },
+    "vhubName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Virtual Hub"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub'), '2025-04-01').outputs.vhubName.value]"
+    },
+    "vhubAddressPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual Hub address prefix"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub'), '2025-04-01').outputs.vhubAddressPrefix.value]"
+    },
+    "vhubRoutingState": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual Hub routing state (Provisioned when ready for spoke connections)"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub'), '2025-04-01').outputs.vhubRoutingState.value]"
+    },
+    "vpnServerConfigId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the VPN Server Configuration"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpn-server-config'), '2025-04-01').outputs.vpnServerConfigId.value]"
+    },
+    "vpnServerConfigName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the VPN Server Configuration"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpn-server-config'), '2025-04-01').outputs.vpnServerConfigName.value]"
+    },
+    "vpnGatewayId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the P2S VPN Gateway"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpn-gateway'), '2025-04-01').outputs.vpnGatewayId.value]"
+    },
+    "vpnGatewayName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the P2S VPN Gateway"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpn-gateway'), '2025-04-01').outputs.vpnGatewayName.value]"
+    },
+    "vpnClientAddressPool": {
+      "type": "string",
+      "metadata": {
+        "description": "VPN client address pool"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpn-gateway'), '2025-04-01').outputs.vpnClientAddressPool.value]"
+    },
+    "vpnGatewayScaleUnit": {
+      "type": "int",
+      "metadata": {
+        "description": "VPN Gateway scale units"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpn-gateway'), '2025-04-01').outputs.vpnGatewayScaleUnit.value]"
+    },
+    "keyVaultId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Key Vault"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-key-vault'), '2025-04-01').outputs.keyVaultId.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Key Vault"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-key-vault'), '2025-04-01').outputs.keyVaultName.value]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault URI for secret references in parameter files"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-key-vault'), '2025-04-01').outputs.keyVaultUri.value]"
+    },
+    "appliedTags": {
+      "type": "object",
+      "metadata": {
+        "description": "All applied tags"
+      },
+      "value": "[variables('allTags')]"
+    },
+    "deploymentTimestamp": {
+      "type": "string",
+      "metadata": {
+        "description": "Deployment timestamp"
+      },
+      "value": "[parameters('deploymentTimestamp')]"
+    }
+  }
+}

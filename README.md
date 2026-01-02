@@ -1,2 +1,181 @@
 # AI-Lab
-Lab to build to Azure services for demos
+
+Azure Infrastructure Lab for building and demonstrating Azure services using Infrastructure as Code (Bicep).
+
+## 🎯 Overview
+
+AI-Lab is a collection of modular Azure infrastructure projects, all connected through a centralized **Virtual WAN hub** for secure networking and remote access. Each project is independently deployable, fully documented, and follows Infrastructure as Code (IaC) best practices.
+
+### Core Concept: Hub-Spoke Architecture
+
+```
+                    ┌─────────────────────────┐
+                    │   Remote VPN Clients    │
+                    │ (Entra ID Authentication)│
+                    └───────────┬─────────────┘
+                                │
+                    ┌───────────▼─────────────┐
+                    │   Virtual WAN Hub       │
+                    │   (rg-ai-core)          │
+                    │ • P2S VPN Gateway       │
+                    │ • Key Vault (shared)    │
+                    └────────┬────────────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+         ┌────▼────┐    ┌────▼────┐   ┌────▼────┐
+         │ Project │    │ Project │   │ Project │
+         │   #1    │    │   #2    │   │   #3    │
+         │ (Spoke) │    │ (Spoke) │   │ (Spoke) │
+         └─────────┘    └─────────┘   └─────────┘
+```
+
+**Benefits**:
+- 🔒 **Centralized Security**: Single VPN gateway and Key Vault for all projects
+- 🔌 **Easy Connectivity**: New projects auto-connect to the hub
+- 🧩 **Modular Design**: Deploy/delete projects independently
+- 🎛️ **Simplified Management**: One hub to rule them all
+
+## 📚 Projects
+
+### 🏗️ Core Infrastructure (Foundation)
+
+**Status**: ✅ Ready  
+**Location**: [`docs/core-infrastructure/`](docs/core-infrastructure/)
+
+The foundational Virtual WAN hub that all other projects connect to. Includes:
+- Virtual WAN hub with Point-to-Site VPN
+- Microsoft Entra ID authentication for remote access
+- Centralized Azure Key Vault for secrets management
+- Network routing for spoke connectivity
+
+**[📖 Full Documentation →](docs/core-infrastructure/README.md)**
+
+**Quick Deploy**:
+```bash
+./scripts/deploy-core.sh
+```
+
+---
+
+### 🚧 Future Projects
+
+Additional spoke projects will be added here as they're developed. Each project will have:
+- Dedicated resource group
+- Virtual network connected to the hub
+- Project-specific documentation
+- Independent lifecycle (deploy/delete without affecting others)
+
+**Example Future Projects**:
+- 💾 Storage Lab - Azure Storage services demonstration
+- 🤖 ML Lab - Machine Learning and AI services
+- 🗄️ Database Lab - Cosmos DB, SQL, PostgreSQL examples
+- 🌐 Web Apps Lab - App Service, Functions, Static Web Apps
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- **Azure CLI** 2.50.0+ ([Install](https://aka.ms/azure-cli))
+- **Azure Subscription** with Contributor access
+- **jq** for JSON parsing (used in scripts)
+
+### 1️⃣ Deploy Core Infrastructure (Required)
+
+The core infrastructure must be deployed first as it provides networking and security for all projects.
+
+```bash
+# Clone repository
+git clone https://github.com/acworkma/AI-Lab.git
+cd AI-Lab
+
+# Login to Azure
+az login
+
+# Create your parameters file from the template
+cp bicep/main.parameters.example.json bicep/main.parameters.json
+
+# Edit parameters (set your Entra tenant ID)
+nano bicep/main.parameters.json
+
+# Deploy (takes ~25-30 minutes)
+./scripts/deploy-core.sh
+```
+
+📖 **Detailed Instructions**: [docs/core-infrastructure/README.md](docs/core-infrastructure/README.md)
+
+### 2️⃣ Configure VPN Access (Optional)
+
+Set up VPN client access to connect to your Azure resources:
+
+📖 **VPN Setup Guide**: [docs/core-infrastructure/vpn-client-setup.md](docs/core-infrastructure/vpn-client-setup.md)
+
+### 3️⃣ Deploy Spoke Projects
+
+Once the core is deployed, you can add any spoke projects independently. Each project has its own deployment instructions in its documentation folder.
+
+## 🏛️ Governance & Principles
+
+All infrastructure follows the **7 Constitutional Principles** defined in [CONTRIBUTING.md](CONTRIBUTING.md):
+
+1. **Infrastructure as Code First** - No manual changes, 100% Bicep
+2. **Modular & Reusable** - DRY principle, reusable modules
+3. **Resource Organization** - Consistent naming, tagging, grouping
+4. **Security by Default** - No secrets in code, RBAC over keys
+5. **Cost Conscious** - Right-sizing, auto-shutdown, monitoring
+6. **Documentation Required** - Every resource documented
+7. **Validation & Testing** - Pre-deployment validation mandatory
+
+## 📁 Repository Structure
+
+```
+AI-Lab/
+├── bicep/                          # Infrastructure as Code
+│   ├── modules/                    # Reusable Bicep modules
+│   │   ├── vwan-hub.bicep
+│   │   ├── vpn-gateway.bicep
+│   │   ├── vpn-server-configuration.bicep
+│   │   └── key-vault.bicep
+│   ├── main.bicep                  # Core infrastructure template
+│   └── main.parameters.example.json # Parameter template
+│
+├── scripts/                        # Deployment automation
+│   ├── deploy-core.sh              # Deploy core infrastructure
+│   ├── validate-core.sh            # Validate deployment
+│   └── cleanup-core.sh             # Delete resources
+│
+├── docs/                           # Documentation by project
+│   └── core-infrastructure/        # Core hub documentation
+│       ├── README.md               # Main guide
+│       ├── vpn-client-setup.md     # VPN setup guide
+│       ├── architecture-diagram.md # Architecture details
+│       └── troubleshooting.md      # Common issues
+│
+├── specs/                          # Project specifications
+│   └── 001-vwan-core/              # Core infrastructure spec
+│
+├── README.md                       # This file
+└── CONTRIBUTING.md                 # Development guidelines
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development workflow
+- Constitutional principles
+- Branch naming conventions
+- Pull request guidelines
+
+## 📄 License
+
+This project is licensed under the terms specified in the repository.
+
+## 🆘 Support
+
+- **Issues**: [GitHub Issues](https://github.com/acworkma/AI-Lab/issues)
+- **Documentation**: Check project-specific docs in [`docs/`](docs/)
+- **Troubleshooting**: See individual project troubleshooting guides
+
+---
+
+**Current Status**: Core infrastructure complete ✅ | Projects in development 🚧

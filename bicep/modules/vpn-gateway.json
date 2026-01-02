@@ -1,0 +1,144 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "12655058841707437786"
+    }
+  },
+  "parameters": {
+    "vpnGatewayName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the P2S VPN Gateway resource"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "virtualHubId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Virtual Hub to attach the P2S VPN Gateway"
+      }
+    },
+    "vpnServerConfigurationId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the VPN Server Configuration (defines auth methods and protocols)"
+      }
+    },
+    "vpnClientAddressPool": {
+      "type": "string",
+      "defaultValue": "172.16.0.0/24",
+      "metadata": {
+        "description": "VPN client address pool (CIDR notation) - addresses assigned to VPN clients"
+      }
+    },
+    "vpnGatewayScaleUnit": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "maxValue": 20,
+      "metadata": {
+        "description": "P2S VPN Gateway scale units (1 unit = 500 Mbps, max 20 units)"
+      }
+    },
+    "customDnsServers": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Custom DNS servers for VPN clients (optional)"
+      }
+    },
+    "isRoutingPreferenceInternet": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable internet routing preference (default: use Azure backbone)"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to resources"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/p2svpnGateways",
+      "apiVersion": "2023-11-01",
+      "name": "[parameters('vpnGatewayName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "virtualHub": {
+          "id": "[parameters('virtualHubId')]"
+        },
+        "vpnServerConfiguration": {
+          "id": "[parameters('vpnServerConfigurationId')]"
+        },
+        "p2SConnectionConfigurations": [
+          {
+            "name": "p2s-connection-config",
+            "properties": {
+              "vpnClientAddressPool": {
+                "addressPrefixes": [
+                  "[parameters('vpnClientAddressPool')]"
+                ]
+              },
+              "enableInternetSecurity": false
+            }
+          }
+        ],
+        "vpnGatewayScaleUnit": "[parameters('vpnGatewayScaleUnit')]",
+        "customDnsServers": "[parameters('customDnsServers')]",
+        "isRoutingPreferenceInternet": "[parameters('isRoutingPreferenceInternet')]"
+      }
+    }
+  ],
+  "outputs": {
+    "vpnGatewayId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the P2S VPN Gateway"
+      },
+      "value": "[resourceId('Microsoft.Network/p2svpnGateways', parameters('vpnGatewayName'))]"
+    },
+    "vpnGatewayName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the P2S VPN Gateway"
+      },
+      "value": "[parameters('vpnGatewayName')]"
+    },
+    "vpnGatewayScaleUnit": {
+      "type": "int",
+      "metadata": {
+        "description": "P2S VPN Gateway scale units (aggregate throughput capacity)"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/p2svpnGateways', parameters('vpnGatewayName')), '2023-11-01').vpnGatewayScaleUnit]"
+    },
+    "vpnClientAddressPool": {
+      "type": "string",
+      "metadata": {
+        "description": "VPN client address pool"
+      },
+      "value": "[parameters('vpnClientAddressPool')]"
+    },
+    "provisioningState": {
+      "type": "string",
+      "metadata": {
+        "description": "P2S VPN Gateway provisioning state"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/p2svpnGateways', parameters('vpnGatewayName')), '2023-11-01').provisioningState]"
+    }
+  }
+}

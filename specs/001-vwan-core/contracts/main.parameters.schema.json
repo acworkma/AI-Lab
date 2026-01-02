@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Core Infrastructure Deployment Parameters",
+  "description": "Parameter schema for deploying Azure core infrastructure with vWAN hub, VPN Gateway, and Key Vault",
+  "type": "object",
+  "required": [
+    "location",
+    "environment",
+    "owner"
+  ],
+  "properties": {
+    "location": {
+      "type": "string",
+      "description": "Azure region for deployment",
+      "default": "eastus2",
+      "enum": [
+        "eastus",
+        "eastus2",
+        "westus",
+        "westus2",
+        "centralus",
+        "northcentralus",
+        "southcentralus"
+      ]
+    },
+    "environment": {
+      "type": "string",
+      "description": "Environment tag for resources",
+      "enum": [
+        "dev",
+        "test",
+        "prod"
+      ],
+      "default": "dev"
+    },
+    "owner": {
+      "type": "string",
+      "description": "Owner tag - team or individual responsible for resources",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "description": "Name of the resource group (fixed per constitution)",
+      "const": "rg-ai-core"
+    },
+    "vwanName": {
+      "type": "string",
+      "description": "Name of the Virtual WAN",
+      "default": "vwan-ai-hub",
+      "pattern": "^[a-z0-9-]{3,64}$"
+    },
+    "vhubName": {
+      "type": "string",
+      "description": "Name of the Virtual Hub",
+      "default": "hub-ai-eastus2",
+      "pattern": "^[a-z0-9-]{3,64}$"
+    },
+    "vhubAddressPrefix": {
+      "type": "string",
+      "description": "Address space for Virtual Hub (CIDR notation)",
+      "default": "10.0.0.0/16",
+      "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"
+    },
+    "vpnGatewayName": {
+      "type": "string",
+      "description": "Name of the VPN Gateway",
+      "default": "vpngw-ai-hub",
+      "pattern": "^[a-z0-9-]{3,64}$"
+    },
+    "vpnGatewayScaleUnit": {
+      "type": "integer",
+      "description": "VPN Gateway scale units (1 unit = 500 Mbps)",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 20
+    },
+    "keyVaultName": {
+      "type": "string",
+      "description": "Name of the Key Vault (must be globally unique, 3-24 chars)",
+      "pattern": "^[a-z0-9-]{3,24}$",
+      "minLength": 3,
+      "maxLength": 24
+    },
+    "keyVaultSku": {
+      "type": "string",
+      "description": "Key Vault SKU",
+      "enum": [
+        "standard",
+        "premium"
+      ],
+      "default": "standard"
+    },
+    "enablePurgeProtection": {
+      "type": "boolean",
+      "description": "Enable purge protection for Key Vault (recommended for production)",
+      "default": false
+    },
+    "deployedBy": {
+      "type": "string",
+      "description": "Tag indicating how deployment was triggered",
+      "enum": [
+        "manual",
+        "automation"
+      ],
+      "default": "manual"
+    },
+    "tags": {
+      "type": "object",
+      "description": "Additional custom tags (environment, purpose, owner are added automatically)",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

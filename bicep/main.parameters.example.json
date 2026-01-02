@@ -1,0 +1,120 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2",
+      "metadata": {
+        "description": "Azure region for all resources. Default: eastus2"
+      }
+    },
+    "environment": {
+      "value": "dev",
+      "metadata": {
+        "description": "Environment tag. Allowed values: dev, test, prod"
+      }
+    },
+    "owner": {
+      "value": "AI-Lab Team",
+      "metadata": {
+        "description": "Owner identifier for resource tagging (1-100 characters)"
+      }
+    },
+    "resourceGroupName": {
+      "value": "rg-ai-core",
+      "metadata": {
+        "description": "Resource group name (fixed per constitution). Default: rg-ai-core"
+      }
+    },
+    "vwanName": {
+      "value": "vwan-ai-hub",
+      "metadata": {
+        "description": "Virtual WAN name. Default: vwan-ai-hub"
+      }
+    },
+    "vhubName": {
+      "value": "hub-ai-eastus2",
+      "metadata": {
+        "description": "Virtual Hub name. Default: hub-ai-eastus2"
+      }
+    },
+    "vhubAddressPrefix": {
+      "value": "10.0.0.0/16",
+      "metadata": {
+        "description": "Virtual Hub address prefix (CIDR). Must not overlap with spoke VNets. Recommended spoke ranges: 10.1.0.0/16, 10.2.0.0/16, etc."
+      }
+    },
+    "vpnGatewayName": {
+      "value": "vpngw-ai-hub",
+      "metadata": {
+        "description": "VPN Gateway name. Default: vpngw-ai-hub"
+      }
+    },
+    "vpnGatewayScaleUnit": {
+      "value": 1,
+      "metadata": {
+        "description": "P2S VPN Gateway scale units (1 unit = 500 Mbps, max 20 units = 10 Gbps). Default: 1"
+      }
+    },
+    "vpnServerConfigName": {
+      "value": "vpnconfig-ai-hub",
+      "metadata": {
+        "description": "VPN Server Configuration name. Default: vpnconfig-ai-hub"
+      }
+    },
+    "vpnClientAddressPool": {
+      "value": "172.16.0.0/24",
+      "metadata": {
+        "description": "VPN client address pool (CIDR notation). IP addresses assigned to VPN clients. Default: 172.16.0.0/24"
+      }
+    },
+    "aadTenantId": {
+      "value": "YOUR_ENTRA_TENANT_ID",
+      "metadata": {
+        "description": "Microsoft Entra ID Tenant ID for VPN authentication. Find at: Azure Portal > Microsoft Entra ID > Overview > Tenant ID. REQUIRED: Replace with your tenant ID."
+      }
+    },
+    "aadAudience": {
+      "value": "41b23e61-6c1e-4545-b367-cd054e0ed4b4",
+      "metadata": {
+        "description": "Azure VPN Client Application ID (fixed for Azure VPN). Default: 41b23e61-6c1e-4545-b367-cd054e0ed4b4"
+      }
+    },
+    "aadIssuer": {
+      "value": "https://sts.windows.net/YOUR_ENTRA_TENANT_ID/",
+      "metadata": {
+        "description": "Microsoft Entra ID Issuer URL. Replace YOUR_ENTRA_TENANT_ID with your tenant ID. Format: https://sts.windows.net/{tenantId}/"
+      }
+    },
+    "keyVaultName": {
+      "value": "kv-ai-core-CHANGEME",
+      "metadata": {
+        "description": "Key Vault name (MUST be globally unique, 3-24 characters, alphanumeric and hyphens). REQUIRED: Change 'CHANGEME' to a unique suffix."
+      }
+    },
+    "keyVaultSku": {
+      "value": "standard",
+      "metadata": {
+        "description": "Key Vault SKU. Allowed values: standard, premium. Default: standard"
+      }
+    },
+    "enablePurgeProtection": {
+      "value": false,
+      "metadata": {
+        "description": "Enable purge protection for Key Vault (recommended for production). Default: false"
+      }
+    },
+    "deployedBy": {
+      "value": "manual",
+      "metadata": {
+        "description": "Deployment method tag. Default: manual"
+      }
+    },
+    "tags": {
+      "value": {},
+      "metadata": {
+        "description": "Additional custom tags (optional). Example: {\"project\": \"AI-Lab\", \"costCenter\": \"Engineering\"}"
+      }
+    }
+  }
+}
