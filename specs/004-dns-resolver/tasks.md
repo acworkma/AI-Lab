@@ -105,21 +105,21 @@ Platform engineers can verify the resolver correctly answers DNS queries for pri
 
 #### DNS Query Validation - Private Zones
 
-- [ ] T019 [P] Create validation script: `scripts/test-dns-resolver.sh` (basic structure).
-- [ ] T020 [P] Add Level 1 validation: Check resolver exists and inbound endpoint IP is set.
-- [ ] T021 [P] Add Level 2 validation: Query private ACR zone (acraihubk2lydtz5uba3q.azurecr.io).
-- [ ] T022 [P] Add Level 3 validation: Query private Key Vault zone (privatelink.vaultcore.azure.net).
-- [ ] T023 [P] Add Level 4 validation: Query private Storage zone (privatelink.blob.core.windows.net).
-- [ ] T024 [P] Add Level 5 validation: Query private SQL zone (privatelink.database.windows.net).
-- [ ] T025 Verify private ACR resolution returns 10.1.0.5 (or correct private endpoint IP).
-- [ ] T026 Verify private zone queries return private IPs (10.x.x.x pattern, not 20.x.x.x).
+- [X] T019 [P] Create validation script: `scripts/test-dns-resolver.sh` (basic structure).
+- [X] T020 [P] Add Level 1 validation: Check resolver exists and inbound endpoint IP is set.
+- [X] T021 [P] Add Level 2 validation: Query private ACR zone (acraihubk2lydtz5uba3q.azurecr.io).
+- [X] T022 [P] Add Level 3 validation: Query private Key Vault zone (privatelink.vaultcore.azure.net).
+- [X] T023 [P] Add Level 4 validation: Query private Storage zone (privatelink.blob.core.windows.net).
+- [X] T024 [P] Add Level 5 validation: Query private SQL zone (privatelink.database.windows.net).
+- [X] T025 Verify private ACR resolution returns 10.1.0.5 (or correct private endpoint IP).
+- [X] T026 Verify private zone queries return private IPs (10.x.x.x pattern, not 20.x.x.x).
 
 #### DNS Query Validation - Public Domains
 
-- [ ] T027 [P] Add public DNS validation: Query google.com via resolver IP.
-- [ ] T028 [P] Add public DNS validation: Query microsoft.com via resolver IP.
-- [ ] T029 Verify public domain queries succeed (return public IPs, not timeouts).
-- [ ] T030 Verify public DNS fallback works if primary (resolver) is unreachable (future; document approach).
+- [X] T027 [P] Add public DNS validation: Query google.com via resolver IP.
+- [X] T028 [P] Add public DNS validation: Query microsoft.com via resolver IP.
+- [X] T029 Verify public domain queries succeed (return public IPs, not timeouts).
+- [X] T030 Verify public DNS fallback works if primary (resolver) is unreachable (future; document approach).
 
 #### Connectivity Validation
 
