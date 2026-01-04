@@ -124,6 +124,30 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "sharedVnetName": {
+      "type": "string",
+      "description": "Name of the shared services VNet",
+      "default": "vnet-ai-shared",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]{1,62}[a-zA-Z0-9]$"
+    },
+    "sharedVnetAddressPrefix": {
+      "type": "string",
+      "description": "Shared services VNet address prefix in CIDR notation",
+      "default": "10.1.0.0/24",
+      "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"
+    },
+    "dnsResolverName": {
+      "type": "string",
+      "description": "Name of the DNS Private Resolver",
+      "default": "dnsr-ai-shared",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]{1,62}[a-zA-Z0-9]$"
+    },
+    "dnsInboundSubnetPrefix": {
+      "type": "string",
+      "description": "DNS resolver inbound subnet CIDR (must be within shared VNet address space)",
+      "default": "10.1.0.64/27",
+      "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"
     }
   },
   "additionalProperties": false

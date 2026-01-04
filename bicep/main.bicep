@@ -83,6 +83,18 @@ param tags object = {}
 @description('Deployment timestamp (auto-generated)')
 param deploymentTimestamp string = utcNow('yyyy-MM-ddTHH:mm:ssZ')
 
+@description('Shared services VNet name')
+param sharedVnetName string = 'vnet-ai-shared'
+
+@description('Shared services VNet address prefix')
+param sharedVnetAddressPrefix string = '10.1.0.0/24'
+
+@description('DNS Private Resolver name')
+param dnsResolverName string = 'dnsr-ai-shared'
+
+@description('DNS resolver inbound subnet CIDR')
+param dnsInboundSubnetPrefix string = '10.1.0.64/27'
+
 // ============================================================================
 // VARIABLES
 // ============================================================================
@@ -135,6 +147,45 @@ module vwanHub 'modules/vwan-hub.bicep' = {
     vhubName: vhubName
     location: location
     vhubAddressPrefix: vhubAddressPrefix
+    tags: allTags
+  }
+}
+
+// ============================================================================
+// SHARED SERVICES VNET
+// ============================================================================
+
+// Shared Services VNet - Hosts shared core services (DNS resolver, jump boxes)
+// Connected to vWAN hub for spoke and P2S client routing
+// Deployment time: ~2-3 minutes
+module sharedServicesVnet 'modules/shared-services-vnet.bicep' = {
+  name: 'deploy-shared-services-vnet'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    vnetName: sharedVnetName
+    location: location
+    vnetAddressPrefix: sharedVnetAddressPrefix
+    virtualHubId: vwanHub.outputs.vhubId
+    tags: allTags
+  }
+}
+
+// ============================================================================
+// DNS PRIVATE RESOLVER
+// ============================================================================
+
+// DNS Private Resolver - Enables private DNS resolution from P2S clients
+// Resolves private endpoints to private IPs for ACR, Key Vault, Storage, etc.
+// Deployment time: ~3-5 minutes
+module dnsResolver 'modules/dns-resolver.bicep' = {
+  name: 'deploy-dns-resolver'
+  scope: az.resourceGroup(resourceGroupName)
+  params: {
+    resolverName: dnsResolverName
+    location: location
+    vnetId: sharedServicesVnet.outputs.vnetId
+    vnetName: sharedServicesVnet.outputs.vnetName
+    inboundSubnetPrefix: dnsInboundSubnetPrefix
     tags: allTags
   }
 }
@@ -273,6 +324,26 @@ output keyVaultName string = keyVault.outputs.keyVaultName
 
 @description('Key Vault URI for secret references in parameter files')
 output keyVaultUri string = keyVault.outputs.keyVaultUri
+
+// Shared Services VNet Outputs
+@description('Resource ID of the shared services VNet')
+output sharedVnetId string = sharedServicesVnet.outputs.vnetId
+
+@description('Name of the shared services VNet')
+output sharedVnetName string = sharedServicesVnet.outputs.vnetName
+
+@description('Address prefix of the shared services VNet')
+output sharedVnetAddressPrefix string = sharedServicesVnet.outputs.vnetAddressPrefix
+
+// DNS Resolver Outputs
+@description('Resource ID of the DNS resolver')
+output dnsResolverId string = dnsResolver.outputs.resolverId
+
+@description('Resource ID of the DNS resolver inbound endpoint')
+output dnsResolverInboundEndpointId string = dnsResolver.outputs.inboundEndpointId
+
+@description('DNS resolver inbound endpoint private IP address (use this as nameserver for P2S clients)')
+output dnsResolverInboundIp string = dnsResolver.outputs.inboundEndpointIp
 
 // Deployment Metadata
 @description('All applied tags')
