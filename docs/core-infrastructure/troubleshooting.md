@@ -408,6 +408,40 @@ az keyvault secret list-deleted --vault-name kv-ai-core-lab1 -o table
 az role assignment list --scope /subscriptions/<sub-id>/resourceGroups/rg-ai-core/providers/Microsoft.KeyVault/vaults/kv-ai-core-lab1
 ```
 
+### DNS Private Resolver Issues
+
+For detailed DNS resolver troubleshooting, see [dns-resolver-setup.md](dns-resolver-setup.md#troubleshooting).
+
+**Quick Diagnostics**:
+
+```bash
+# Check resolver exists
+az resource show \
+  --resource-group rg-ai-core \
+  --resource-type Microsoft.Network/dnsResolvers \
+  --name dnsr-ai-shared \
+  --query "{name:name, state:properties.provisioningState}"
+
+# Get resolver inbound endpoint IP
+RESOLVER_ID=$(az resource show -g rg-ai-core --resource-type Microsoft.Network/dnsResolvers -n dnsr-ai-shared --query id -o tsv)
+az rest --method get --uri "${RESOLVER_ID}/inboundEndpoints?api-version=2022-07-01" \
+  --query "value[0].properties.ipConfigurations[0].privateIpAddress" -o tsv
+
+# Test DNS resolution from P2S client
+nslookup acraihubk2lydtz5uba3q.azurecr.io 10.1.0.68
+
+# Run automated validation
+./scripts/test-dns-resolver.sh --ip 10.1.0.68
+```
+
+**Common DNS Issues**:
+- **DNS queries timeout**: P2S VPN not connected or routing issue to 10.1.0.68
+- **Returns public IP instead of private**: Private DNS zone not linked to vnet-ai-shared
+- **Public DNS fails**: Resolver can't reach public DNS servers (check outbound routing)
+- **Resolver IP changed**: Re-deployment may allocate new IP; update client DNS settings
+
+For full troubleshooting guide, see: [DNS Resolver Troubleshooting Section](dns-resolver-setup.md#troubleshooting)
+
 ## Getting Help
 
 ### Azure Support Resources

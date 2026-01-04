@@ -83,6 +83,12 @@ param keyVaultSku string = 'standard'
 @description('Enable purge protection for Key Vault (recommended for production)')
 param enablePurgeProtection bool = false
 
+@description('DNS Private Resolver name')
+param dnsResolverName string = 'dnsr-ai-shared'
+
+@description('DNS resolver inbound subnet CIDR')
+param dnsInboundSubnetPrefix string = '10.1.0.64/27'
+
 @description('Deployment method for tagging (manual or automation)')
 param deployedBy string = 'manual'
 
@@ -246,6 +252,29 @@ module sharedServicesVnet 'modules/shared-services-vnet.bicep' = {
 }
 
 // ============================================================================
+// DNS PRIVATE RESOLVER
+// ============================================================================
+
+// DNS Private Resolver - Enables private DNS resolution from P2S clients
+// Resolves private endpoints to private IPs for ACR, Key Vault, Storage, etc.
+// Deployment time: ~3-5 minutes
+module dnsResolver 'modules/dns-resolver.bicep' = {
+  name: 'deploy-dns-resolver'
+  scope: az.resourceGroup(resourceGroupName)
+  dependsOn: [
+    sharedServicesVnet
+  ]
+  params: {
+    resolverName: dnsResolverName
+    location: location
+    vnetId: sharedServicesVnet.outputs.vnetId
+    vnetName: sharedServicesVnet.outputs.vnetName
+    inboundSubnetPrefix: dnsInboundSubnetPrefix
+    tags: allTags
+  }
+}
+
+// ============================================================================
 // PRIVATE DNS ZONES
 // ============================================================================
 
@@ -346,6 +375,16 @@ output privateEndpointSubnetId string = sharedServicesVnet.outputs.privateEndpoi
 
 @description('Name of the private endpoint subnet')
 output privateEndpointSubnetName string = sharedServicesVnet.outputs.privateEndpointSubnetName
+
+// DNS Resolver Outputs
+@description('Resource ID of the DNS resolver')
+output dnsResolverId string = dnsResolver.outputs.resolverId
+
+@description('Resource ID of the DNS resolver inbound endpoint')
+output dnsResolverInboundEndpointId string = dnsResolver.outputs.inboundEndpointId
+
+@description('DNS resolver inbound endpoint private IP address (use this as nameserver for P2S clients)')
+output dnsResolverInboundIp string = dnsResolver.outputs.inboundEndpointIp
 
 // Private DNS Zones Outputs
 @description('Resource ID of the ACR private DNS zone')

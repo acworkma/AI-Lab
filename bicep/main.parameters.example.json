@@ -115,6 +115,30 @@
       "metadata": {
         "description": "Additional custom tags (optional). Example: {\"project\": \"AI-Lab\", \"costCenter\": \"Engineering\"}"
       }
+    },
+    "sharedVnetName": {
+      "value": "vnet-ai-shared",
+      "metadata": {
+        "description": "Shared services VNet name. Default: vnet-ai-shared"
+      }
+    },
+    "sharedVnetAddressPrefix": {
+      "value": "10.1.0.0/24",
+      "metadata": {
+        "description": "Shared services VNet address prefix (CIDR). Default: 10.1.0.0/24. Must not overlap with vHub (10.0.0.0/16) or VPN clients (172.16.0.0/24)."
+      }
+    },
+    "dnsResolverName": {
+      "value": "dnsr-ai-shared",
+      "metadata": {
+        "description": "DNS Private Resolver name. Default: dnsr-ai-shared"
+      }
+    },
+    "dnsInboundSubnetPrefix": {
+      "value": "10.1.0.64/27",
+      "metadata": {
+        "description": "DNS resolver inbound subnet CIDR (within shared VNet address space). Default: 10.1.0.64/27"
+      }
     }
   }
 }
