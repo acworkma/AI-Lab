@@ -189,9 +189,9 @@ Developers can configure WSL and other P2S clients to use the resolver inbound e
 
 #### Documentation Updates
 
-- [ ] T061 Add note to specs/003-wsl-dns-config/quickstart.md: "Prerequisites: Core infrastructure deployed with DNS resolver (feature 004)".
-- [ ] T062 [P] Update specs/003-wsl-dns-config/data-model.md to reference resolver IP (not hardcoded 168.63.129.16).
-- [ ] T063 [P] Update specs/003-wsl-dns-config/contracts/validation-contract.md to test resolver IP.
+- [X] T061 Add note to specs/003-wsl-dns-config/quickstart.md: "Prerequisites: Core infrastructure deployed with DNS resolver (feature 004)".
+- [X] T062 [P] Update specs/003-wsl-dns-config/data-model.md to reference resolver IP (not hardcoded 168.63.129.16).
+- [ ] T063 [P] Update specs/003-wsl-dns-config/contracts/validation-contract.md to test resolver IP. (Not created yet - deferred to feature 003 implementation)
 
 **Deliverables**:
 - WSL templates updated to use resolver IP.
