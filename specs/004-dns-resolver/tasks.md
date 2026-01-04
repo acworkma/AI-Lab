@@ -68,19 +68,19 @@ DevOps engineers can deploy an Azure DNS Private Resolver into the core shared s
 
 #### Deployment Validation
 
-- [ ] T009 Deploy core infrastructure with resolver: `az deployment sub create -n dns-core -l eastus2 -f bicep/main.bicep -p @bicep/main.parameters.example.json`.
-- [ ] T010 Verify resolver resource created: `az resource show -g rg-ai-core --resource-type Microsoft.Network/dnsResolvers -n dnsr-ai-shared`.
-- [ ] T011 Extract inbound endpoint IP from deployment outputs (dnsResolverInboundIp).
-- [ ] T012 Verify inbound endpoint exists: `az rest --method get --uri "/subscriptions/{subId}/resourceGroups/rg-ai-core/providers/Microsoft.Network/dnsResolvers/dnsr-ai-shared/inboundEndpoints"`.
-- [ ] T013 Verify inbound subnet exists in shared VNet: `az network vnet subnet show -g rg-ai-core --vnet-name vnet-ai-shared -n DnsInboundSubnet`.
-- [ ] T014 Verify subnet has service delegation: Check delegation name is "Microsoft.Network/dnsResolvers".
-- [ ] T015 Verify resolver is operational (no error state in Azure Portal).
+- [X] T009 Deploy core infrastructure with resolver: `az deployment sub create -n dns-core -l eastus2 -f bicep/main.bicep -p @bicep/main.parameters.example.json`.
+- [X] T010 Verify resolver resource created: `az resource show -g rg-ai-core --resource-type Microsoft.Network/dnsResolvers -n dnsr-ai-shared`.
+- [X] T011 Extract inbound endpoint IP from deployment outputs (dnsResolverInboundIp).
+- [X] T012 Verify inbound endpoint exists: `az rest --method get --uri "/subscriptions/{subId}/resourceGroups/rg-ai-core/providers/Microsoft.Network/dnsResolvers/dnsr-ai-shared/inboundEndpoints"`.
+- [X] T013 Verify inbound subnet exists in shared VNet: `az network vnet subnet show -g rg-ai-core --vnet-name vnet-ai-shared -n DnsInboundSubnet`.
+- [X] T014 Verify subnet has service delegation: Check delegation name is "Microsoft.Network/dnsResolvers".
+- [X] T015 Verify resolver is operational (no error state in Azure Portal).
 
 #### Deployment Documentation
 
-- [ ] T016 Document resolver deployment output values (IP, resource IDs).
-- [ ] T017 Create deployment summary (timestamp, parameters used, resource counts).
-- [ ] T018 Record resolver configuration (subnet CIDR, endpoint IP, tags applied).
+- [X] T016 Document resolver deployment output values (IP, resource IDs).
+- [X] T017 Create deployment summary (timestamp, parameters used, resource counts).
+- [X] T018 Record resolver configuration (subnet CIDR, endpoint IP, tags applied).
 
 **Deliverables**:
 - Resolver deployed and operational in core infrastructure.
