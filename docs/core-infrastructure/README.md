@@ -11,6 +11,8 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 - **P2S VPN Gateway**: `vpngw-ai-hub` - Point-to-Site VPN with Azure AD authentication
 - **VPN Server Configuration**: `vpnconfig-ai-hub` - Authentication and protocol settings
 - **Key Vault**: `kv-ai-core-*` - Centralized secrets management
+- **Shared Services VNet**: `vnet-ai-shared` - Spoke VNet for private endpoints (10.0.1.0/24)
+- **Private DNS Zones**: 5 zones for ACR, Key Vault, Storage, File Storage, SQL Database
 
 **Deployment Region**: East US 2
 

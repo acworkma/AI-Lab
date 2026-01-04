@@ -142,6 +142,19 @@ validate_parameters() {
     log_success "Parameters validated successfully"
 }
 
+detect_deployment_mode() {
+    log_info "Checking deployment mode..."
+    
+    # Check if resource group exists
+    if az group show --name rg-ai-core &> /dev/null; then
+        DEPLOYMENT_MODE="update"
+        log_info "Detected existing rg-ai-core - this is an UPDATE deployment"
+    else
+        DEPLOYMENT_MODE="initial"
+        log_info "No existing rg-ai-core found - this is an INITIAL deployment"
+    fi
+}
+
 run_whatif() {
     log_info "Running what-if analysis (dry-run)..."
     echo ""
@@ -166,14 +179,29 @@ confirm_deployment() {
     fi
 
     echo ""
-    log_warning "This will create the following resources in Azure:"
-    echo "  - Resource Group: rg-ai-core"
-    echo "  - Virtual WAN: vwan-ai-hub"
-    echo "  - Virtual Hub: hub-ai-eastus2"
-    echo "  - VPN Gateway: vpngw-ai-hub (site-to-site with BGP for Global Secure Access)"
-    echo "  - Key Vault: $(jq -r '.parameters.keyVaultName.value' "$PARAMETER_FILE")"
-    echo ""
-    log_warning "Estimated deployment time: 25-30 minutes"
+    if [ "$DEPLOYMENT_MODE" = "update" ]; then
+        log_warning "This will UPDATE the existing core infrastructure in Azure:"
+        echo "  - Resource Group: rg-ai-core (existing)"
+        echo "  - Virtual WAN: vwan-ai-hub (existing)"
+        echo "  - Virtual Hub: hub-ai-eastus2 (existing)"
+        echo "  - VPN Gateway: vpngw-ai-hub (existing)"
+        echo "  - Key Vault: $(jq -r '.parameters.keyVaultName.value' "$PARAMETER_FILE") (existing)"
+        echo "  + Shared Services VNet: vnet-ai-shared (NEW)"
+        echo "  + Private DNS Zones: 5 zones for ACR, Key Vault, Storage, SQL (NEW)"
+        echo ""
+        log_warning "Estimated update time: 5-10 minutes"
+    else
+        log_warning "This will create the following resources in Azure:"
+        echo "  - Resource Group: rg-ai-core"
+        echo "  - Virtual WAN: vwan-ai-hub"
+        echo "  - Virtual Hub: hub-ai-eastus2"
+        echo "  - VPN Gateway: vpngw-ai-hub"
+        echo "  - Key Vault: $(jq -r '.parameters.keyVaultName.value' "$PARAMETER_FILE")"
+        echo "  - Shared Services VNet: vnet-ai-shared"
+        echo "  - Private DNS Zones: 5 zones for ACR, Key Vault, Storage, SQL"
+        echo ""
+        log_warning "Estimated deployment time: 25-30 minutes"
+    fi
     echo ""
 
     read -p "Do you want to proceed with deployment? (yes/no): " -r
@@ -185,7 +213,11 @@ confirm_deployment() {
 }
 
 deploy() {
-    log_info "Starting deployment..."
+    if [ "$DEPLOYMENT_MODE" = "update" ]; then
+        log_info "Updating core infrastructure..."
+    else
+        log_info "Starting deployment..."
+    fi
     log_info "Deployment name: $DEPLOYMENT_NAME"
     echo ""
 
@@ -222,18 +254,21 @@ show_outputs() {
         "  - Routing State: \(.vhubRoutingState.value)",
         "VPN Gateway: \(.vpnGatewayName.value)",
         "  - Scale Units: \(.vpnGatewayScaleUnit.value)",
-        "  - BGP ASN: \(.vpnGatewayBgpSettings.value.asn)",
-        "  - BGP Peering Address: \(.vpnGatewayBgpSettings.value.bgpPeeringAddress)",
         "Key Vault: \(.keyVaultName.value)",
-        "  - URI: \(.keyVaultUri.value)"
+        "  - URI: \(.keyVaultUri.value)",
+        "Shared Services VNet: \(.sharedServicesVnetName.value)",
+        "  - Address Prefix: \(.sharedServicesVnetAddressPrefix.value)",
+        "  - Private Endpoint Subnet: \(.privateEndpointSubnetName.value)",
+        "Private DNS Zones: 5 zones created",
+        "  - privatelink.azurecr.io",
+        "  - privatelink.vaultcore.azure.net",
+        "  - privatelink.blob.core.windows.net",
+        "  - privatelink.file.core.windows.net",
+        "  - privatelink.database.windows.net"
     '
 
     echo ""
-    log_info "For Global Secure Access configuration, you will need:"
-    echo "  - VPN Gateway BGP Peering Address: $(echo "$outputs" | jq -r '.vpnGatewayBgpSettings.value.bgpPeeringAddress')"
-    echo "  - VPN Gateway BGP ASN: $(echo "$outputs" | jq -r '.vpnGatewayBgpSettings.value.asn')"
-    echo ""
-    log_info "See docs/core-infrastructure/global-secure-access.md for integration steps"
+    log_info "Core infrastructure outputs saved. Use these values for spoke deployments."
 }
 
 # ============================================================================
@@ -272,6 +307,7 @@ echo ""
 
 check_prerequisites
 validate_parameters
+detect_deployment_mode
 
 if [ "$SKIP_WHATIF" = false ]; then
     run_whatif
