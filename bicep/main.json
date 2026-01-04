@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "5323922970213873705"
+      "templateHash": "2173235120645371964"
     }
   },
   "parameters": {
@@ -94,6 +94,27 @@
         "description": "VPN client address pool (CIDR notation)"
       }
     },
+    "sharedServicesVnetName": {
+      "type": "string",
+      "defaultValue": "vnet-ai-shared",
+      "metadata": {
+        "description": "Shared services VNet name"
+      }
+    },
+    "sharedServicesVnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.0/24",
+      "metadata": {
+        "description": "Shared services VNet address prefix (CIDR notation)"
+      }
+    },
+    "privateEndpointSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.0/26",
+      "metadata": {
+        "description": "Private endpoint subnet address prefix"
+      }
+    },
     "aadTenantId": {
       "type": "string",
       "metadata": {
@@ -137,6 +158,20 @@
       "defaultValue": false,
       "metadata": {
         "description": "Enable purge protection for Key Vault (recommended for production)"
+      }
+    },
+    "dnsResolverName": {
+      "type": "string",
+      "defaultValue": "dnsr-ai-shared",
+      "metadata": {
+        "description": "DNS Private Resolver name"
+      }
+    },
+    "dnsInboundSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.64/27",
+      "metadata": {
+        "description": "DNS resolver inbound subnet CIDR"
       }
     },
     "deployedBy": {
@@ -500,7 +535,7 @@
             ]
           },
           "aadTenant": {
-            "value": "[parameters('aadTenantId')]"
+            "value": "[format('https://login.microsoftonline.com/{0}/', parameters('aadTenantId'))]"
           },
           "aadAudience": {
             "value": "[parameters('aadAudience')]"
@@ -519,7 +554,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "1496262866009470941"
+              "templateHash": "5320865358480148136"
             }
           },
           "parameters": {
@@ -556,7 +591,7 @@
             "aadTenant": {
               "type": "string",
               "metadata": {
-                "description": "Microsoft Entra ID Tenant ID for authentication"
+                "description": "Microsoft Entra ID Tenant URL for authentication (e.g., https://login.microsoftonline.com/{tenant-id}/)"
               }
             },
             "aadAudience": {
@@ -1012,6 +1047,694 @@
       "dependsOn": [
         "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-rg-ai-core')]"
       ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-shared-services-vnet",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vnetName": {
+            "value": "[parameters('sharedServicesVnetName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vnetAddressPrefix": {
+            "value": "[parameters('sharedServicesVnetAddressPrefix')]"
+          },
+          "privateEndpointSubnetPrefix": {
+            "value": "[parameters('privateEndpointSubnetPrefix')]"
+          },
+          "virtualHubId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub'), '2025-04-01').outputs.vhubId.value]"
+          },
+          "vpnClientAddressPool": {
+            "value": "[parameters('vpnClientAddressPool')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16648554464217343230"
+            }
+          },
+          "parameters": {
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the shared services VNet"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for deployment"
+              }
+            },
+            "vnetAddressPrefix": {
+              "type": "string",
+              "defaultValue": "10.1.0.0/24",
+              "metadata": {
+                "description": "VNet address space (CIDR notation)"
+              }
+            },
+            "privateEndpointSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.1.0.0/26",
+              "metadata": {
+                "description": "Private endpoint subnet address prefix"
+              }
+            },
+            "virtualHubId": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual Hub resource ID to connect this spoke VNet"
+              }
+            },
+            "vpnClientAddressPool": {
+              "type": "string",
+              "defaultValue": "172.16.0.0/24",
+              "metadata": {
+                "description": "VPN client address pool for NSG rules"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}-pe-nsg', parameters('vnetName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowVpnClientInbound",
+                    "properties": {
+                      "description": "Allow inbound traffic from VPN clients",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "[parameters('vpnClientAddressPool')]",
+                      "destinationAddressPrefix": "10.1.0.0/26",
+                      "access": "Allow",
+                      "priority": 100,
+                      "direction": "Inbound"
+                    }
+                  },
+                  {
+                    "name": "AllowVnetInbound",
+                    "properties": {
+                      "description": "Allow inbound traffic from VNet",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "destinationAddressPrefix": "*",
+                      "access": "Allow",
+                      "priority": 110,
+                      "direction": "Inbound"
+                    }
+                  },
+                  {
+                    "name": "DenyAllInbound",
+                    "properties": {
+                      "description": "Deny all other inbound traffic",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "*",
+                      "destinationAddressPrefix": "*",
+                      "access": "Deny",
+                      "priority": 4096,
+                      "direction": "Inbound"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('vnetName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('vnetAddressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "PrivateEndpointSubnet",
+                    "properties": {
+                      "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-pe-nsg', parameters('vnetName')))]"
+                      },
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-pe-nsg', parameters('vnetName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/virtualHubs/hubVirtualNetworkConnections",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/connection-to-shared-services', last(split(parameters('virtualHubId'), '/')))]",
+              "properties": {
+                "remoteVirtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "enableInternetSecurity": false,
+                "routingConfiguration": {
+                  "associatedRouteTable": {
+                    "id": "[format('{0}/hubRouteTables/defaultRouteTable', parameters('virtualHubId'))]"
+                  },
+                  "propagatedRouteTables": {
+                    "labels": [
+                      "default"
+                    ],
+                    "ids": [
+                      {
+                        "id": "[format('{0}/hubRouteTables/defaultRouteTable', parameters('virtualHubId'))]"
+                      }
+                    ]
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the shared services VNet"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the shared services VNet"
+              },
+              "value": "[parameters('vnetName')]"
+            },
+            "vnetAddressPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet address prefix"
+              },
+              "value": "[parameters('vnetAddressPrefix')]"
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the private endpoint subnet"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2023-11-01').subnets[0].id]"
+            },
+            "privateEndpointSubnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the private endpoint subnet"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2023-11-01').subnets[0].name]"
+            },
+            "privateEndpointSubnetPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Private endpoint subnet address prefix"
+              },
+              "value": "[parameters('privateEndpointSubnetPrefix')]"
+            },
+            "hubConnectionState": {
+              "type": "string",
+              "metadata": {
+                "description": "Hub connection provisioning state"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualHubs/hubVirtualNetworkConnections', split(format('{0}/connection-to-shared-services', last(split(parameters('virtualHubId'), '/'))), '/')[0], split(format('{0}/connection-to-shared-services', last(split(parameters('virtualHubId'), '/'))), '/')[1]), '2023-11-01').provisioningState]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-rg-ai-core')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vwan-hub')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-dns-resolver",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "resolverName": {
+            "value": "[parameters('dnsResolverName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vnetId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet'), '2025-04-01').outputs.vnetId.value]"
+          },
+          "vnetName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet'), '2025-04-01').outputs.vnetName.value]"
+          },
+          "inboundSubnetPrefix": {
+            "value": "[parameters('dnsInboundSubnetPrefix')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "7871233217885973895"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for deployment"
+              }
+            },
+            "resolverName": {
+              "type": "string",
+              "defaultValue": "dnsr-ai-shared",
+              "metadata": {
+                "description": "Name of the DNS resolver"
+              }
+            },
+            "vnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the VNet to host the resolver inbound subnet"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the VNet (used for resource naming)"
+              }
+            },
+            "inboundSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.1.0.64/27",
+              "metadata": {
+                "description": "CIDR for the inbound endpoint subnet (must not overlap existing subnets)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/DnsInboundSubnet', parameters('vnetName'))]",
+              "properties": {
+                "addressPrefix": "[parameters('inboundSubnetPrefix')]",
+                "delegations": [
+                  {
+                    "name": "dnsresolver",
+                    "properties": {
+                      "serviceName": "Microsoft.Network/dnsResolvers"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/dnsResolvers",
+              "apiVersion": "2022-07-01",
+              "name": "[parameters('resolverName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "tags": "[parameters('tags')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets', split(format('{0}/DnsInboundSubnet', parameters('vnetName')), '/')[0], split(format('{0}/DnsInboundSubnet', parameters('vnetName')), '/')[1])]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/dnsResolvers/inboundEndpoints",
+              "apiVersion": "2022-07-01",
+              "name": "[format('{0}/inbound-endpoint', parameters('resolverName'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "subnet": {
+                      "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', split(format('{0}/DnsInboundSubnet', parameters('vnetName')), '/')[0], split(format('{0}/DnsInboundSubnet', parameters('vnetName')), '/')[1])]"
+                    }
+                  }
+                ]
+              },
+              "tags": "[parameters('tags')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets', split(format('{0}/DnsInboundSubnet', parameters('vnetName')), '/')[0], split(format('{0}/DnsInboundSubnet', parameters('vnetName')), '/')[1])]",
+                "[resourceId('Microsoft.Network/dnsResolvers', parameters('resolverName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "resolverId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the DNS resolver"
+              },
+              "value": "[resourceId('Microsoft.Network/dnsResolvers', parameters('resolverName'))]"
+            },
+            "inboundEndpointId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the inbound endpoint"
+              },
+              "value": "[resourceId('Microsoft.Network/dnsResolvers/inboundEndpoints', split(format('{0}/inbound-endpoint', parameters('resolverName')), '/')[0], split(format('{0}/inbound-endpoint', parameters('resolverName')), '/')[1])]"
+            },
+            "inboundEndpointIp": {
+              "type": "string",
+              "metadata": {
+                "description": "Inbound endpoint IP address"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/dnsResolvers/inboundEndpoints', split(format('{0}/inbound-endpoint', parameters('resolverName')), '/')[0], split(format('{0}/inbound-endpoint', parameters('resolverName')), '/')[1]), '2022-07-01').ipConfigurations[0].privateIpAddress]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-private-dns-zones",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vnetId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet'), '2025-04-01').outputs.vnetId.value]"
+          },
+          "vnetName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet'), '2025-04-01').outputs.vnetName.value]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "16286927942441965154"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for deployment (metadata only, DNS zones are global)"
+              }
+            },
+            "vnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the VNet to link DNS zones to"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the VNet for DNS zone link naming"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.azurecr.io",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {}
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.azurecr.io', format('{0}-link', parameters('vnetName')))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azurecr.io')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.vaultcore.azure.net",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {}
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.vaultcore.azure.net', format('{0}-link', parameters('vnetName')))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.blob.core.windows.net",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {}
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.blob.core.windows.net', format('{0}-link', parameters('vnetName')))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.blob.core.windows.net')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.file.core.windows.net",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {}
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.file.core.windows.net', format('{0}-link', parameters('vnetName')))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.file.core.windows.net')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.database.windows.net",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {}
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.database.windows.net', format('{0}-link', parameters('vnetName')))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.database.windows.net')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "acrDnsZoneId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the ACR private DNS zone"
+              },
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azurecr.io')]"
+            },
+            "acrDnsZoneName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the ACR private DNS zone"
+              },
+              "value": "privatelink.azurecr.io"
+            },
+            "keyVaultDnsZoneId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Key Vault private DNS zone"
+              },
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
+            },
+            "keyVaultDnsZoneName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Key Vault private DNS zone"
+              },
+              "value": "privatelink.vaultcore.azure.net"
+            },
+            "blobDnsZoneId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Blob Storage private DNS zone"
+              },
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.blob.core.windows.net')]"
+            },
+            "blobDnsZoneName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Blob Storage private DNS zone"
+              },
+              "value": "privatelink.blob.core.windows.net"
+            },
+            "fileDnsZoneId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the File Storage private DNS zone"
+              },
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.file.core.windows.net')]"
+            },
+            "fileDnsZoneName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the File Storage private DNS zone"
+              },
+              "value": "privatelink.file.core.windows.net"
+            },
+            "sqlDnsZoneId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the SQL Database private DNS zone"
+              },
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.database.windows.net')]"
+            },
+            "sqlDnsZoneName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the SQL Database private DNS zone"
+              },
+              "value": "privatelink.database.windows.net"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-rg-ai-core')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet')]"
+      ]
     }
   ],
   "outputs": {
@@ -1140,6 +1863,97 @@
         "description": "Key Vault URI for secret references in parameter files"
       },
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-key-vault'), '2025-04-01').outputs.keyVaultUri.value]"
+    },
+    "sharedServicesVnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the shared services VNet"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet'), '2025-04-01').outputs.vnetId.value]"
+    },
+    "sharedServicesVnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the shared services VNet"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet'), '2025-04-01').outputs.vnetName.value]"
+    },
+    "sharedServicesVnetAddressPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Shared services VNet address prefix"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet'), '2025-04-01').outputs.vnetAddressPrefix.value]"
+    },
+    "privateEndpointSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the private endpoint subnet"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet'), '2025-04-01').outputs.privateEndpointSubnetId.value]"
+    },
+    "privateEndpointSubnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the private endpoint subnet"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-shared-services-vnet'), '2025-04-01').outputs.privateEndpointSubnetName.value]"
+    },
+    "dnsResolverId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the DNS resolver"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-dns-resolver'), '2025-04-01').outputs.resolverId.value]"
+    },
+    "dnsResolverInboundEndpointId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the DNS resolver inbound endpoint"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-dns-resolver'), '2025-04-01').outputs.inboundEndpointId.value]"
+    },
+    "dnsResolverInboundIp": {
+      "type": "string",
+      "metadata": {
+        "description": "DNS resolver inbound endpoint private IP address (use this as nameserver for P2S clients)"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-dns-resolver'), '2025-04-01').outputs.inboundEndpointIp.value]"
+    },
+    "acrDnsZoneId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the ACR private DNS zone"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-private-dns-zones'), '2025-04-01').outputs.acrDnsZoneId.value]"
+    },
+    "keyVaultDnsZoneId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Key Vault private DNS zone"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-private-dns-zones'), '2025-04-01').outputs.keyVaultDnsZoneId.value]"
+    },
+    "blobDnsZoneId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Blob Storage private DNS zone"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-private-dns-zones'), '2025-04-01').outputs.blobDnsZoneId.value]"
+    },
+    "fileDnsZoneId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the File Storage private DNS zone"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-private-dns-zones'), '2025-04-01').outputs.fileDnsZoneId.value]"
+    },
+    "sqlDnsZoneId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the SQL Database private DNS zone"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-private-dns-zones'), '2025-04-01').outputs.sqlDnsZoneId.value]"
     },
     "appliedTags": {
       "type": "object",
