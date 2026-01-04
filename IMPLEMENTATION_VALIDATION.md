@@ -1,5 +1,5 @@
 # Implementation Validation Report
-## Core Azure vWAN Infrastructure with Global Secure Access
+## Core Azure vWAN Infrastructure with Point-to-Site VPN
 
 **Feature**: 001-vwan-core  
 **Date**: 2025-12-31  
@@ -14,7 +14,7 @@ All 53 tasks from the implementation plan have been successfully completed, vali
 - ✅ **4 Bicep modules** (resource-group, vwan-hub, vpn-gateway, key-vault)
 - ✅ **1 main orchestration template** (subscription-level deployment)
 - ✅ **4 automation scripts** (deploy, validate, cleanup, secret-scan)
-- ✅ **5 documentation files** (README, architecture, Global Secure Access, troubleshooting, contributing)
+- ✅ **4 documentation files** (README, architecture, troubleshooting, contributing)
 - ✅ **3 parameter files** (default, example, Key Vault reference)
 
 **Critical Validation**: All Bicep templates compile without errors and pass Azure deployment validation.
@@ -83,7 +83,7 @@ All required documentation created and reviewed:
 |----------|-------|--------|
 | `README.md` | 199 | ✅ Complete |
 | `docs/core-infrastructure/README.md` | 359 | ✅ Complete |
-| `docs/core-infrastructure/global-secure-access.md` | 389 | ✅ Complete |
+
 | `docs/core-infrastructure/architecture-diagram.md` | 215 | ✅ Complete |
 | `docs/core-infrastructure/troubleshooting.md` | 390 | ✅ Complete |
 | `CONTRIBUTING.md` | 478 | ✅ Complete |
@@ -106,8 +106,8 @@ All required documentation created and reviewed:
 - BGP enabled for routing
 - Outputs hub ID for spoke connections
 
-### SC-003: VPN Gateway for Global Secure Access ✅ PASSED
-- **Site-to-site VPN Gateway** (not point-to-site) - critical for Global Secure Access
+### SC-003: VPN Gateway for Point-to-Site Access ✅ PASSED
+- **Point-to-Site VPN Gateway** - enables remote client access via Azure VPN Client
 - BGP enabled with configurable ASN (default: 65515)
 - Scale units configurable (default: 1)
 - Microsoft Entra integration-ready
@@ -134,7 +134,7 @@ All required documentation created and reviewed:
 ### SC-007: Documentation ✅ PASSED
 - Architecture diagrams (Mermaid) created
 - Deployment guide with examples
-- Global Secure Access integration guide
+
 - Troubleshooting guide
 - Contributing guide for spoke labs
 
@@ -209,7 +209,7 @@ scripts/
 ```
 docs/core-infrastructure/
 ├── README.md                           (359 lines)
-├── global-secure-access.md             (389 lines)
+
 ├── architecture-diagram.md             (215 lines)
 └── troubleshooting.md                  (390 lines)
 
@@ -265,13 +265,7 @@ docs/core-infrastructure/
    ./scripts/deploy-core.sh --parameter-file bicep/main.parameters.json
    ```
 
-2. **Configure Global Secure Access**:
-   - Follow [global-secure-access.md](docs/core-infrastructure/global-secure-access.md)
-   - Set up Microsoft Entra Private Access
-   - Configure remote network in Global Secure Access
-   - Test connectivity from client devices
-
-3. **Create first spoke lab**:
+2. **Create first spoke lab**:
    - Follow [CONTRIBUTING.md](CONTRIBUTING.md)
    - Use spoke lab pattern template
    - Connect to hub via Virtual Network Connection

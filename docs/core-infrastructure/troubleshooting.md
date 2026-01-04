@@ -225,11 +225,11 @@ az network vhub show \
 
 ---
 
-### Global Secure Access Integration Issues
+### VPN Tunnel Issues
 
 #### 8. VPN Tunnel Not Establishing
 
-**Symptom**: Global Secure Access shows "Connecting" or "Disconnected"
+**Symptom**: VPN connection shows as "Disconnected" or unable to establish tunnel
 
 **Cause**: BGP settings mismatch or firewall blocking IPSec/IKE
 
@@ -243,19 +243,19 @@ az network vpn-gateway show \
 ```
 
 **Solution**:
-1. **Verify BGP ASN matches** on both Azure and Global Secure Access sides
+1. **Verify BGP ASN matches** on both Azure and VPN endpoints
 2. **Check firewall rules** allow:
    - UDP 500 (IKE)
    - UDP 4500 (IPSec NAT-T)
    - ESP protocol (IP protocol 50)
 3. **Verify shared key** matches on both sides
-4. **Review connection logs** in Global Secure Access portal
+4. **Review connection logs** in Azure portal
 
 ---
 
 #### 9. BGP Routes Not Propagating
 
-**Symptom**: Effective routes don't show BGP-learned routes from Global Secure Access
+**Symptom**: Effective routes don't show BGP-learned routes from VPN endpoint
 
 **Diagnosis**:
 ```bash
@@ -277,12 +277,9 @@ az network vhub get-effective-routes \
 # 2. No firewall blocking BGP (TCP 179)
 # 3. VPN tunnel is up (prerequisite for BGP)
 ```
-
 ---
 
 ### Validation Script Issues
-
-#### 10. Validation Script Fails with "jq: command not found"
 
 **Symptom**:
 ```

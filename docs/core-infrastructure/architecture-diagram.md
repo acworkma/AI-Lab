@@ -98,7 +98,7 @@ graph TB
 
 1. **Network Isolation**: Each spoke VNet is isolated by default
 2. **Hub-Mediated Communication**: All inter-spoke traffic goes through hub
-3. **Global Secure Access Integration**: Zero-trust access enforced by Microsoft Entra
+3. **Zero-Trust Access**: Role-based access control with Microsoft Entra integration
 4. **Key Vault RBAC**: Centralized secrets with role-based access control
 
 ## Deployment Flow
@@ -114,7 +114,7 @@ graph LR
     F --> H[Deploy VPN Gateway<br/>15-20 min]
     H --> I[VPN Gateway Ready]
     G --> J[Key Vault Ready]
-    I --> K[Configure Global<br/>Secure Access]
+    I --> K[Configure VPN Server]
     J --> K
     K --> L[Deploy Spoke Labs]
     L --> M[Connect Spokes to Hub]
@@ -123,7 +123,7 @@ graph LR
     style A fill:#90EE90
     style N fill:#90EE90
     style H fill:#FFD700
-    style K fill:#87CEEB
+    style K fill:#FFA500
 ```
 
 **Timeline**:
@@ -136,12 +136,11 @@ graph LR
 
 ## Data Flow Scenarios
 
-### Scenario 1: User Accessing Azure VM via Private Access
+### Scenario 1: User Accessing Azure VM via VPN
 
 ```
 [User Device] 
-    → [Entra Global Secure Access Client]
-    → [Global Secure Access Cloud (SSE)]
+    → [VPN Client Application]
     → [Site-to-Site VPN Tunnel with BGP]
     → [Azure VPN Gateway (vpngw-ai-hub)]
     → [Virtual Hub (hub-ai-eastus2)]
@@ -195,7 +194,7 @@ graph LR
 
 **Notes**:
 - Spoke VNets incur peering charges (~$0.01/GB ingress)
-- Global Secure Access licensing separate (per-user Microsoft Entra)
+- VPN Gateway licensing included in Azure subscription
 - Data transfer charges apply for outbound traffic
 
 ---

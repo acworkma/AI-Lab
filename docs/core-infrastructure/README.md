@@ -501,9 +501,7 @@ az keyvault secret list --vault-name kv-ai-core-lab1
 
 ## Next Steps
 
-1. **Configure Global Secure Access**: Follow [global-secure-access.md](global-secure-access.md) for SSE integration
-
-2. **Deploy Spoke Labs**: Create spoke virtual networks and connect to hub:
+1. **Deploy Spoke Labs**: Create spoke virtual networks and connect to hub:
    ```bash
    # Example spoke connection (from spoke lab deployment)
    az network vhub connection create \
@@ -513,13 +511,13 @@ az keyvault secret list --vault-name kv-ai-core-lab1
      --remote-vnet /subscriptions/{sub}/resourceGroups/rg-ai-storage/providers/Microsoft.Network/virtualNetworks/vnet-storage
    ```
 
-3. **Implement Spoke Lab Pattern**: Each lab should:
+2. **Implement Spoke Lab Pattern**: Each lab should:
    - Create its own resource group (`rg-ai-{service}`)
    - Deploy spoke VNet with non-overlapping address space (10.x.0.0/16)
    - Connect to hub using VNet connection
    - Reference Key Vault for secrets
 
-4. **Set Up Monitoring**: Configure Log Analytics and Azure Monitor for hub infrastructure
+3. **Set Up Monitoring**: Configure Log Analytics and Azure Monitor for hub infrastructure
 
 ## Reference
 
