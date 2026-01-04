@@ -62,7 +62,7 @@ The foundational Virtual WAN hub that all other projects connect to. Includes:
 
 **Active Projects**:
 
-- **[002-private-acr](specs/002-private-acr/spec.md)** - Private Azure Container Registry  
+- **[Private Azure Container Registry](docs/registry/README.md)**  
   Deploy a private ACR with private endpoint integration for secure container image storage and management. Follows core infrastructure patterns with parameterized Bicep, RBAC, and VPN access via the hub network.
 
 ## 🚀 Getting Started
