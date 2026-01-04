@@ -1,0 +1,23 @@
+# DNS Configuration for Azure Private DNS Zones via DNS Private Resolver
+# Generated for WSL private endpoint access via Azure VPN
+# 
+# DNS Private Resolver (Feature 004): 10.1.0.68
+# - Deployed in rg-ai-core shared services VNet
+# - Resolves private DNS zones (ACR, Key Vault, Storage, etc.) to private IPs
+# - Falls back to public DNS for non-private domains
+# - Get latest IP: az deployment group show -n dns-resolver-deploy-* -g rg-ai-core --query 'properties.outputs.inboundEndpointIp.value'
+#
+# Primary resolver: Azure DNS Private Resolver in shared VNet (10.1.0.68)
+# - Knows private DNS zones linked to the VNet
+# - Resolves acraihubk2lydtz5uba3q.azurecr.io → 10.1.0.5 (private)
+# - Falls back to public DNS for google.com, microsoft.com, etc.
+nameserver 10.1.0.68
+
+# Fallback resolver for public queries when VPN disconnected
+nameserver 8.8.8.8
+
+# Azure internal search domain (auto-configured for your environment)
+search 0e77npxu1xoebo1c3hfggoea3a.bx.internal.cloudapp.net
+
+# Optional resolver tuning for faster failover
+# options timeout:2 attempts:2 rotate

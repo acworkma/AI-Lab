@@ -161,10 +161,10 @@ Developers can configure WSL and other P2S clients to use the resolver inbound e
 
 #### WSL Template Updates
 
-- [ ] T042 [P] Update specs/003-wsl-dns-config/templates/resolv.conf.template to use resolver IP.
-- [ ] T043 [P] Document resolver IP placeholder in template comments.
-- [ ] T044 [P] Update specs/003-wsl-dns-config/quickstart.md with resolver IP instead of 168.63.129.16.
-- [ ] T045 [P] Add instruction: "Get resolver IP from core deployment outputs (dnsResolverInboundIp)".
+- [X] T042 [P] Update specs/003-wsl-dns-config/templates/resolv.conf.template to use resolver IP.
+- [X] T043 [P] Document resolver IP placeholder in template comments.
+- [X] T044 [P] Update specs/003-wsl-dns-config/quickstart.md with resolver IP instead of 168.63.129.16.
+- [X] T045 [P] Add instruction: "Get resolver IP from core deployment outputs (dnsResolverInboundIp)".
 
 #### Configuration Validation
 
