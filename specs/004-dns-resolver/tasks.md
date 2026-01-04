@@ -35,9 +35,9 @@ Tasks are organized by **User Story** to enable independent implementation and t
 
 ### Story: Project Setup
 
-- [ ] T001 Create feature branch 004-dns-resolver from main and verify clean state
-- [ ] T002 Create specs/004-dns-resolver directory structure (research.md, data-model.md, contracts/, checklists/ done; add remaining)
-- [ ] T003 Create test validation scripts directory (scripts/test-dns-resolver.sh placeholder)
+- [X] T001 Create feature branch 004-dns-resolver from main and verify clean state
+- [X] T002 Create specs/004-dns-resolver directory structure (research.md, data-model.md, contracts/, checklists/ done; add remaining)
+- [X] T003 Create test validation scripts directory (scripts/test-dns-resolver.sh placeholder)
 
 **Story Goal**: Repository and branch structure ready for implementation  
 **Test**: All directories exist, branch is clean, no uncommitted changes
@@ -60,11 +60,11 @@ DevOps engineers can deploy an Azure DNS Private Resolver into the core shared s
 
 #### Bicep Module Review and Testing
 
-- [ ] T004 [P] Review dns-resolver.bicep module for correctness (syntax, param defaults, outputs).
-- [ ] T005 [P] Validate Bicep syntax using `az bicep build bicep/modules/dns-resolver.bicep`.
-- [ ] T006 [P] Review main.bicep integration of resolver module (dependency order, params passed).
-- [ ] T007 [P] Validate parameter schema (dnsResolverName, dnsInboundSubnetPrefix types and defaults).
-- [ ] T008 Validate parameter example file (main.parameters.example.json has resolver params).
+- [X] T004 [P] Review dns-resolver.bicep module for correctness (syntax, param defaults, outputs).
+- [X] T005 [P] Validate Bicep syntax using `az bicep build bicep/modules/dns-resolver.bicep`.
+- [X] T006 [P] Review main.bicep integration of resolver module (dependency order, params passed).
+- [X] T007 [P] Validate parameter schema (dnsResolverName, dnsInboundSubnetPrefix types and defaults).
+- [X] T008 Validate parameter example file (main.parameters.example.json has resolver params).
 
 #### Deployment Validation
 
