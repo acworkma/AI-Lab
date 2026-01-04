@@ -39,7 +39,7 @@ This guide explains how to configure and use the **Point-to-Site (P2S) VPN Gatew
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘         │
 │         │                  │                  │                 │
 │         │  Secure VPN Tunnel (OpenVPN/IkeV2) │                 │
-│         │         Azure AD Authentication     │                 │
+│         │       Entra ID Authentication       │                 │
 └─────────┼──────────────────┼──────────────────┼─────────────────┘
           │                  │                  │
           └──────────────────┴──────────────────┘
@@ -266,7 +266,7 @@ az network p2s-vpn-gateway update \
 
 ### Multiple Connection Configurations
 
-You can configure different settings for different user groups using VPN Server Configuration Policy Groups (advanced scenario - requires Azure AD group-based policies).
+You can configure different settings for different user groups using VPN Server Configuration Policy Groups (advanced scenario - requires Entra ID group-based policies).
 
 ## Next Steps
 

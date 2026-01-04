@@ -8,7 +8,7 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 - **Resource Group**: `rg-ai-core` - Container for all core infrastructure
 - **Virtual WAN**: `vwan-ai-hub` - Central networking hub (Standard SKU)
 - **Virtual Hub**: `hub-ai-eastus2` - Regional hub instance (10.0.0.0/16 address space)
-- **P2S VPN Gateway**: `vpngw-ai-hub` - Point-to-Site VPN with Azure AD authentication
+- **P2S VPN Gateway**: `vpngw-ai-hub` - Point-to-Site VPN with Entra ID authentication
 - **VPN Server Configuration**: `vpnconfig-ai-hub` - Authentication and protocol settings
 - **DNS Private Resolver**: `dnsr-ai-shared` - Private DNS resolution for P2S clients (inbound endpoint: `10.1.0.68`)
 - **Shared Services VNet**: `vnet-ai-shared` - Network for resolver and shared services (10.1.0.0/24)
@@ -66,7 +66,7 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Remote VPN Clients                           │
-│         (Azure AD Authentication via Azure VPN Client)          │
+│       (Entra ID Authentication via Azure VPN Client)            │
 └──────────────────────────┬──────────────────────────────────────┘
                            │ OpenVPN P2S Tunnel
                            │
