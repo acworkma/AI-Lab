@@ -21,7 +21,7 @@
 3. **Comprehensive Documentation**
    - `docs/core-infrastructure/dns-resolver-setup.md`: 950+ lines (architecture, deployment, troubleshooting)
    - Updated `README.md` and `troubleshooting.md` with resolver sections
-   - Integrated with feature 003 WSL configuration templates
+   - Includes WSL client configuration templates
 
 4. **Automated Validation**
    - `scripts/test-dns-resolver.sh`: 179 lines (5-level validation)

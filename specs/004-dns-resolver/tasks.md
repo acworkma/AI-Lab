@@ -161,9 +161,9 @@ Developers can configure WSL and other P2S clients to use the resolver inbound e
 
 #### WSL Template Updates
 
-- [X] T042 [P] Update specs/003-wsl-dns-config/templates/resolv.conf.template to use resolver IP.
+- [X] T042 [P] Update WSL resolv.conf template to use resolver IP.
 - [X] T043 [P] Document resolver IP placeholder in template comments.
-- [X] T044 [P] Update specs/003-wsl-dns-config/quickstart.md with resolver IP instead of 168.63.129.16.
+- [X] T044 [P] Update WSL quickstart with resolver IP instead of 168.63.129.16.
 - [X] T045 [P] Add instruction: "Get resolver IP from core deployment outputs (dnsResolverInboundIp)".
 
 #### Configuration Validation
@@ -189,9 +189,9 @@ Developers can configure WSL and other P2S clients to use the resolver inbound e
 
 #### Documentation Updates
 
-- [X] T061 Add note to specs/003-wsl-dns-config/quickstart.md: "Prerequisites: Core infrastructure deployed with DNS resolver (feature 004)".
-- [X] T062 [P] Update specs/003-wsl-dns-config/data-model.md to reference resolver IP (not hardcoded 168.63.129.16).
-- [ ] T063 [P] Update specs/003-wsl-dns-config/contracts/validation-contract.md to test resolver IP. (Not created yet - deferred to feature 003 implementation)
+- [X] T061 Add note to WSL quickstart: "Prerequisites: Core infrastructure deployed with DNS resolver (feature 004)".
+- [X] T062 [P] Update WSL DNS data model to reference resolver IP (not hardcoded 168.63.129.16).
+- [ ] T063 [P] Add WSL validation contract to test resolver IP. (Deferred until WSL validation run)
 
 **Deliverables**:
 - WSL templates updated to use resolver IP.

@@ -443,9 +443,6 @@ time nslookup acraihubk2lydtz5uba3q.azurecr.io 10.1.0.68
 ## Client Configuration
 
 ### WSL (Windows Subsystem for Linux)
-
-**See**: [specs/003-wsl-dns-config/quickstart.md](../../specs/003-wsl-dns-config/quickstart.md) for detailed WSL configuration steps.
-
 **Quick Setup**:
 
 1. **Connect to P2S VPN** (WSL must have VPN connectivity to reach resolver IP)
@@ -896,7 +893,6 @@ Any P2S client can use the resolver by setting DNS to `10.1.0.68`:
 
 - [Azure DNS Private Resolver Overview](https://learn.microsoft.com/azure/dns/dns-private-resolver-overview)
 - [Azure Private Endpoint DNS Configuration](https://learn.microsoft.com/azure/private-link/private-endpoint-dns)
-- [WSL DNS Configuration (Feature 003)](../../specs/003-wsl-dns-config/quickstart.md)
 - [Core Infrastructure Troubleshooting](./troubleshooting.md)
 - [Validation Script Source](../../scripts/test-dns-resolver.sh)
 

@@ -115,10 +115,10 @@ az network vnet subnet show -g rg-ai-core \
    - Test public DNS fallback: `nslookup google.com 10.1.0.68`
    - Test HTTPS connectivity to private endpoints
 
-2. **Phase 4: WSL Integration** (T042-T063)
-   - Update `/specs/003-wsl-dns-config/templates/resolv.conf.template` with IP `10.1.0.68`
-   - Update quickstart guide with resolver IP
-   - Test WSL DNS configuration persistence
+2. **Phase 4: Client Integration** (T042-T063)
+  - Configure WSL `/etc/resolv.conf` with resolver IP `10.1.0.68` (fallback to public DNS)
+  - Set `/etc/wsl.conf` to disable auto-generation for persistence
+  - Test DNS resolution and persistence across WSL restart and host reboot
 
 3. **Phase 5: Documentation** (T064-T092)
    - Create comprehensive setup guide

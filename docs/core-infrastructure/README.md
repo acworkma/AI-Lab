@@ -154,7 +154,7 @@ WSL Client (172.16.x.x) → DNS query for acr.azurecr.io → Resolver (10.1.0.68
 
 For detailed setup and configuration, see [dns-resolver-setup.md](dns-resolver-setup.md).
 
-**Client Configuration**: Configure P2S clients to use `10.1.0.68` as primary DNS server. See [WSL DNS Configuration Guide](../../specs/003-wsl-dns-config/quickstart.md) for WSL-specific setup.
+**Client Configuration**: Configure P2S clients to use `10.1.0.68` as primary DNS server.
 
 ## Deployment
 

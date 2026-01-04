@@ -168,11 +168,11 @@ Address: 172.253.62.100
 ### 🔍 What Needs Configuration
 1. **Client DNS Setup**: Clients (WSL, VMs) need `/etc/resolv.conf` updated with `nameserver 10.1.0.68`
 2. **WSL Persistence**: `/etc/wsl.conf` must set `generateResolvConf = false` to prevent overwriting
-3. **Feature 003 Integration**: Templates and scripts need resolver IP (10.1.0.68) instead of Azure DNS (168.63.129.16)
+3. **Client Templates/Scripts**: Ensure WSL templates/scripts use resolver IP (10.1.0.68) instead of Azure DNS (168.63.129.16)
 
 ### 📋 Next Steps
 1. **Phase 4: Client Configuration** (T042-T063)
-   - Update `/specs/003-wsl-dns-config/templates/resolv.conf.template` with IP 10.1.0.68
+   - Apply resolver IP (10.1.0.68) to WSL DNS configuration
    - Test WSL DNS persistence across restarts
    - Verify HTTPS connectivity to ACR works with resolver DNS
 

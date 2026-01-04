@@ -256,17 +256,15 @@ P2S Client (WSL)
 
 ## Integration Points
 
-### Feature 003 (WSL DNS Configuration)
-**Status**: Blocked, waiting for feature 004 resolver IP
+### Client DNS Configuration (WSL)
+**Status**: Pending client validation
 
 **Dependencies**:
-- Feature 003 Phase 2 validation (T011-T015) cannot complete until resolver deployed
-- Template file `/specs/003-wsl-dns-config/templates/resolv.conf.template` needs resolver IP
-- Quickstart guide `/specs/003-wsl-dns-config/quickstart.md` references resolver (placeholder)
+- Resolver IP retrieved from deployment outputs (10.1.0.68)
+- Client configuration and persistence tests (T042-T063)
 
 **Unblocking**:
-- Once T011 (extract resolver IP) completes, update feature 003 templates in Phase 4
-- Feature 003 can then resume Phase 2 validation with working private DNS
+- Proceed with Phase 4 WSL client validation using resolver IP
 
 ### Core Infrastructure (001-vwan-core)
 **Status**: ✅ Compatible
@@ -334,7 +332,7 @@ P2S Client (WSL)
 
 ### Strategic Considerations
 - **MVP Focus**: Phases 1-3 are critical; Phases 4-6 can be deferred if needed
-- **Feature 003 Dependency**: Cannot complete until resolver IP is known (T011)
+- **Client DNS Validation**: Phase 4 WSL testing depends on applying resolver IP (10.1.0.68) to clients
 - **Documentation Timing**: Phase 5 (docs) can proceed in parallel with Phase 3 (validation)
 
 ---

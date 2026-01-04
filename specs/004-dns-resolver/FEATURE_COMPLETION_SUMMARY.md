@@ -89,14 +89,7 @@ Successfully deployed and validated **Azure DNS Private Resolver** to enable Poi
    - Common issue solutions
 
 **Integration Documentation**:
-- Updated [`specs/003-wsl-dns-config/templates/resolv.conf.template`](../../specs/003-wsl-dns-config/templates/resolv.conf.template)
-  - Changed nameserver from `168.63.129.16` to `10.1.0.68`
-  - Added comprehensive comments explaining resolver usage
-
-- Updated [`specs/003-wsl-dns-config/quickstart.md`](../../specs/003-wsl-dns-config/quickstart.md)
-  - 11 occurrences of Azure DNS IP replaced with resolver IP
-  - Added prerequisite: Core infrastructure with DNS resolver
-  - Updated troubleshooting section
+- WSL client configuration guidance consolidated into core documentation
 
 ---
 
@@ -181,14 +174,13 @@ Successfully deployed and validated **Azure DNS Private Resolver** to enable Poi
 
 ## Integration Status
 
-### Feature 003: WSL DNS Configuration
+### Client DNS Configuration (WSL/P2S)
 
-**Integration**: ✅ **READY**
+**Integration**: ⏳ In progress
 
-- Template updated: `resolv.conf.template` now uses resolver IP (10.1.0.68)
-- Quickstart guide updated: All 11 occurrences of Azure DNS replaced with resolver IP
-- Prerequisites documented: Core infrastructure with DNS resolver required
-- Troubleshooting updated: Resolver-specific issues addressed
+- WSL template updates captured in Phase 4 tasks (T042-T045)
+- Validation and persistence testing pending (T046-T060)
+- Client guidance tracked in dns-resolver documentation
 
 **Next Steps**:
 1. Test WSL configuration with resolver IP (T046-T051)
@@ -299,7 +291,7 @@ Successfully deployed and validated **Azure DNS Private Resolver** to enable Poi
 1. **Modular Bicep Design**: Separate modules for VNet and resolver enabled clean separation of concerns
 2. **Comprehensive Documentation**: 950+ line guide covers all use cases and troubleshooting scenarios
 3. **Automated Validation**: Test script provides repeatable validation across environments
-4. **Integration with Existing Features**: Seamless update of feature 003 WSL templates
+4. **Integration with Existing Features**: WSL client templates aligned with resolver IP
 
 ### Challenges Encountered
 
@@ -398,7 +390,7 @@ Feature 004 (DNS Private Resolver) has successfully achieved its primary objecti
 ✅ **Deployed** - Azure DNS Private Resolver operational in shared services VNet  
 ✅ **Validated** - Private DNS resolution working (ACR → 10.1.0.5)  
 ✅ **Documented** - Comprehensive guides for deployment, validation, troubleshooting  
-✅ **Integrated** - Feature 003 WSL templates updated and ready  
+✅ **Integrated** - WSL client templates updated and ready  
 ⏳ **Testing** - End-to-end WSL validation pending (requires WSL environment)
 
 **MVP Status**: **COMPLETE** - Core functionality deployed and validated  
