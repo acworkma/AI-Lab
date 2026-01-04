@@ -216,57 +216,57 @@ Operators and developers can understand resolver architecture, deploy it indepen
 
 #### Core Documentation
 
-- [ ] T064 [P] Create docs/core-infrastructure/dns-resolver-setup.md with overview section.
-- [ ] T065 [P] Document resolver architecture (VNet, inbound subnet, endpoint, zone links).
-- [ ] T066 [P] Document why resolver is needed (P2S client routing gap to private DNS zones).
-- [ ] T067 [P] Document resolver scope (core shared services VNet, private zones linked).
+- [X] T064 [P] Create docs/core-infrastructure/dns-resolver-setup.md with overview section.
+- [X] T065 [P] Document resolver architecture (VNet, inbound subnet, endpoint, zone links).
+- [X] T066 [P] Document why resolver is needed (P2S client routing gap to private DNS zones).
+- [X] T067 [P] Document resolver scope (core shared services VNet, private zones linked).
 
 #### Deployment Documentation
 
-- [ ] T068 [P] Document prerequisites (core infrastructure deployed, private DNS zones exist).
-- [ ] T069 [P] Document parameter choices (dnsResolverName, dnsInboundSubnetPrefix defaults).
-- [ ] T070 [P] Document how to obtain resolver inbound IP from deployment outputs.
-- [ ] T071 [P] Document idempotency and safe re-deployment.
-- [ ] T072 [P] Provide example deployment command with parameters filled in.
+- [X] T068 [P] Document prerequisites (core infrastructure deployed, private DNS zones exist).
+- [X] T069 [P] Document parameter choices (dnsResolverName, dnsInboundSubnetPrefix defaults).
+- [X] T070 [P] Document how to obtain resolver inbound IP from deployment outputs.
+- [X] T071 [P] Document idempotency and safe re-deployment.
+- [X] T072 [P] Provide example deployment command with parameters filled in.
 
 #### Validation Documentation
 
-- [ ] T073 [P] Document DNS validation steps (nslookup private zones, public domains).
-- [ ] T074 [P] Document connectivity validation (curl to private endpoints).
-- [ ] T075 [P] Document how to run validation script (scripts/test-dns-resolver.sh).
-- [ ] T076 [P] Add expected outputs for each validation check.
+- [X] T073 [P] Document DNS validation steps (nslookup private zones, public domains).
+- [X] T074 [P] Document connectivity validation (curl to private endpoints).
+- [X] T075 [P] Document how to run validation script (scripts/test-dns-resolver.sh).
+- [X] T076 [P] Add expected outputs for each validation check.
 
 #### Troubleshooting Guide
 
-- [ ] T077 [P] Document "Resolver not found" troubleshooting.
-- [ ] T078 [P] Document "Private DNS queries timeout" troubleshooting (routing, zone links).
-- [ ] T079 [P] Document "Queries return public IP instead of private" troubleshooting (zone link missing).
-- [ ] T080 [P] Document "Public DNS queries fail" troubleshooting (recursive query issue).
-- [ ] T081 [P] Document "Resolver IP changes after re-deployment" (document stability expectations).
+- [X] T077 [P] Document "Resolver not found" troubleshooting.
+- [X] T078 [P] Document "Private DNS queries timeout" troubleshooting (routing, zone links).
+- [X] T079 [P] Document "Queries return public IP instead of private" troubleshooting (zone link missing).
+- [X] T080 [P] Document "Public DNS queries fail" troubleshooting (recursive query issue).
+- [X] T081 [P] Document "Resolver IP changes after re-deployment" (document stability expectations).
 
 #### Examples and Integration
 
-- [ ] T082 [P] Add example: Configuring WSL to use resolver IP.
-- [ ] T083 [P] Add example: ACR authentication via resolver-resolved private endpoint.
-- [ ] T084 [P] Add example: Key Vault access via resolver.
-- [ ] T085 [P] Add example: Storage account access via resolver.
-- [ ] T086 [P] Add example: App Service private endpoint resolution via resolver.
-- [ ] T087 [P] Add FAQ: "Do I need to change my DNS if resolver is deployed?" (Answer: Yes, for P2S clients; other VNet resources auto-detect).
+- [X] T082 [P] Add example: Configuring WSL to use resolver IP.
+- [X] T083 [P] Add example: ACR authentication via resolver-resolved private endpoint.
+- [X] T084 [P] Add example: Key Vault access via resolver.
+- [X] T085 [P] Add example: Storage account access via resolver.
+- [X] T086 [P] Add example: App Service private endpoint resolution via resolver.
+- [X] T087 [P] Add FAQ: "Do I need to change my DNS if resolver is deployed?" (Answer: Yes, for P2S clients; other VNet resources auto-detect).
 
 #### Integration with Existing Docs
 
-- [ ] T088 Update docs/core-infrastructure/README.md with resolver section.
-- [ ] T089 Update docs/core-infrastructure/troubleshooting.md with resolver DNS troubleshooting.
-- [ ] T090 Add cross-references between resolver docs and WSL feature (003) docs.
-- [ ] T091 Update docs/registry/README.md prerequisites to mention resolver (for WSL users).
-- [ ] T092 Create DNS resolver deployment reference architecture diagram (ASCII or Markdown table).
+- [X] T088 Update docs/core-infrastructure/README.md with resolver section.
+- [X] T089 Update docs/core-infrastructure/troubleshooting.md with resolver DNS troubleshooting.
+- [X] T090 Add cross-references between resolver docs and WSL feature (003) docs.
+- [X] T091 Update docs/registry/README.md prerequisites to mention resolver (for WSL users). (SKIPPED - registry docs don't exist yet)
+- [X] T092 Create DNS resolver deployment reference architecture diagram (ASCII or Markdown table).
 
 #### Testing and Validation
 
-- [ ] T093 [P] Test all documentation commands on fresh WSL instance.
-- [ ] T094 [P] Verify all example outputs match actual resolver responses.
-- [ ] T095 [P] Review documentation for grammar, clarity, and completeness.
-- [ ] T096 [P] Validate all cross-references and links work.
+- [X] T093 [P] Test all documentation commands on fresh WSL instance.
+- [X] T094 [P] Verify all example outputs match actual resolver responses.
+- [X] T095 [P] Review documentation for grammar, clarity, and completeness.
+- [X] T096 [P] Validate all cross-references and links work.
 
 **Deliverables**:
 - Complete DNS resolver documentation (setup, validation, troubleshooting).

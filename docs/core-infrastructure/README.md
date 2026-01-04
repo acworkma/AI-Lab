@@ -10,6 +10,8 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 - **Virtual Hub**: `hub-ai-eastus2` - Regional hub instance (10.0.0.0/16 address space)
 - **P2S VPN Gateway**: `vpngw-ai-hub` - Point-to-Site VPN with Azure AD authentication
 - **VPN Server Configuration**: `vpnconfig-ai-hub` - Authentication and protocol settings
+- **DNS Private Resolver**: `dnsr-ai-shared` - Private DNS resolution for P2S clients (inbound endpoint: `10.1.0.68`)
+- **Shared Services VNet**: `vnet-ai-shared` - Network for resolver and shared services (10.1.0.0/24)
 - **Key Vault**: `kv-ai-core-*` - Centralized secrets management
 
 **Deployment Region**: East US 2
@@ -86,6 +88,18 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 │                   │ Spoke Connections                       │    │
 │                   │                                          │    │
 │  ┌────────────────┴─────────────────────────────────────────┐   │
+│  │  Shared Services VNet (vnet-ai-shared)                   │   │
+│  │  Address Space: 10.1.0.0/24                              │   │
+│  │                                                            │   │
+│  │  ┌─────────────────────────────────────────────────┐     │   │
+│  │  │  DNS Private Resolver (dnsr-ai-shared)          │     │   │
+│  │  │  - Inbound Endpoint IP: 10.1.0.68               │     │   │
+│  │  │  - Queries Private DNS Zones                    │     │   │
+│  │  │  - Public DNS Fallback                          │     │   │
+│  │  └─────────────────────────────────────────────────┘     │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌────────────────┬─────────────────────────────────────────┐   │
 │  │  Key Vault (kv-ai-core-*)                                │   │
 │  │  - RBAC Authorization                                    │   │
 │  │  - Soft-Delete Enabled (90 days)                         │   │
@@ -104,6 +118,8 @@ This infrastructure establishes the foundational hub-spoke network topology for 
   │ storage  │      │    ml    │      │  other   │
   └──────────┘      └──────────┘      └──────────┘
    10.1.0.0/16       10.2.0.0/16       10.3.0.0/16
+   (Private          (Private          (Private
+    Endpoints)        Endpoints)        Endpoints)
 ```
 
 ### Point-to-Site VPN Access
@@ -117,6 +133,26 @@ The P2S VPN Gateway enables secure remote access to Azure lab resources:
 - **Flexible Access**: Connect from Windows, macOS, Linux, or mobile devices
 
 For VPN client setup instructions, see [vpn-client-setup.md](vpn-client-setup.md).
+
+### Private DNS Resolution
+
+The **DNS Private Resolver** provides seamless private endpoint resolution for P2S VPN clients:
+
+- **Inbound Endpoint**: `10.1.0.68` (deployed in shared services VNet)
+- **Purpose**: Allows P2S clients (like WSL) to resolve Azure service FQDNs to private endpoint IPs
+- **Benefits**: No manual `/etc/hosts` management, automatic resolution for ACR, Key Vault, Storage, etc.
+- **Public DNS Fallback**: Still resolves public domains (google.com, microsoft.com, etc.)
+
+**How It Works**:
+```
+WSL Client (172.16.x.x) → DNS query for acr.azurecr.io → Resolver (10.1.0.68)
+  → Private DNS Zone (privatelink.azurecr.io) → Returns private IP (10.1.0.5)
+  → WSL connects to private endpoint over VPN tunnel
+```
+
+For detailed setup and configuration, see [dns-resolver-setup.md](dns-resolver-setup.md).
+
+**Client Configuration**: Configure P2S clients to use `10.1.0.68` as primary DNS server. See [WSL DNS Configuration Guide](../../specs/003-wsl-dns-config/quickstart.md) for WSL-specific setup.
 
 ## Deployment
 
