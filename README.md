@@ -64,7 +64,8 @@ The foundational Virtual WAN hub that all other projects connect to. Includes:
 
 - **[Private Azure Container Registry](docs/registry/README.md)**  
   Deploy a private ACR with private endpoint integration for secure container image storage and management. Follows core infrastructure patterns with parameterized Bicep, RBAC, and VPN access via the hub network.
-
+- **[Private Storage Account with Customer Managed Key](docs/storage/README.md)**  
+  Deploy an Azure Storage Account with customer-managed encryption key stored in Key Vault, integrated with private endpoint for secure data storage. Includes comprehensive RBAC and permission documentation.
 ## 🚀 Getting Started
 
 ### Prerequisites
