@@ -22,6 +22,7 @@ tests/
 Bicep (latest stable version compatible with Azure CLI): Follow standard conventions
 
 ## Recent Changes
+- 005-storage-cmk: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 - 001-vwan-core: Added Bicep (latest stable version compatible with Azure CLI) + Azure CLI (az deployment), Azure Virtual WAN, Azure VPN Gateway, Azure Key Vault
 
