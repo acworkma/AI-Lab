@@ -58,10 +58,11 @@ description: "Task list for storage account with CMK feature"
 - [ ] T015 [US1] Add outputs (ids, endpoints, private IP, principalId) in `bicep/modules/storage.bicep`
 - [ ] T016 [US1] Wire orchestration to module with RG creation and core references in `bicep/storage/main.bicep`
 - [ ] T017 [P] [US1] Fill `bicep/storage/main.parameters.json` with sample values (stailab001, eastus, kv-ai-core, vnet-ai-sharedservices)
-- [ ] T018 [US1] Implement `scripts/deploy-storage.sh` (subscription deployment, parameters, tags)
+- [ ] T018 [US1] Implement `scripts/deploy-storage.sh` (subscription deployment, parameters, tags, timing capture for NFR-002)
 - [ ] T019 [US1] Implement `scripts/validate-storage.sh` (what-if, CMK, public access, private endpoint status)
-- [ ] T020 [P] [US1] Implement `scripts/validate-storage-dns.sh` (DNS zone link, A record existence)
+- [ ] T020 [P] [US1] Implement `scripts/validate-storage-dns.sh` (DNS zone link, A record existence, latency <100ms for NFR-003)
 - [ ] T021 [US1] Align `docs/storage/README.md` deployment steps with module params and scripts
+- [ ] T021a [P] [US1] Document edge cases in `docs/storage/README.md#troubleshooting` (key rotation, PE failures, RBAC, DNS, DR)
 
 ---
 
@@ -73,7 +74,7 @@ description: "Task list for storage account with CMK feature"
 - [ ] T022 [US2] Add `scripts/grant-storage-roles.sh` (assign Storage Blob Data Contributor to user)
 - [ ] T023 [P] [US2] Add `scripts/storage-ops.sh` (create container, upload, list, download with `--auth-mode login`)
 - [ ] T024 [US2] Update `specs/005-storage-cmk/quickstart.md` with ops script references and audit log query
-- [ ] T025 [US2] Update `docs/storage/README.md` with Log Analytics queries for storage ops
+- [ ] T025 [US2] Update `docs/storage/README.md` with Log Analytics queries for storage ops (including NFR-001 latency query)
 - [ ] T026 [US2] Add `scripts/validate-storage-ops.sh` to run ops and assert exit codes
 
 ---
@@ -96,6 +97,7 @@ description: "Task list for storage account with CMK feature"
 - [ ] T032 [P] Add `scripts/lint-bicep.sh` to run `bicep build` and `bicep lint` on storage modules
 - [ ] T033 [P] Add `.github/workflows/bicep.yml` to lint storage modules
 - [ ] T034 Review `specs/005-storage-cmk/plan.md` for alignment with implemented module
+- [ ] T035 [P] Add tags validation in `scripts/validate-storage.sh` (environment, purpose, owner per constitution)
 
 ---
 
@@ -109,6 +111,15 @@ description: "Task list for storage account with CMK feature"
 - **Within US1**: T009 (Key Vault key) can run in parallel with T017 (parameters) and T020 (DNS validation script)
 - **Within US2**: T023 (ops script) can run in parallel with T025 (docs updates)
 - **Cross-story**: US2 tasks must wait for US1 deployment; US3 tasks can start after module structure lands (post T016)
+
+## NFR Coverage
+
+| NFR | Task | Validation |
+|-----|------|------------|
+| NFR-001 (CMK latency <50ms) | T025 | Log Analytics query in docs |
+| NFR-002 (Deploy <5 min) | T018 | Timing capture in deploy script |
+| NFR-003 (DNS <100ms) | T020 | `dig +stats` latency check |
+| NFR-004 (RBAC docs) | T007, T021, T025 | Docs sections |
 
 ## Implementation Strategy
 

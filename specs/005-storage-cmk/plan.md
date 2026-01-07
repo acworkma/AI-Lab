@@ -1,98 +1,78 @@
-# Implementation Plan: [FEATURE]
+# Implementation Plan: Private Azure Storage with CMK
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
-
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
+**Branch**: `005-storage-cmk` | **Date**: 2026-01-07 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/005-storage-cmk/spec.md`
 
 ## Summary
 
-[Extract from feature spec: primary requirement + technical approach from research]
+Deploy an Azure Storage Account with customer-managed key (CMK) encryption using a key stored in the core Key Vault, integrated with a private endpoint on the existing vWAN infrastructure. Blob storage only for MVP; file shares deferred. Standard_LRS tier for lab cost-efficiency.
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
-
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Version**: Bicep (Azure Resource Manager)  
+**Primary Dependencies**: Azure CLI ≥2.50, Bicep CLI (bundled), Core infrastructure (rg-ai-core)  
+**Storage**: Azure Blob Storage (Standard_LRS, StorageV2)  
+**Testing**: Shell scripts (validate-storage.sh, what-if), Azure CLI assertions  
+**Target Platform**: Azure Cloud (East US region)  
+**Project Type**: Infrastructure module (Bicep + scripts)  
+**Performance Goals**: Deployment <5 min; DNS resolution <100ms; CMK latency <50ms overhead  
+**Constraints**: Private endpoint only (no public access); RBAC auth (no shared keys); VPN required  
+**Scale/Scope**: Single storage account per deployment; lab/dev workloads
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+✅ **Principle 1 (IaC)**: Bicep templates, no portal changes, parameterized modules  
+✅ **Principle 2 (Hub-Spoke)**: Connects to vWAN hub via private endpoint in shared services VNet  
+✅ **Principle 3 (Resource Org)**: Separate `rg-ai-storage` RG; naming convention followed  
+✅ **Principle 4 (Security)**: CMK in Key Vault; managed identity; no secrets in source  
+✅ **Principle 5 (Deployment)**: Azure CLI deploy; what-if validation; rollback via RG delete  
+✅ **Principle 6 (Modularity)**: Independent deployment; clean deletion; self-contained README  
+✅ **Principle 7 (Documentation)**: README with all required sections; inline Bicep comments
+
+## Project Structure
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/[###-feature]/
-├── plan.md              # This file (/speckit.plan command output)
-├── research.md          # Phase 0 output (/speckit.plan command)
-├── data-model.md        # Phase 1 output (/speckit.plan command)
-├── quickstart.md        # Phase 1 output (/speckit.plan command)
-├── contracts/           # Phase 1 output (/speckit.plan command)
-└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
+specs/005-storage-cmk/
+├── plan.md              # This file
+├── spec.md              # Feature specification
+├── research.md          # Phase 0: Technical decisions
+├── data-model.md        # Phase 1: Azure resource entities
+├── quickstart.md        # Phase 1: Deployment guide
+├── contracts/
+│   └── deployment-contract.md  # Bicep module interface
+└── tasks.md             # Phase 2: Implementation tasks
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+bicep/
+├── modules/
+│   └── storage.bicep              # Reusable storage module
+└── storage/
+    ├── main.bicep                 # Orchestration template
+    ├── main.parameters.json       # Deployment parameters
+    └── main.parameters.example.json
 
-tests/
-├── contract/
-├── integration/
-└── unit/
+scripts/
+├── deploy-storage.sh              # Deployment script
+├── validate-storage.sh            # Pre-deploy validation
+├── validate-storage-dns.sh        # DNS resolution check
+├── grant-storage-roles.sh         # RBAC assignment
+└── storage-ops.sh                 # Blob operations helper
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+docs/
+└── storage/
+    └── README.md                  # User-facing documentation
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: Infrastructure module pattern matching 002-private-acr. Bicep module in `bicep/modules/`, orchestration in `bicep/storage/`, scripts in `scripts/`, docs in `docs/storage/`.
 
 ## Complexity Tracking
 
@@ -138,9 +118,15 @@ directories captured above]
 
 ---
 
-### ⏸️ Phase 2: Tasks Breakdown (PENDING)
+### ✅ Phase 2: Tasks Breakdown (COMPLETED)
 
-**Next Command**: `/speckit.tasks` to generate `tasks.md`
+**Artifacts Generated**:
+- ✅ [tasks.md](./tasks.md) - 34 tasks across 6 phases
+
+**Task Summary**:
+- Setup: 4 tasks | Foundational: 3 tasks
+- US1 (P1 MVP): 14 tasks | US2 (P2): 5 tasks | US3 (P3): 5 tasks
+- Polish: 3 tasks
 
 ---
 
@@ -148,16 +134,16 @@ directories captured above]
 
 | Phase | Status | Completion Date | Artifacts | Notes |
 |-------|--------|----------------|-----------|-------|
-| **Phase 0** | ✅ COMPLETE | 2025-01-22 | research.md | 8 decisions, 0 unresolved |
-| **Phase 1** | ✅ COMPLETE | 2025-01-22 | data-model.md, contracts/, quickstart.md | Agent context updated |
-| **Phase 2** | ⏸️ PENDING | - | tasks.md | Run `/speckit.tasks` next |
+| **Phase 0** | ✅ COMPLETE | 2026-01-07 | research.md | 8 decisions, 0 unresolved |
+| **Phase 1** | ✅ COMPLETE | 2026-01-07 | data-model.md, contracts/, quickstart.md | Agent context updated |
+| **Phase 2** | ✅ COMPLETE | 2026-01-07 | tasks.md | 34 tasks, MVP = US1 |
 
-**Command Completion**: `/speckit.plan` execution finished. Implementation plan is ready.
+**Command Completion**: All planning phases complete. Ready for implementation.
 
 **Branch**: `005-storage-cmk`
 
 **Next Actions**:
-1. Review plan.md for accuracy
+1. Begin implementation with Phase 1 Setup tasks (T001-T004)
 2. Run `/speckit.tasks` to break down implementation tasks
 3. Begin Bicep module development following deployment contract
 

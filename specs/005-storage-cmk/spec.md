@@ -92,15 +92,15 @@ As an infrastructure engineer, I need the Storage Account module to follow the s
 
 ### Non-Functional Requirements
 
-- **NFR-001**: Storage Account encryption must not impact performance (CMK lookups should be cached by Azure)
-- **NFR-002**: Module deployment time must be < 5 minutes
+- **NFR-001**: Storage Account encryption MUST NOT add >50ms latency to blob operations (CMK lookups cached by Azure; validated via Log Analytics query)
+- **NFR-002**: Module deployment time must be < 5 minutes (validated via deploy script timing)
 - **NFR-003**: Private endpoint DNS resolution must complete within 100ms from VPN clients
 - **NFR-004**: Documentation must clearly specify RBAC permissions required for deployment and operations
 
 ### Security Requirements
 
 - **SR-001**: All encryption keys MUST be stored in the core Key Vault with proper access controls
-- **SR-002**: Managed identity used for CMK access MUST have minimal required permissions (Key Vault Crypto User role)
+- **SR-002**: Managed identity used for CMK access MUST have minimal required permissions (Key Vault Crypto Service Encryption User role)
 - **SR-003**: Public network access MUST be explicitly disabled and documented
 - **SR-004**: Shared access keys (connection strings) MUST NOT appear in deployment outputs
 - **SR-005**: All access to storage must be audited via Azure Monitor/Log Analytics
@@ -120,8 +120,8 @@ As an infrastructure engineer, I need the Storage Account module to follow the s
 
 ### Managed Identity
 - **Purpose**: Service principal for Storage Account to access encryption key
-- **Type**: User-assigned or system-assigned
-- **Role**: Key Vault Crypto User (minimal required for CMK)
+- **Type**: User-assigned managed identity
+- **Role**: Key Vault Crypto Service Encryption User (e147488a-f6f5-4113-8e2d-b22465e65bf6)
 
 ### Private Endpoint
 - **Name**: `pe-storage-blob`
