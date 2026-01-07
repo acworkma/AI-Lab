@@ -5,6 +5,13 @@
 **Status**: Draft  
 **Input**: User description: "Deploy a Customer Managed Key stored in KeyVault on an Azure Storage account with a private endpoint on the previously built Azure network."
 
+## Clarifications
+
+### Session 2026-01-07
+- Q: Storage Account tier preference → A: **Standard_LRS** (lab environment, cost-effective)
+- Q: Include file share endpoints in MVP → A: **Blob only** (MVP focus, file shares deferred)
+- Q: Resource group scope → A: **Separate `rg-ai-storage`** (dedicated RG, matches project pattern)
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Deploy Private Storage Account with CMK (Priority: P1)
@@ -74,14 +81,14 @@ As an infrastructure engineer, I need the Storage Account module to follow the s
 
 - **FR-001**: System MUST provide a reusable Bicep module at `bicep/modules/storage.bicep` for Azure Storage Account deployment
 - **FR-002**: Storage Account MUST be deployed to a dedicated resource group (e.g., `rg-ai-storage`) to maintain separation of concerns
-- **FR-003**: Storage Account MUST use StorageV2 SKU with appropriate tier (Standard for general use, Premium for performance-critical workloads)
+- **FR-003**: Storage Account MUST use StorageV2 SKU with Standard_LRS tier (cost-effective for lab environment)
 - **FR-004**: Storage Account MUST have public network access disabled to enforce private-only access
 - **FR-005**: Storage Account MUST use customer-managed key (CMK) encryption with key stored in the core Key Vault (`kv-ai-core-*`)
 - **FR-006**: Storage Account MUST use managed identity for accessing the encryption key (no shared keys)
 - **FR-007**: Storage Account MUST be accessible via private endpoint integrated with the shared services VNet (10.1.0.0/24)
 - **FR-008**: Storage Account MUST use RBAC authorization (shared access signatures disabled, if possible)
 - **FR-009**: Private endpoint MUST resolve to private IP via the existing `privatelink.blob.core.windows.net` DNS zone
-- **FR-010**: Module MUST handle both blob and file share private endpoints as options
+- **FR-010**: Module MUST support blob storage private endpoint; file share endpoints deferred to future iteration
 
 ### Non-Functional Requirements
 
