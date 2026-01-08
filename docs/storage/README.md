@@ -235,6 +235,18 @@ az ad sp show --id $IDENTITY --query displayName
 
 ## Usage
 
+### Set Storage Account Name
+
+Before running the commands below, set the storage account name variable:
+
+```bash
+# Set storage account name (replace with your actual name)
+STORAGE_NAME="stailab001"
+
+# Or retrieve from the deployment output
+STORAGE_NAME=$(az storage account list --resource-group rg-ai-storage --query "[0].name" -o tsv)
+```
+
 ### Create a Blob Container
 
 ```bash
