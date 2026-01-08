@@ -291,7 +291,10 @@ Address: 10.1.4.5  # ← Private IP (10.1.x.x range)
 ### 4.3 Test Blob Upload (Azure CLI)
 
 ```bash
-# Assign yourself "Storage Blob Data Contributor" role
+# Assign yourself "Storage Blob Data Contributor" role (one-time setup)
+./scripts/grant-storage-roles.sh --user $(az account show --query user.name -o tsv)
+
+# Or manually:
 STORAGE_ID=$(az storage account show -n stailab001 -g rg-ai-storage --query id -o tsv)
 az role assignment create \
   --assignee $(az account show --query user.name -o tsv) \
@@ -299,6 +302,9 @@ az role assignment create \
   --scope $STORAGE_ID
 
 # Create a test container
+./scripts/storage-ops.sh create-container --container test-container
+
+# Or manually:
 az storage container create \
   --account-name stailab001 \
   --name test-container \
@@ -306,6 +312,9 @@ az storage container create \
 
 # Upload a test file
 echo "Hello from private endpoint!" > test.txt
+./scripts/storage-ops.sh upload --container test-container --file test.txt
+
+# Or manually:
 az storage blob upload \
   --account-name stailab001 \
   --container-name test-container \
@@ -314,11 +323,20 @@ az storage blob upload \
   --auth-mode login
 
 # Verify upload
+./scripts/storage-ops.sh list --container test-container
+
+# Or manually:
 az storage blob list \
   --account-name stailab001 \
   --container-name test-container \
   --auth-mode login \
   --query "[].name" -o table
+```
+
+**Run automated validation**:
+```bash
+# Complete end-to-end storage operations test
+./scripts/validate-storage-ops.sh
 ```
 
 Expected output:
