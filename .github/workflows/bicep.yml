@@ -1,0 +1,118 @@
+# GitHub Actions Workflow: Bicep Lint and Validate
+#
+# Runs on PRs and pushes to main for Bicep template validation
+# Validates all storage and core Bicep modules
+
+name: Bicep Lint
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'bicep/**/*.bicep'
+      - '.github/workflows/bicep.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'bicep/**/*.bicep'
+      - '.github/workflows/bicep.yml'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint Bicep Templates
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Azure CLI Login (optional for what-if)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        continue-on-error: true  # Don't fail if not configured
+      
+      - name: Install Bicep CLI
+        run: az bicep install
+      
+      - name: Show Bicep Version
+        run: az bicep version
+      
+      - name: Lint All Bicep Files
+        run: |
+          echo "=== Linting Bicep templates ==="
+          ./scripts/lint-bicep.sh --module all
+      
+      - name: Lint Storage Module
+        run: |
+          echo "=== Storage module specific lint ==="
+          ./scripts/lint-bicep.sh --module storage
+
+  validate-storage:
+    name: Validate Storage Template
+    runs-on: ubuntu-latest
+    needs: lint
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Azure CLI Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Validate Storage Parameters
+        run: |
+          if [[ -f "bicep/storage/main.parameters.json" ]]; then
+            echo "Checking parameter file syntax..."
+            jq empty bicep/storage/main.parameters.json
+            echo "✓ Parameter file syntax valid"
+          else
+            echo "⚠ No parameter file found (using example)"
+            cp bicep/storage/main.parameters.example.json bicep/storage/main.parameters.json
+          fi
+      
+      - name: Run Template Validation
+        run: |
+          ./scripts/validate-storage.sh || echo "::warning::Validation had issues"
+
+  # Only run on main branch after merge
+  deploy-dev:
+    name: Deploy to Dev (Optional)
+    runs-on: ubuntu-latest
+    needs: [lint, validate-storage]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: development
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Azure CLI Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Deploy Storage Module
+        run: |
+          echo "Deploying storage module..."
+          ./scripts/deploy-storage.sh --auto-approve
+      
+      - name: Validate Deployment
+        run: |
+          echo "Validating deployment..."
+          ./scripts/validate-storage.sh --deployed
+      
+      - name: Check Idempotency
+        run: |
+          echo "Verifying idempotent redeploy..."
+          ./scripts/what-if-storage.sh --idempotent

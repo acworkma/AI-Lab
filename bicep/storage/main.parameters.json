@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2"
+    },
+    "environment": {
+      "value": "dev"
+    },
+    "owner": {
+      "value": "ai-platform-team"
+    },
+    "storageAccountName": {
+      "value": "stailab001"
+    },
+    "resourceGroupName": {
+      "value": "rg-ai-storage"
+    },
+    "coreResourceGroupName": {
+      "value": "rg-ai-core"
+    },
+    "keyVaultName": {
+      "value": "kv-ai-core-lab1"
+    },
+    "vnetName": {
+      "value": "vnet-ai-shared"
+    },
+    "privateEndpointSubnetName": {
+      "value": "PrivateEndpointSubnet"
+    },
+    "privateDnsZoneName": {
+      "value": "privatelink.blob.core.windows.net"
+    },
+    "skuName": {
+      "value": "Standard_LRS"
+    },
+    "logAnalyticsWorkspaceId": {
+      "value": ""
+    },
+    "enableVersioning": {
+      "value": false
+    },
+    "deployedBy": {
+      "value": "manual"
+    },
+    "customTags": {
+      "value": {
+        "feature": "005-storage-cmk",
+        "costCenter": "ai-research"
+      }
+    }
+  }
+}
