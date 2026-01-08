@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "location": {
-      "value": "eastus"
+      "value": "eastus2"
     },
     "environment": {
       "value": "dev"
@@ -21,13 +21,13 @@
       "value": "rg-ai-core"
     },
     "keyVaultName": {
-      "value": "kv-ai-core"
+      "value": "kv-ai-core-lab1"
     },
     "vnetName": {
-      "value": "vnet-ai-sharedservices"
+      "value": "vnet-ai-shared"
     },
     "privateEndpointSubnetName": {
-      "value": "snet-private-endpoints"
+      "value": "PrivateEndpointSubnet"
     },
     "privateDnsZoneName": {
       "value": "privatelink.blob.core.windows.net"
@@ -42,7 +42,7 @@
       "value": false
     },
     "deployedBy": {
-      "value": "azure-cli"
+      "value": "manual"
     },
     "customTags": {
       "value": {
