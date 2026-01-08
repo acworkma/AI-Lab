@@ -265,6 +265,61 @@ show_outputs() {
     fi
 }
 
+grant_deployer_access() {
+    log_info "Granting deployer data access..."
+    
+    local STORAGE_RG
+    STORAGE_RG=$(jq -r '.parameters.resourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
+    
+    local STORAGE_NAME
+    STORAGE_NAME=$(jq -r '.parameters.storageAccountName.value' "$PARAMETER_FILE")
+    
+    # Get current user
+    local CURRENT_USER
+    CURRENT_USER=$(az account show --query user.name -o tsv 2>/dev/null || echo "")
+    
+    if [[ -z "$CURRENT_USER" ]]; then
+        log_warning "Could not determine current user - skipping data access grant"
+        return
+    fi
+    
+    # Get storage account resource ID
+    local STORAGE_ID
+    STORAGE_ID=$(az storage account show \
+        --name "$STORAGE_NAME" \
+        --resource-group "$STORAGE_RG" \
+        --query id -o tsv 2>/dev/null || echo "")
+    
+    if [[ -z "$STORAGE_ID" ]]; then
+        log_warning "Could not get storage account ID - skipping data access grant"
+        return
+    fi
+    
+    # Check if role already assigned
+    local EXISTING
+    EXISTING=$(az role assignment list \
+        --assignee "$CURRENT_USER" \
+        --role "Storage Blob Data Contributor" \
+        --scope "$STORAGE_ID" \
+        --query "[].id" -o tsv 2>/dev/null || echo "")
+    
+    if [[ -n "$EXISTING" ]]; then
+        log_success "Deployer already has Storage Blob Data Contributor role"
+        return
+    fi
+    
+    # Assign role
+    if az role assignment create \
+        --assignee "$CURRENT_USER" \
+        --role "Storage Blob Data Contributor" \
+        --scope "$STORAGE_ID" \
+        --output none 2>/dev/null; then
+        log_success "Granted Storage Blob Data Contributor to: $CURRENT_USER"
+    else
+        log_warning "Could not grant data access - run: ./scripts/grant-storage-roles.sh --user $CURRENT_USER"
+    fi
+}
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -309,6 +364,7 @@ fi
 
 deploy
 show_outputs
+grant_deployer_access
 
 echo ""
 log_success "Storage deployment complete!"
