@@ -29,13 +29,13 @@ param sku string = 'Standardv2'
 param skuCapacity int = 1
 
 @description('Name of the shared services VNet for integration')
-param sharedServicesVnetName string = 'vnet-ai-shared-services'
+param sharedServicesVnetName string = 'vnet-ai-shared'
 
 @description('Resource group containing the shared services VNet')
 param sharedServicesVnetResourceGroup string = 'rg-ai-core'
 
 @description('CIDR prefix for APIM integration subnet')
-param apimSubnetPrefix string = '10.1.0.64/26'
+param apimSubnetPrefix string = '10.1.0.96/27'
 
 @description('VPN client address pool for NSG rules')
 param vpnClientAddressPool string = '172.16.0.0/24'

@@ -27,7 +27,7 @@ param vpnClientAddressPool string = '172.16.0.0/24'
 param enableApimSubnet bool = false
 
 @description('APIM integration subnet address prefix (minimum /27, recommended /26)')
-param apimSubnetPrefix string = '10.1.0.64/26'
+param apimSubnetPrefix string = '10.1.0.96/27'
 
 @description('Tags to apply to resources')
 param tags object = {}

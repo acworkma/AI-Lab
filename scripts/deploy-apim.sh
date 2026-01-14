@@ -153,7 +153,7 @@ check_core_infrastructure() {
     log_success "Core resource group (rg-ai-core) exists"
 
     # Check if shared services VNet exists
-    local vnet_name=$(jq -r '.parameters.sharedServicesVnetName.value // "vnet-ai-shared-services"' "$PARAMETER_FILE")
+    local vnet_name=$(jq -r '.parameters.sharedServicesVnetName.value // "vnet-ai-shared"' "$PARAMETER_FILE")
     local vnet_rg=$(jq -r '.parameters.sharedServicesVnetResourceGroup.value // "rg-ai-core"' "$PARAMETER_FILE")
     
     if ! az network vnet show --name "$vnet_name" --resource-group "$vnet_rg" &> /dev/null; then

@@ -15,7 +15,7 @@ param location string
 param vpnClientAddressPool string = '172.16.0.0/24'
 
 @description('APIM subnet address prefix')
-param apimSubnetPrefix string = '10.1.0.64/26'
+param apimSubnetPrefix string = '10.1.0.96/27'
 
 @description('Tags to apply to resources')
 param tags object = {}

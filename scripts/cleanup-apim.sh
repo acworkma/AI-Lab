@@ -12,7 +12,7 @@ set -euo pipefail
 # Default values
 RESOURCE_GROUP="rg-ai-apim"
 CORE_RG="rg-ai-core"
-SHARED_VNET="vnet-ai-shared-services"
+SHARED_VNET="vnet-ai-shared"
 APIM_SUBNET="ApimIntegrationSubnet"
 APIM_NSG="nsg-apim-integration"
 INCLUDE_SUBNET=false

@@ -30,7 +30,7 @@
 
 **Relationships**:
 - Belongs to: `rg-ai-apim`
-- VNet Integration: `ApimIntegrationSubnet` in `vnet-ai-shared-services`
+- VNet Integration: `ApimIntegrationSubnet` in `vnet-ai-shared`
 - DNS Resolution: Via Azure DNS + private DNS zones in `rg-ai-core`
 
 **Outputs**:
@@ -46,13 +46,13 @@
 | Attribute | Value |
 |-----------|-------|
 | **Name** | `ApimIntegrationSubnet` |
-| **VNet** | `vnet-ai-shared-services` |
-| **Address Prefix** | `10.1.0.64/26` |
+| **VNet** | `vnet-ai-shared` |
+| **Address Prefix** | `10.1.0.96/27` |
 | **Delegation** | `Microsoft.Web/serverFarms` |
 | **NSG** | `nsg-apim-integration` |
 
 **Relationships**:
-- Parent: `vnet-ai-shared-services` in `rg-ai-core`
+- Parent: `vnet-ai-shared` in `rg-ai-core`
 - Associated NSG: `nsg-apim-integration`
 - Hub Connectivity: Via existing hub connection of shared-services-vnet
 
@@ -84,9 +84,9 @@
 
 ```
 rg-ai-core (existing)
-├── vnet-ai-shared-services (existing)
+├── vnet-ai-shared (existing)
 │   ├── PrivateEndpointSubnet (existing, 10.1.0.0/26)
-│   └── ApimIntegrationSubnet (NEW, 10.1.0.64/26) ──┐
+│   └── ApimIntegrationSubnet (NEW, 10.1.0.96/27) ──┐
 │                                                    │
 rg-ai-apim (NEW)                                     │
 ├── nsg-apim-integration ────────────────────────────┤

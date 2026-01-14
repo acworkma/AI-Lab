@@ -51,10 +51,10 @@
 **Findings**:
 - Current shared-services-vnet has address space `10.1.0.0/24`
 - Current PrivateEndpointSubnet uses `10.1.0.0/26` (64 addresses)
-- Remaining space: `10.1.0.64/26`, `10.1.0.128/25`
+- Remaining space: `10.1.0.96/27`, `10.1.0.128/25`
 - APIM needs dedicated subnet with delegation (incompatible with private endpoints in same subnet)
 
-**Decision**: Add new subnet to existing shared-services-vnet at `10.1.0.64/26` (64 addresses)
+**Decision**: Add new subnet to existing shared-services-vnet at `10.1.0.96/27` (32 addresses)
 
 **Rationale**: 
 - Keeps APIM within the hub-connected VNet for routing to private endpoints
@@ -153,7 +153,7 @@ resource apiManagementService 'Microsoft.ApiManagement/service@2023-05-01-previe
 | Topic | Decision |
 |-------|----------|
 | Subnet location | New subnet in shared-services-vnet |
-| Subnet size | /26 (64 addresses) at `10.1.0.64/26` |
+| Subnet size | /27 (32 addresses) at `10.1.0.96/27` |
 | Subnet delegation | `Microsoft.Web/serverFarms` |
 | NSG | Dedicated NSG with Storage + KeyVault outbound rules |
 | API version | `2023-09-01-preview` or later |

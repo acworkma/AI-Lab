@@ -96,7 +96,7 @@ As a platform engineer, I want to publish an internal backend API through APIM s
 
 - **FR-001**: System MUST deploy Azure API Management in the Standard v2 pricing tier
 - **FR-002**: System MUST deploy APIM to a dedicated resource group `rg-ai-apim`
-- **FR-003**: System MUST configure VNet integration with a dedicated /26 subnet (`10.1.0.64/26`) in the shared services VNet
+- **FR-003**: System MUST configure VNet integration with a dedicated /27 subnet (`10.1.0.96/27`) in the shared services VNet
 - **FR-004**: The VNet integration subnet MUST be delegated to `Microsoft.Web/serverFarms`
 - **FR-005**: System MUST configure NSG on the integration subnet allowing outbound HTTPS to Storage and AzureKeyVault service tags
 - **FR-006**: System MUST enable the developer portal for API documentation and testing

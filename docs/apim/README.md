@@ -118,9 +118,9 @@ az apim portalsetting update \
 | `publisherName` | `AI-Lab` | Publisher organization name |
 | `sku` | `Standardv2` | APIM pricing tier |
 | `skuCapacity` | `1` | Number of scale units |
-| `sharedServicesVnetName` | `vnet-ai-shared-services` | VNet for integration |
+| `sharedServicesVnetName` | `vnet-ai-shared` | VNet for integration |
 | `sharedServicesVnetResourceGroup` | `rg-ai-core` | VNet resource group |
-| `apimSubnetPrefix` | `10.1.0.64/26` | APIM subnet CIDR |
+| `apimSubnetPrefix` | `10.1.0.96/27` | APIM subnet CIDR |
 | `vpnClientAddressPool` | `172.16.0.0/24` | VPN client CIDR for NSG |
 | `enableVnetIntegration` | `true` | Enable VNet integration |
 

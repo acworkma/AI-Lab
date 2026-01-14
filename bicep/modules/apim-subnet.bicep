@@ -12,7 +12,7 @@ param subnetName string = 'ApimIntegrationSubnet'
 param vnetName string
 
 @description('Subnet address prefix (minimum /27, recommended /26)')
-param subnetPrefix string = '10.1.0.64/26'
+param subnetPrefix string = '10.1.0.96/27'
 
 @description('Resource ID of the NSG to associate with this subnet')
 param nsgId string

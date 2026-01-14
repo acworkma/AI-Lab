@@ -73,7 +73,7 @@
     "sharedServicesVnetName": {
       "type": "string",
       "description": "Name of the shared services VNet for integration",
-      "default": "vnet-ai-shared-services"
+      "default": "vnet-ai-shared"
     },
     "sharedServicesVnetResourceGroup": {
       "type": "string",
@@ -83,7 +83,7 @@
     "apimSubnetPrefix": {
       "type": "string",
       "description": "CIDR prefix for APIM integration subnet",
-      "default": "10.1.0.64/26"
+      "default": "10.1.0.96/27"
     },
     "vpnClientAddressPool": {
       "type": "string",
@@ -163,7 +163,7 @@
    ```bash
    az network vnet subnet delete \
      --resource-group rg-ai-core \
-     --vnet-name vnet-ai-shared-services \
+     --vnet-name vnet-ai-shared \
      --name ApimIntegrationSubnet
    ```
 

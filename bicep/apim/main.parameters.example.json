@@ -21,13 +21,13 @@
       "value": 1
     },
     "sharedServicesVnetName": {
-      "value": "vnet-ai-shared-services"
+      "value": "vnet-ai-shared"
     },
     "sharedServicesVnetResourceGroup": {
       "value": "rg-ai-core"
     },
     "apimSubnetPrefix": {
-      "value": "10.1.0.64/26"
+      "value": "10.1.0.96/27"
     },
     "vpnClientAddressPool": {
       "value": "172.16.0.0/24"

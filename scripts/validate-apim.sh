@@ -13,7 +13,7 @@ set -euo pipefail
 RESOURCE_GROUP="${RESOURCE_GROUP:-rg-ai-apim}"
 APIM_NAME="${APIM_NAME:-apim-ai-lab}"
 CORE_RG="${CORE_RG:-rg-ai-core}"
-SHARED_VNET="${SHARED_VNET:-vnet-ai-shared-services}"
+SHARED_VNET="${SHARED_VNET:-vnet-ai-shared}"
 
 # Colors for output
 RED='\033[0;31m'

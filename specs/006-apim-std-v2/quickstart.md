@@ -114,7 +114,7 @@ Ensure the APIM subnet is properly delegated:
 ```bash
 az network vnet subnet update \
   --resource-group rg-ai-core \
-  --vnet-name vnet-ai-shared-services \
+  --vnet-name vnet-ai-shared \
   --name ApimIntegrationSubnet \
   --delegations Microsoft.Web/serverFarms
 ```
