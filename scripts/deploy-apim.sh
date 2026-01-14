@@ -26,7 +26,7 @@ DEPLOYMENT_NAME="deploy-apim-$(date +%Y%m%d-%H%M%S)"
 SKIP_WHATIF=false
 AUTO_APPROVE=false
 WHATIF_ONLY=false
-LOCATION="australiaeast"
+LOCATION="eastus2"
 
 # Colors for output
 RED='\033[0;31m'
