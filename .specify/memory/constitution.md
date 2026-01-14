@@ -3,6 +3,28 @@
 ## Purpose
 This constitution defines the governing principles for building and managing Azure infrastructure in the AI-Lab repository. All infrastructure is designed as modular, independently deployable labs centered around a shared vWAN hub.
 
+## Project Types
+
+AI-Lab distinguishes between two types of projects:
+
+### Infrastructure Projects
+Deploy foundational capabilities that other projects consume. Examples include container registries, networking extensions, and shared services.
+
+- **Purpose**: Provide reusable infrastructure capabilities
+- **Resource Group**: Dedicated `rg-ai-[service]` (e.g., `rg-ai-registry`)
+- **Consumers**: Other Infrastructure Projects and Solution Projects
+- **Examples**: Private ACR, future shared databases, messaging services
+
+### Solution Projects
+Consume deployed infrastructure to accomplish a specific use case. Examples include secure storage configurations, ML workloads, and application deployments.
+
+- **Purpose**: Implement specific business or technical solutions
+- **Resource Group**: Dedicated `rg-ai-[service]` (e.g., `rg-ai-storage`)
+- **Dependencies**: Core infrastructure + relevant Infrastructure Projects
+- **Examples**: Storage with CMK, future ML labs, application hosting
+
+---
+
 ## Core Principles
 
 ### 1. Infrastructure as Code (IaC)
@@ -49,6 +71,7 @@ This constitution defines the governing principles for building and managing Azu
 - **Clean Deletion**: Labs can be deleted without impacting other services
 - **Minimal Dependencies**: Reduce cross-lab dependencies; shared resources live in `rg-ai-core`
 - **Self-Contained**: Each lab includes its own README with deployment instructions
+- **Project Type Awareness**: Infrastructure Projects provide capabilities consumed by Solution Projects; document these relationships in each project's README
 
 ### 7. Documentation Standards
 - **README Template**: Each lab MUST include a README.md with the following sections:
@@ -72,10 +95,12 @@ This constitution defines the governing principles for building and managing Azu
 - Breaking changes require review of dependent labs
 
 ### New Lab Additions
+- **Declare Project Type**: Specify whether new lab is an Infrastructure Project or Solution Project
 - Verify compatibility with vWAN hub configuration
 - Follow naming and tagging conventions
 - Include connectivity validation tests
 - Document deployment and cleanup procedures
+- Document dependencies on core and other Infrastructure Projects
 
 ### Continuous Improvement
 - Regular review of optimization opportunities

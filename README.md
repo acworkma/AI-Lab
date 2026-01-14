@@ -47,6 +47,7 @@ The foundational Virtual WAN hub that all other projects connect to. Includes:
 - Virtual WAN hub with Point-to-Site VPN
 - Microsoft Entra ID authentication for remote access
 - Centralized Azure Key Vault for secrets management
+- Private DNS Resolver for cross-network name resolution
 - Network routing for spoke connectivity
 
 **[📖 Full Documentation →](docs/core-infrastructure/README.md)**
@@ -58,14 +59,24 @@ The foundational Virtual WAN hub that all other projects connect to. Includes:
 
 ---
 
-### � Projects
+### 🔧 Infrastructure Projects
 
-**Active Projects**:
+Infrastructure projects deploy foundational capabilities that other projects consume. Each deploys to its own dedicated resource group.
 
 - **[Private Azure Container Registry](docs/registry/README.md)**  
   Deploy a private ACR with private endpoint integration for secure container image storage and management. Follows core infrastructure patterns with parameterized Bicep, RBAC, and VPN access via the hub network.
+
+---
+
+### 🧩 Solution Projects
+
+Solution projects consume deployed infrastructure to accomplish specific use cases. Each deploys to its own dedicated resource group.
+
 - **[Private Storage Account with Customer Managed Key](docs/storage/README.md)**  
   Deploy an Azure Storage Account with customer-managed encryption key stored in Key Vault, integrated with private endpoint for secure data storage. Includes comprehensive RBAC and permission documentation.
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
