@@ -9,7 +9,7 @@ targetScope = 'subscription'
 param apimName string = 'apim-ai-lab'
 
 @description('Azure region for deployment')
-param location string = 'australiaeast'
+param location string = 'eastus2'
 
 @description('Email address of the API publisher (required)')
 param publisherEmail string

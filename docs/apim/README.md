@@ -113,7 +113,7 @@ az apim portalsetting update \
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `apimName` | `apim-ai-lab` | APIM instance name (globally unique) |
-| `location` | `australiaeast` | Azure region |
+| `location` | `eastus2` | Azure region |
 | `publisherEmail` | *required* | Publisher email address |
 | `publisherName` | `AI-Lab` | Publisher organization name |
 | `sku` | `Standardv2` | APIM pricing tier |

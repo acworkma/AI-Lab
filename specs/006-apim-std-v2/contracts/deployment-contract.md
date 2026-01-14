@@ -45,7 +45,7 @@
     "location": {
       "type": "string",
       "description": "Azure region for deployment",
-      "default": "australiaeast"
+      "default": "eastus2"
     },
     "publisherEmail": {
       "type": "string",

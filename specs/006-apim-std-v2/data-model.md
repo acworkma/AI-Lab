@@ -11,7 +11,7 @@
 | Attribute | Value |
 |-----------|-------|
 | **Name** | `rg-ai-apim` |
-| **Location** | `australiaeast` |
+| **Location** | `eastus2` |
 | **Purpose** | Container for all APIM-related resources |
 | **Tags** | environment, purpose, owner |
 
@@ -24,7 +24,7 @@
 | **Name** | `apim-ai-lab` |
 | **SKU** | `Standardv2` |
 | **Capacity** | `1` |
-| **Location** | `australiaeast` |
+| **Location** | `eastus2` |
 | **Identity** | System-assigned managed identity |
 | **VNet Type** | `None` (integration configured separately) |
 
@@ -63,7 +63,7 @@
 | Attribute | Value |
 |-----------|-------|
 | **Name** | `nsg-apim-integration` |
-| **Location** | `australiaeast` |
+| **Location** | `eastus2` |
 | **Purpose** | Control traffic for APIM VNet integration subnet |
 
 **Rules**:
@@ -120,4 +120,4 @@ Running (VNet Integration Active)
 4. **Microsoft.Web provider**: Must be registered in subscription
 5. **Unique name**: APIM name must be globally unique
 6. **Publisher email**: Must be valid email format
-7. **VNet location**: Must match APIM location (australiaeast)
+7. **VNet location**: Must match APIM location (eastus2)

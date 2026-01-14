@@ -13,7 +13,7 @@ Deploy an Azure API Management Standard v2 instance as a centralized API gateway
 **Primary Dependencies**: Azure CLI 2.50.0+, jq
 **Storage**: N/A (stateless gateway)
 **Testing**: Azure CLI validation scripts, curl/Postman for API testing
-**Target Platform**: Azure (australiaeast region, matching core infrastructure)
+**Target Platform**: Azure (eastus2 region, matching core infrastructure)
 **Project Type**: Infrastructure Project (provides capabilities for Solution Projects)
 **Performance Goals**: Standard v2 tier default throughput (scales automatically)
 **Constraints**: Standard v2 tier limitations (no multi-region, no full VNet injection)
