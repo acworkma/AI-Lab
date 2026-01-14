@@ -62,6 +62,7 @@ This constitution defines the governing principles for building and managing Azu
   - **Troubleshooting**: Common issues and solutions
 - **Bicep Comments**: Include inline comments explaining complex logic or design decisions
 - **Parameter Files**: Document all parameters with descriptions and example values
+- **EntraID**: Always refer to EntraID not Azure AD
 
 ## Governance
 
