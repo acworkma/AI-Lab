@@ -23,6 +23,12 @@ param virtualHubId string
 @description('VPN client address pool for NSG rules')
 param vpnClientAddressPool string = '172.16.0.0/24'
 
+@description('Enable APIM integration subnet')
+param enableApimSubnet bool = false
+
+@description('APIM integration subnet address prefix (minimum /27, recommended /26)')
+param apimSubnetPrefix string = '10.1.0.64/26'
+
 @description('Tags to apply to resources')
 param tags object = {}
 
@@ -80,6 +86,221 @@ resource privateEndpointNsg 'Microsoft.Network/networkSecurityGroups@2023-11-01'
   }
 }
 
+// APIM Integration Subnet NSG (conditionally created)
+// Controls traffic for APIM VNet integration
+resource apimNsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = if (enableApimSubnet) {
+  name: '${vnetName}-apim-nsg'
+  location: location
+  tags: tags
+  properties: {
+    securityRules: [
+      // Inbound Rules
+      {
+        name: 'AllowVpnClientInbound'
+        properties: {
+          description: 'Allow inbound from VPN clients to developer portal/management'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRanges: [ '443', '3443' ]
+          sourceAddressPrefix: vpnClientAddressPool
+          destinationAddressPrefix: apimSubnetPrefix
+          access: 'Allow'
+          priority: 100
+          direction: 'Inbound'
+        }
+      }
+      {
+        name: 'AllowVnetInbound'
+        properties: {
+          description: 'Allow inbound from VNet (hub-spoke communication)'
+          protocol: '*'
+          sourcePortRange: '*'
+          destinationPortRange: '*'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+          access: 'Allow'
+          priority: 110
+          direction: 'Inbound'
+        }
+      }
+      {
+        name: 'AllowAzureLoadBalancerInbound'
+        properties: {
+          description: 'Allow Azure Load Balancer health probes'
+          protocol: '*'
+          sourcePortRange: '*'
+          destinationPortRange: '*'
+          sourceAddressPrefix: 'AzureLoadBalancer'
+          destinationAddressPrefix: '*'
+          access: 'Allow'
+          priority: 120
+          direction: 'Inbound'
+        }
+      }
+      {
+        name: 'DenyAllInbound'
+        properties: {
+          description: 'Deny all other inbound traffic'
+          protocol: '*'
+          sourcePortRange: '*'
+          destinationPortRange: '*'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+          access: 'Deny'
+          priority: 4096
+          direction: 'Inbound'
+        }
+      }
+      // Outbound Rules
+      {
+        name: 'AllowStorageOutbound'
+        properties: {
+          description: 'Allow outbound to Azure Storage for APIM dependencies'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '443'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'Storage'
+          access: 'Allow'
+          priority: 100
+          direction: 'Outbound'
+        }
+      }
+      {
+        name: 'AllowKeyVaultOutbound'
+        properties: {
+          description: 'Allow outbound to Azure Key Vault for secrets/certificates'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '443'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'AzureKeyVault'
+          access: 'Allow'
+          priority: 110
+          direction: 'Outbound'
+        }
+      }
+      {
+        name: 'AllowSqlOutbound'
+        properties: {
+          description: 'Allow outbound to Azure SQL for APIM configuration store'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '1433'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'Sql'
+          access: 'Allow'
+          priority: 120
+          direction: 'Outbound'
+        }
+      }
+      {
+        name: 'AllowVnetOutbound'
+        properties: {
+          description: 'Allow outbound to VNet for backend connectivity'
+          protocol: '*'
+          sourcePortRange: '*'
+          destinationPortRange: '*'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'VirtualNetwork'
+          access: 'Allow'
+          priority: 130
+          direction: 'Outbound'
+        }
+      }
+      {
+        name: 'AllowAzureMonitorOutbound'
+        properties: {
+          description: 'Allow outbound to Azure Monitor for diagnostics'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '443'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'AzureMonitor'
+          access: 'Allow'
+          priority: 140
+          direction: 'Outbound'
+        }
+      }
+      {
+        name: 'AllowAzureActiveDirectoryOutbound'
+        properties: {
+          description: 'Allow outbound to Azure AD for authentication'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '443'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: 'AzureActiveDirectory'
+          access: 'Allow'
+          priority: 150
+          direction: 'Outbound'
+        }
+      }
+      {
+        name: 'DenyInternetOutbound'
+        properties: {
+          description: 'Deny direct internet access (use service tags for Azure services)'
+          protocol: '*'
+          sourcePortRange: '*'
+          destinationPortRange: '*'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: 'Internet'
+          access: 'Deny'
+          priority: 4096
+          direction: 'Outbound'
+        }
+      }
+    ]
+  }
+}
+
+// Base subnets - always include PrivateEndpointSubnet
+var baseSubnets = [
+  {
+    name: 'PrivateEndpointSubnet'
+    properties: {
+      addressPrefix: privateEndpointSubnetPrefix
+      networkSecurityGroup: {
+        id: privateEndpointNsg.id
+      }
+      privateEndpointNetworkPolicies: 'Disabled'
+      privateLinkServiceNetworkPolicies: 'Enabled'
+    }
+  }
+]
+
+// APIM subnet configuration (conditionally added)
+var apimSubnet = enableApimSubnet ? [
+  {
+    name: 'ApimIntegrationSubnet'
+    properties: {
+      addressPrefix: apimSubnetPrefix
+      networkSecurityGroup: {
+        id: apimNsg.id
+      }
+      delegations: [
+        {
+          name: 'delegation-web-serverfarms'
+          properties: {
+            serviceName: 'Microsoft.Web/serverFarms'
+          }
+        }
+      ]
+      serviceEndpoints: [
+        { service: 'Microsoft.Storage' }
+        { service: 'Microsoft.KeyVault' }
+        { service: 'Microsoft.Sql' }
+        { service: 'Microsoft.EventHub' }
+      ]
+      privateEndpointNetworkPolicies: 'Enabled'
+      privateLinkServiceNetworkPolicies: 'Enabled'
+    }
+  }
+] : []
+
+// Combined subnets
+var allSubnets = concat(baseSubnets, apimSubnet)
+
 // Shared Services VNet - First spoke for shared infrastructure
 // Address space: 10.1.0.0/24 provides 256 addresses
 resource sharedServicesVnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
@@ -92,20 +313,7 @@ resource sharedServicesVnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
         vnetAddressPrefix
       ]
     }
-    subnets: [
-      {
-        name: 'PrivateEndpointSubnet'
-        properties: {
-          addressPrefix: privateEndpointSubnetPrefix
-          networkSecurityGroup: {
-            id: privateEndpointNsg.id
-          }
-          // Disable network policies for private endpoints
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'
-        }
-      }
-    ]
+    subnets: allSubnets
   }
 }
 
@@ -159,3 +367,12 @@ output privateEndpointSubnetPrefix string = privateEndpointSubnetPrefix
 
 @description('Hub connection provisioning state')
 output hubConnectionState string = hubConnection.properties.provisioningState
+
+@description('Resource ID of the APIM integration subnet (empty if not enabled)')
+output apimSubnetId string = enableApimSubnet ? sharedServicesVnet.properties.subnets[1].id : ''
+
+@description('Name of the APIM integration subnet (empty if not enabled)')
+output apimSubnetName string = enableApimSubnet ? 'ApimIntegrationSubnet' : ''
+
+@description('APIM subnet address prefix (empty if not enabled)')
+output apimSubnetPrefix string = enableApimSubnet ? apimSubnetPrefix : ''

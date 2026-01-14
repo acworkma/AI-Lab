@@ -1,0 +1,104 @@
+<!--
+    JWT Validation Policy Template for Azure API Management
+    
+    Purpose: Validate OAuth 2.0 / Entra ID tokens on API requests
+    
+    Usage:
+    1. Replace {tenant-id} with your Azure AD tenant ID
+    2. Replace {api-app-id} with your API's application ID
+    3. Apply this policy to your API's inbound processing
+    
+    Find your IDs:
+    - Tenant ID: az account show --query tenantId -o tsv
+    - App ID: az ad app list --display-name "your-api" --query "[].appId" -o tsv
+-->
+
+<policies>
+    <inbound>
+        <base />
+        
+        <!-- JWT Token Validation -->
+        <validate-jwt 
+            header-name="Authorization" 
+            failed-validation-httpcode="401" 
+            failed-validation-error-message="Unauthorized. Access token is missing or invalid."
+            require-expiration-time="true"
+            require-scheme="Bearer"
+            require-signed-tokens="true"
+            output-token-variable-name="jwt">
+            
+            <!-- OpenID Connect Configuration for Entra ID -->
+            <openid-config url="https://login.microsoftonline.com/{tenant-id}/.well-known/openid-configuration" />
+            
+            <!-- Valid Audiences (your API's app ID URI) -->
+            <audiences>
+                <audience>api://{api-app-id}</audience>
+                <!-- Add additional audiences if needed -->
+                <!-- <audience>https://your-custom-audience.com</audience> -->
+            </audiences>
+            
+            <!-- Valid Issuers (Entra ID STS) -->
+            <issuers>
+                <!-- V1 endpoint issuer -->
+                <issuer>https://sts.windows.net/{tenant-id}/</issuer>
+                <!-- V2 endpoint issuer -->
+                <issuer>https://login.microsoftonline.com/{tenant-id}/v2.0</issuer>
+            </issuers>
+            
+            <!-- Optional: Required Claims -->
+            <!-- Uncomment to require specific roles or scopes -->
+            <!--
+            <required-claims>
+                <claim name="roles" match="any">
+                    <value>API.Read</value>
+                    <value>API.Write</value>
+                </claim>
+            </required-claims>
+            -->
+            
+        </validate-jwt>
+        
+        <!-- Optional: Extract claims to headers for backend -->
+        <!-- Uncomment to pass user info to backend service -->
+        <!--
+        <set-header name="X-User-ObjectId" exists-action="override">
+            <value>@(((Jwt)context.Variables["jwt"]).Claims.GetValueOrDefault("oid", "unknown"))</value>
+        </set-header>
+        <set-header name="X-User-Email" exists-action="override">
+            <value>@(((Jwt)context.Variables["jwt"]).Claims.GetValueOrDefault("preferred_username", "unknown"))</value>
+        </set-header>
+        <set-header name="X-User-Name" exists-action="override">
+            <value>@(((Jwt)context.Variables["jwt"]).Claims.GetValueOrDefault("name", "unknown"))</value>
+        </set-header>
+        -->
+        
+    </inbound>
+    
+    <backend>
+        <base />
+    </backend>
+    
+    <outbound>
+        <base />
+    </outbound>
+    
+    <on-error>
+        <base />
+        
+        <!-- Custom error response for authentication failures -->
+        <choose>
+            <when condition="@(context.Response.StatusCode == 401)">
+                <set-body>@{
+                    return new JObject(
+                        new JProperty("error", "unauthorized"),
+                        new JProperty("message", "Access token is missing, invalid, or expired."),
+                        new JProperty("details", context.LastError.Message)
+                    ).ToString();
+                }</set-body>
+                <set-header name="Content-Type" exists-action="override">
+                    <value>application/json</value>
+                </set-header>
+            </when>
+        </choose>
+    </on-error>
+</policies>

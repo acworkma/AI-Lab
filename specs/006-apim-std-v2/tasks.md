@@ -19,9 +19,9 @@
 
 **Purpose**: Project initialization and Bicep module structure
 
-- [ ] T001 Create APIM Bicep folder structure at bicep/apim/
-- [ ] T002 [P] Create parameter example file at bicep/apim/main.parameters.example.json
-- [ ] T003 [P] Create docs folder structure at docs/apim/
+- [X] T001 Create APIM Bicep folder structure at bicep/apim/
+- [X] T002 [P] Create parameter example file at bicep/apim/main.parameters.example.json
+- [X] T003 [P] Create docs folder structure at docs/apim/
 
 ---
 
@@ -31,9 +31,9 @@
 
 **⚠️ CRITICAL**: APIM deployment cannot proceed until subnet and NSG are ready
 
-- [ ] T004 Create NSG module for APIM integration subnet at bicep/modules/apim-nsg.bicep
-- [ ] T005 Create APIM integration subnet module at bicep/modules/apim-subnet.bicep
-- [ ] T006 Update shared-services-vnet.bicep to accept optional APIM subnet parameter in bicep/modules/shared-services-vnet.bicep
+- [X] T004 Create NSG module for APIM integration subnet at bicep/modules/apim-nsg.bicep
+- [X] T005 Create APIM integration subnet module at bicep/modules/apim-subnet.bicep
+- [X] T006 Update shared-services-vnet.bicep to accept optional APIM subnet parameter in bicep/modules/shared-services-vnet.bicep
 
 **Checkpoint**: Network infrastructure ready for APIM VNet integration
 
@@ -47,12 +47,12 @@
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Create APIM Bicep module at bicep/modules/apim.bicep
-- [ ] T008 [US1] Create main deployment orchestration at bicep/apim/main.bicep
-- [ ] T009 [US1] Create deployment script at scripts/deploy-apim.sh
-- [ ] T010 [US1] Create validation script at scripts/validate-apim.sh
-- [ ] T011 [US1] Create cleanup script at scripts/cleanup-apim.sh
-- [ ] T012 [US1] Create README documentation at docs/apim/README.md
+- [X] T007 [US1] Create APIM Bicep module at bicep/modules/apim.bicep
+- [X] T008 [US1] Create main deployment orchestration at bicep/apim/main.bicep
+- [X] T009 [US1] Create deployment script at scripts/deploy-apim.sh
+- [X] T010 [US1] Create validation script at scripts/validate-apim.sh
+- [X] T011 [US1] Create cleanup script at scripts/cleanup-apim.sh
+- [X] T012 [US1] Create README documentation at docs/apim/README.md
 
 **Checkpoint**: APIM deployed and VNet-integrated - core infrastructure complete
 
@@ -66,9 +66,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Verify NSG allows VPN client access in bicep/modules/apim-nsg.bicep
-- [ ] T014 [US2] Add VPN access verification to validation script in scripts/validate-apim.sh
-- [ ] T015 [US2] Document VPN access instructions in docs/apim/README.md
+- [X] T013 [US2] Verify NSG allows VPN client access in bicep/modules/apim-nsg.bicep
+- [X] T014 [US2] Add VPN access verification to validation script in scripts/validate-apim.sh
+- [X] T015 [US2] Document VPN access instructions in docs/apim/README.md
 
 **Checkpoint**: VPN clients can access APIM developer portal and Azure Portal management
 
@@ -82,9 +82,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Create OAuth configuration guide at docs/apim/oauth-setup.md
-- [ ] T017 [US3] Create sample JWT validation policy template at bicep/apim/policies/jwt-validation.xml
-- [ ] T018 [US3] Add OAuth configuration section to README in docs/apim/README.md
+- [X] T016 [US3] Create OAuth configuration guide at docs/apim/oauth-setup.md
+- [X] T017 [US3] Create sample JWT validation policy template at bicep/apim/policies/jwt-validation.xml
+- [X] T018 [US3] Add OAuth configuration section to README in docs/apim/README.md
 
 **Checkpoint**: OAuth documentation and templates ready for API protection
 
@@ -98,9 +98,9 @@
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] Create sample API import guide at docs/apim/import-api.md
-- [ ] T020 [US4] Create sample backend configuration template at bicep/apim/backends/sample-backend.bicep
-- [ ] T021 [US4] Add API publishing walkthrough to README in docs/apim/README.md
+- [X] T019 [US4] Create sample API import guide at docs/apim/import-api.md
+- [X] T020 [US4] Create sample backend configuration template at bicep/apim/backends/sample-backend.bicep
+- [X] T021 [US4] Add API publishing walkthrough to README in docs/apim/README.md
 
 **Checkpoint**: End-to-end API publishing documentation complete
 
@@ -110,10 +110,10 @@
 
 **Purpose**: Improvements and final validation
 
-- [ ] T022 [P] Add troubleshooting section to docs/apim/README.md
-- [ ] T023 [P] Add architecture diagram to docs/apim/README.md
-- [ ] T024 Run quickstart.md validation steps
-- [ ] T025 Verify all deployment outputs match contracts/deployment-contract.md
+- [X] T022 [P] Add troubleshooting section to docs/apim/README.md
+- [X] T023 [P] Add architecture diagram to docs/apim/README.md
+- [X] T024 Run quickstart.md validation steps
+- [X] T025 Verify all deployment outputs match contracts/deployment-contract.md
 
 ---
 

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "apimName": {
+      "value": "apim-ai-lab"
+    },
+    "location": {
+      "value": "australiaeast"
+    },
+    "publisherEmail": {
+      "value": "REPLACE_WITH_YOUR_EMAIL@example.com"
+    },
+    "publisherName": {
+      "value": "AI-Lab"
+    },
+    "sku": {
+      "value": "Standardv2"
+    },
+    "skuCapacity": {
+      "value": 1
+    },
+    "sharedServicesVnetName": {
+      "value": "vnet-ai-shared-services"
+    },
+    "sharedServicesVnetResourceGroup": {
+      "value": "rg-ai-core"
+    },
+    "apimSubnetPrefix": {
+      "value": "10.1.0.64/26"
+    },
+    "vpnClientAddressPool": {
+      "value": "172.16.0.0/24"
+    },
+    "tags": {
+      "value": {
+        "environment": "dev",
+        "purpose": "API Management Gateway",
+        "owner": "platform-team"
+      }
+    }
+  }
+}

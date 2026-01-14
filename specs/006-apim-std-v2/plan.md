@@ -56,9 +56,14 @@ specs/006-apim-std-v2/
 bicep/
 ├── apim/
 │   ├── main.bicep                    # APIM deployment orchestration
-│   └── main.parameters.example.json  # Parameter template
+│   ├── main.parameters.example.json  # Parameter template
+│   ├── policies/
+│   │   └── jwt-validation.xml        # Sample OAuth JWT validation policy (NEW)
+│   └── backends/
+│       └── sample-backend.bicep      # Sample backend configuration (NEW)
 ├── modules/
 │   ├── apim.bicep                    # APIM instance module (NEW)
+│   ├── apim-nsg.bicep                # APIM integration subnet NSG (NEW)
 │   ├── apim-subnet.bicep             # VNet integration subnet module (NEW)
 │   └── shared-services-vnet.bicep    # Existing - add APIM subnet
 
