@@ -66,6 +66,9 @@ Infrastructure projects deploy foundational capabilities that other projects con
 - **[Private Azure Container Registry](docs/registry/README.md)**  
   Deploy a private ACR with private endpoint integration for secure container image storage and management. Follows core infrastructure patterns with parameterized Bicep, RBAC, and VPN access via the hub network.
 
+- **[Azure API Management Standard v2](docs/apim/README.md)**  
+  Deploy Azure API Management Standard v2 as a centralized API gateway with public frontend and VNet-integrated backend for exposing internal APIs externally. Includes developer portal, OAuth setup guides, and JWT validation policies.
+
 ---
 
 ### 🧩 Solution Projects
