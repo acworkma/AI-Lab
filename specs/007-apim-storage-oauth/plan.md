@@ -1,6 +1,6 @@
 # Implementation Plan: APIM Storage OAuth Demo
 
-**Branch**: `007-apim-storage-oauth` | **Date**: 2026-01-15 | **Spec**: [spec.md](spec.md)
+**Branch**: `007-apim-storage-oauth` | **Date**: 2025-01-15 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `/specs/007-apim-storage-oauth/spec.md`
 **Project Type**: Solution
 
@@ -11,7 +11,7 @@ Create an OAuth-protected API in APIM that enables authenticated clients to perf
 ## Technical Context
 
 **Language/Version**: Bicep (Azure IaC), XML (APIM policies), Bash (scripts)
-**Primary Dependencies**: Azure API Management, Azure Blob Storage, Entra ID
+**Primary Dependencies**: Azure API Management Standard v2, Azure Blob Storage, Entra ID
 **Storage**: Azure Blob Storage (stailab001, container: data)
 **Testing**: Bash scripts with curl, Azure CLI validation
 **Target Platform**: Azure Cloud (East US 2)
@@ -27,6 +27,8 @@ Create an OAuth-protected API in APIM that enables authenticated clients to perf
 | APIM | apim-ai-lab-0115 | rg-ai-apim | c856d119-9ba7-48b6-a627-047c01014d82 |
 | Storage | stailab001 | rg-ai-storage | N/A |
 | Container | data | rg-ai-storage | N/A |
+| App Registration | apim-ai-lab-0115-devportal | N/A | 6cb63aba-6d0d-4f06-957e-c584fdeb23d7 |
+| Tenant | MngEnvMCAP818246.onmicrosoft.com | N/A | 38c1a7b0-f16b-45fd-a528-87d8720e868e |
 
 ## Constitution Check
 
@@ -65,8 +67,8 @@ bicep/apim/
 ├── apis/
 │   └── storage-api.bicep        # Storage API definition
 ├── policies/
-│   ├── jwt-validation.xml       # Existing JWT policy
-│   └── storage-operations.xml   # New: Managed identity auth to storage
+│   ├── jwt-validation.xml       # JWT validation policy (new)
+│   └── storage-operations.xml   # Managed identity auth to storage (new)
 └── main.bicep                   # Updated to include storage API
 
 scripts/
