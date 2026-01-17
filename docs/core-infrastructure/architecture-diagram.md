@@ -22,8 +22,6 @@ graph TB
                 VHUB --> VPNGW
                 VPNCONFIG --> VPNGW
             end
-            
-            KV[kv-ai-core-*<br/>Key Vault<br/>RBAC Authorization<br/>Soft-Delete: 90 days]
         end
         
         subgraph "rg-ai-storage (Spoke 1)"
@@ -52,14 +50,10 @@ graph TB
     VHUB -.->|VNet Connection| VNET1
     VHUB -.->|VNet Connection| VNET2
     VHUB -.->|VNet Connection| VNET3
-    KV -.->|Secret References| VNET1
-    KV -.->|Secret References| VNET2
-    KV -.->|Secret References| VNET3
     
     style VPNGW fill:#f25022,color:#fff
     style VPNCONFIG fill:#0078d4,color:#fff
     style VHUB fill:#7fba00,color:#000
-    style KV fill:#ffb900,color:#000
     style VNET1 fill:#e3e3e3,color:#000
     style VNET2 fill:#e3e3e3,color:#000
     style VNET3 fill:#e3e3e3,color:#000
@@ -99,7 +93,7 @@ graph TB
 1. **Network Isolation**: Each spoke VNet is isolated by default
 2. **Hub-Mediated Communication**: All inter-spoke traffic goes through hub
 3. **Zero-Trust Access**: Role-based access control with Microsoft Entra integration
-4. **Key Vault RBAC**: Centralized secrets with role-based access control
+4. **Private DNS**: Private endpoint resolution via DNS Private Resolver
 
 ## Deployment Flow
 
@@ -108,14 +102,14 @@ graph LR
     A[Start Deployment] --> B[Create Resource Group]
     B --> C{Parallel Deployment}
     C --> D[Deploy Virtual WAN]
-    C --> E[Deploy Key Vault]
+    C --> E[Deploy Shared VNet]
     D --> F[Deploy Virtual Hub]
-    E --> G[Configure RBAC]
+    E --> G[Deploy DNS Resolver]
     F --> H[Deploy VPN Gateway<br/>15-20 min]
-    H --> I[VPN Gateway Ready]
-    G --> J[Key Vault Ready]
-    I --> K[Configure VPN Server]
-    J --> K
+    G --> I[Deploy Private DNS Zones]
+    H --> J[VPN Gateway Ready]
+    I --> J
+    J --> K[Configure VPN Server]
     K --> L[Deploy Spoke Labs]
     L --> M[Connect Spokes to Hub]
     M --> N[End - Full Topology Ready]
@@ -128,11 +122,12 @@ graph LR
 
 **Timeline**:
 1. Resource Group: ~5 seconds
-2. Virtual WAN: ~2 minutes (parallel with Key Vault)
-3. Key Vault: ~1 minute (parallel with Virtual WAN)
+2. Virtual WAN: ~2 minutes
+3. Shared Services VNet: ~2 minutes
 4. Virtual Hub: ~5 minutes (depends on Virtual WAN)
-5. **VPN Gateway: ~15-20 minutes** (longest component)
-6. Total: **~25-30 minutes**
+5. DNS Resolver: ~3-5 minutes
+6. **VPN Gateway: ~15-20 minutes** (longest component)
+7. Total: **~25-30 minutes**
 
 ## Data Flow Scenarios
 
@@ -158,16 +153,15 @@ graph LR
     → [VM in Spoke 2 (10.2.0.5)]
 ```
 
-### Scenario 3: Secret Retrieval from Key Vault
+### Scenario 3: Private Endpoint Resolution
 
 ```
-[Bicep Deployment]
-    → [Parameter File with Key Vault Reference]
-    → [Azure Resource Manager]
-    → [Key Vault (kv-ai-core-*)]
-    → [RBAC Authorization Check]
-    → [Secret Retrieved (never logged)]
-    → [Passed to Resource]
+[VPN Client (172.16.x.x)]
+    → [DNS Query for privatelink.blob.core.windows.net]
+    → [DNS Resolver (10.1.0.68)]
+    → [Private DNS Zone lookup]
+    → [Returns Private IP (10.1.0.x)]
+    → [Client connects to Storage via private endpoint]
 ```
 
 ## High Availability Considerations
@@ -175,7 +169,7 @@ graph LR
 ### Current Configuration (Single Region)
 - **Virtual WAN Hub**: Single hub in East US 2
 - **VPN Gateway**: Active-passive (1 scale unit)
-- **Key Vault**: Geo-replicated by Azure (paired region: Central US)
+- **DNS Resolver**: Single inbound endpoint
 
 ### Future Enhancements
 1. **Multi-hub**: Add second hub in Central US for disaster recovery
@@ -189,8 +183,8 @@ graph LR
 |----------|------------|----------------|
 | Virtual WAN Hub | Standard | ~$0.25/hour × 730h = ~$182 |
 | VPN Gateway | 1 scale unit | ~$0.361/hour × 730h = ~$264 |
-| Key Vault | Standard, <10k ops | ~$0.03/secret + ops = ~$10 |
-| **Total** | | **~$456/month** |
+| DNS Resolver | Inbound endpoint | ~$0.0018/hour × 730h = ~$1.30 |
+| **Total** | | **~$447/month** |
 
 **Notes**:
 - Spoke VNets incur peering charges (~$0.01/GB ingress)

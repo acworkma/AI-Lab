@@ -4,45 +4,7 @@
 
 ### Deployment Issues
 
-#### 1. Key Vault Name Already Exists
-
-**Symptom**:
-```
-ERROR: The vault name 'kv-ai-core-lab1' is already in use.
-```
-
-**Cause**: Key Vault names must be globally unique across all of Azure. Either:
-- Someone else is using this name
-- You previously deleted a vault with this name (soft-deleted vaults reserve the name for 90 days)
-
-**Solution A - Use Different Name**:
-```bash
-# Edit parameter file with unique name
-nano bicep/main.parameters.json
-
-# Change keyVaultName value:
-{
-  "keyVaultName": {
-    "value": "kv-ai-core-UNIQUE"  // Replace UNIQUE with random chars
-  }
-}
-```
-
-**Solution B - Purge Soft-Deleted Vault**:
-```bash
-# Check if vault is soft-deleted
-az keyvault list-deleted --query "[?name=='kv-ai-core-lab1']"
-
-# Purge permanently (WARNING: cannot be undone)
-az keyvault purge --name kv-ai-core-lab1
-
-# Redeploy
-./scripts/deploy-core.sh
-```
-
----
-
-#### 2. Deployment Timeout or Stuck
+#### 1. Deployment Timeout or Stuck
 
 **Symptom**:
 - Deployment running for >40 minutes
@@ -78,7 +40,7 @@ az group delete --name rg-ai-core --yes
 
 ---
 
-#### 3. Insufficient Permissions
+#### 2. Insufficient Permissions
 
 **Symptom**:
 ```

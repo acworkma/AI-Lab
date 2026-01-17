@@ -11,9 +11,7 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 - **P2S VPN Gateway**: `vpngw-ai-hub` - Point-to-Site VPN with Entra ID authentication
 - **VPN Server Configuration**: `vpnconfig-ai-hub` - Authentication and protocol settings
 - **DNS Private Resolver**: `dnsr-ai-shared` - Private DNS resolution for P2S clients (inbound endpoint: `10.1.0.68`)
-- **Shared Services VNet**: `vnet-ai-shared` - Network for resolver and shared services (10.1.0.0/24)
-- **Key Vault**: `kv-ai-core-*` - Centralized secrets management
-- **Shared Services VNet**: `vnet-ai-shared` - Spoke VNet for private endpoints (10.0.1.0/24)
+- **Shared Services VNet**: `vnet-ai-shared` - Network for resolver, shared services, and private endpoints (10.1.0.0/24)
 - **Private DNS Zones**: 5 zones for ACR, Key Vault, Storage, File Storage, SQL Database
 
 **Deployment Region**: East US 2
@@ -100,13 +98,6 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 │  │  │  - Public DNS Fallback                          │     │   │
 │  │  └─────────────────────────────────────────────────┘     │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  ┌────────────────┬─────────────────────────────────────────┐   │
-│  │  Key Vault (kv-ai-core-*)                                │   │
-│  │  - RBAC Authorization                                    │   │
-│  │  - Soft-Delete Enabled (90 days)                         │   │
-│  │  - Secrets for all labs                                  │   │
-│  └──────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────┘
                            │
                            │ VNet Connections
@@ -142,7 +133,7 @@ The **DNS Private Resolver** provides seamless private endpoint resolution for P
 
 - **Inbound Endpoint**: `10.1.0.68` (deployed in shared services VNet)
 - **Purpose**: Allows P2S clients (like WSL) to resolve Azure service FQDNs to private endpoint IPs
-- **Benefits**: No manual `/etc/hosts` management, automatic resolution for ACR, Key Vault, Storage, etc.
+- **Benefits**: No manual `/etc/hosts` management, automatic resolution for ACR, Storage, etc.
 - **Public DNS Fallback**: Still resolves public domains (google.com, microsoft.com, etc.)
 
 **How It Works**:
@@ -176,14 +167,17 @@ Edit `bicep/main.parameters.json`:
     "owner": {
       "value": "Your Name or Team"
     },
-    "keyVaultName": {
-      "value": "kv-ai-core-UNIQUE"  // CHANGE THIS to a globally unique name
+    "aadTenantId": {
+      "value": "YOUR_ENTRA_TENANT_ID"  // REQUIRED: Your Microsoft Entra tenant ID
+    },
+    "aadIssuer": {
+      "value": "https://sts.windows.net/YOUR_ENTRA_TENANT_ID/"
     }
   }
 }
 ```
 
-**IMPORTANT**: `keyVaultName` must be globally unique across all Azure. Use a random suffix like `kv-ai-core-a1b2` or `kv-ai-core-lab1`.
+**IMPORTANT**: `aadTenantId` and `aadIssuer` are required for VPN authentication. Find your tenant ID in Azure Portal > Microsoft Entra ID > Overview.
 
 For all available parameters, see `bicep/main.parameters.example.json`.
 
@@ -196,7 +190,7 @@ For all available parameters, see `bicep/main.parameters.example.json`.
 
 The script will:
 1. ✅ Check prerequisites (Azure CLI, login status)
-2. ✅ Validate parameters (Key Vault name format, required values)
+2. ✅ Validate parameters (Entra ID tenant ID, required values)
 3. ✅ Run what-if analysis (preview changes)
 4. ❓ Ask for confirmation
 5. 🚀 Deploy infrastructure (25-30 minutes)
@@ -206,7 +200,7 @@ The script will:
 - Resource Group: ~5 seconds
 - Virtual WAN: ~2 minutes
 - Virtual Hub: ~5 minutes
-- Key Vault: ~1 minute
+- DNS Resolver: ~3-5 minutes
 - **VPN Gateway: ~15-20 minutes** (longest component)
 
 ### Step 3: Verify Deployment
@@ -227,8 +221,9 @@ VPN Server Config: vpnconfig-ai-hub
 P2S VPN Gateway: vpngw-ai-hub
   - Scale Units: 1
   - Client Address Pool: 172.16.0.0/24
-Key Vault: kv-ai-core-lab1
-  - URI: https://kv-ai-core-lab1.vault.azure.net/
+Shared Services VNet: vnet-ai-shared
+  - Address Prefix: 10.1.0.0/24
+DNS Resolver Inbound IP: 10.1.0.68
 ```
 
 ### Advanced: Custom Deployment
@@ -254,77 +249,44 @@ Key Vault: kv-ai-core-lab1
    - Install Azure VPN Client on your device
    - Connect using Microsoft Entra ID credentials
 
-2. **Assign Key Vault RBAC Roles**:
-   ```bash
-   # Grant yourself Key Vault Secrets Officer role
-   VAULT_ID=$(az keyvault show --name kv-ai-core-lab1 --query id -o tsv)
-   USER_ID=$(az ad signed-in-user show --query id -o tsv)
-   
-   az role assignment create \
-     --role "Key Vault Secrets Officer" \
-     --assignee $USER_ID \
-     --scope $VAULT_ID
-   ```
+2. **Configure DNS for P2S Clients**:
+   - Set DNS server to `10.1.0.68` (DNS Resolver inbound IP)
+   - This enables resolution of private endpoints
+   - See [dns-resolver-setup.md](dns-resolver-setup.md) for details
 
-3. **Store Test Secret** (verify access):
-   ```bash
-   az keyvault secret set \
-     --vault-name kv-ai-core-lab1 \
-     --name test-secret \
-     --value "Hello from Key Vault"
-   
-   az keyvault secret show \
-     --vault-name kv-ai-core-lab1 \
-     --name test-secret \
-     --query value -o tsv
-   ```
+3. **Connect Spoke Labs**:
+   - Deploy spoke infrastructure (storage, ACR, etc.)
+   - Connect spoke VNets to Virtual Hub
+   - Private DNS zones will automatically resolve private endpoints
 
 ### Secure Parameter Management
 
 **Constitutional Requirement**: Principle 4 - NO SECRETS IN SOURCE CONTROL
 
+For deployments that require secrets (spoke labs, storage with CMK, etc.), use the following pattern:
+
 #### Workflow: Store Secret → Reference → Deploy
 
-1. **Store sensitive value in Key Vault**:
-   ```bash
-   # Example: VPN shared key
-   az keyvault secret set \
-     --vault-name kv-ai-core-lab1 \
-     --name vpn-shared-key \
-     --value "$(openssl rand -base64 32)"
-   ```
+1. **Deploy Key Vault separately** (when needed):
+   - Key Vault is deployed as a separate infrastructure component
+   - See `bicep/keyvault/` for standalone Key Vault deployment (future)
+   - Each Key Vault includes private endpoint for secure access
 
 2. **Create local parameter file** (gitignored):
    ```bash
    # Copy example to local file
-   cp bicep/main.keyvault-ref.parameters.json bicep/main.local.parameters.json
+   cp bicep/storage/main.parameters.example.json bicep/storage/main.local.parameters.json
    
-   # Edit with actual subscription ID and vault name
-   nano bicep/main.local.parameters.json
+   # Edit with actual values
+   nano bicep/storage/main.local.parameters.json
    ```
 
-3. **Reference secret in parameter file**:
-   ```json
-   {
-     "parameters": {
-       "vpnSharedKey": {
-         "reference": {
-           "keyVault": {
-             "id": "/subscriptions/abc123.../resourceGroups/rg-ai-core/providers/Microsoft.KeyVault/vaults/kv-ai-core-lab1"
-           },
-           "secretName": "vpn-shared-key"
-         }
-       }
-     }
-   }
-   ```
-
-4. **Deploy using local parameter file**:
+3. **Deploy using local parameter file**:
    ```bash
-   ./scripts/deploy-core.sh --parameter-file bicep/main.local.parameters.json
+   ./scripts/deploy-storage.sh --parameter-file bicep/storage/main.local.parameters.json
    ```
 
-5. **Verify secret not in source control**:
+4. **Verify secret not in source control**:
    ```bash
    # Scan for hardcoded secrets
    ./scripts/scan-secrets.sh
@@ -335,22 +297,10 @@ Key Vault: kv-ai-core-lab1
 
 #### Security Best Practices
 
-- ✅ **Always use Key Vault references** for sensitive values
-- ✅ **Use .local.parameters.json pattern** for environment-specific secrets (gitignored)
-- ✅ **Rotate secrets regularly** (every 90 days minimum)
+- ✅ **Use .local.parameters.json pattern** for environment-specific config (gitignored)
 - ✅ **Scan repository** with `./scripts/scan-secrets.sh` before commits
-- ✅ **Enable audit logging** on Key Vault for secret access tracking
 - ❌ **Never hardcode** passwords, keys, connection strings, or certificates
 - ❌ **Never commit** *.local.parameters.json or *.secrets.* files
-
-#### Example Secrets to Store
-
-| Secret Name | Purpose | Example Command |
-|-------------|---------|-----------------|
-| `vpn-shared-key` | VPN Gateway PSK | `az keyvault secret set --vault-name kv-ai-core-lab1 --name vpn-shared-key --value "$(openssl rand -base64 32)"` |
-| `vm-admin-password` | VM administrator password | `az keyvault secret set --vault-name kv-ai-core-lab1 --name vm-admin-password --value "Str0ng!Pass#$(date +%s)"` |
-| `sql-connection-string` | Database connection | `az keyvault secret set --vault-name kv-ai-core-lab1 --name sql-connection-string --value "Server=..."` |
-| `storage-account-key` | Storage account access | Retrieved from Azure, stored in Key Vault for spoke labs |
 
 ## Testing
 
@@ -366,7 +316,8 @@ This script verifies:
 - ✅ Resource group exists with correct tags
 - ✅ Virtual WAN and Hub are provisioned
 - ✅ VPN Gateway is ready for connections
-- ✅ Key Vault is accessible with RBAC
+- ✅ DNS Resolver is configured
+- ✅ Private DNS zones are linked
 - ✅ No configuration drift (what-if shows no changes)
 
 ### Manual Verification
@@ -385,16 +336,13 @@ az network vhub show \
 # Should output: Provisioned
 ```
 
-**Test Key Vault access**:
+**Check DNS Resolver**:
 ```bash
-# Create test secret
-az keyvault secret set --vault-name kv-ai-core-lab1 --name test --value "success"
-
-# Retrieve test secret
-az keyvault secret show --vault-name kv-ai-core-lab1 --name test --query value -o tsv
-
-# Delete test secret
-az keyvault secret delete --vault-name kv-ai-core-lab1 --name test
+az dns-resolver inbound-endpoint list \
+  --resource-group rg-ai-core \
+  --dns-resolver-name dnsr-ai-shared \
+  --query "[].{name:name, ip:ipConfigurations[0].privateIpAddress}" -o table
+# Should show: 10.1.0.68
 ```
 
 ## Cleanup
@@ -412,7 +360,6 @@ The cleanup script will:
 2. Ask for confirmation
 3. Delete spoke connections (if any)
 4. Delete resource group `rg-ai-core` (cascades to all resources)
-5. Optionally purge Key Vault (permanent deletion)
 
 ### Manual Cleanup
 
@@ -423,29 +370,13 @@ az group delete --name rg-ai-core --yes --no-wait
 # Check deletion status
 az group show --name rg-ai-core
 # Should return: ResourceGroupNotFound
-
-# Purge soft-deleted Key Vault (optional, permanent)
-az keyvault purge --name kv-ai-core-lab1
 ```
-
-**Note**: Soft-deleted Key Vault is retained for 90 days. Purge immediately if you need to reuse the same name.
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### 1. Key Vault Name Already Exists
-
-**Error**: `The vault name 'kv-ai-core-lab1' is already in use.`
-
-**Solution**: 
-- Choose a different globally unique name
-- Or purge the soft-deleted vault:
-  ```bash
-  az keyvault purge --name kv-ai-core-lab1
-  ```
-
-#### 2. Deployment Timeout
+#### 1. Deployment Timeout
 
 **Error**: Deployment exceeds 30 minutes, particularly for VPN Gateway.
 
@@ -460,7 +391,7 @@ az keyvault purge --name kv-ai-core-lab1
   az deployment sub cancel --name deploy-ai-core-TIMESTAMP
   ```
 
-#### 3. Insufficient Permissions
+#### 2. Insufficient Permissions
 
 **Error**: `Authorization failed` or `The client does not have authorization to perform action`
 
