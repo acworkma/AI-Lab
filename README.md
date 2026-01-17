@@ -63,6 +63,9 @@ The foundational Virtual WAN hub that all other projects connect to. Includes:
 
 Infrastructure projects deploy foundational capabilities that other projects consume. Each deploys to its own dedicated resource group.
 
+- **[Private Azure Key Vault](docs/keyvault/README.md)**  
+  Deploy a private Key Vault with RBAC authorization, private endpoint, and DNS integration for secure centralized secrets management. Supports Bicep Key Vault references for consuming secrets in other deployments.
+
 - **[Private Azure Container Registry](docs/registry/README.md)**  
   Deploy a private ACR with private endpoint integration for secure container image storage and management. Follows core infrastructure patterns with parameterized Bicep, RBAC, and VPN access via the hub network.
 

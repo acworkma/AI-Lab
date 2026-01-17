@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Example parameter file demonstrating Key Vault secret references",
+    "usage": "Reference secrets stored in Key Vault without exposing values in source control"
+  },
+  "parameters": {
+    "owner": {
+      "value": "ai-lab-team"
+    },
+    "storageAccountName": {
+      "value": "stailab0117"
+    },
+    "exampleSecretFromKeyVault": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/rg-ai-keyvault/providers/Microsoft.KeyVault/vaults/kv-ai-lab-SUFFIX"
+        },
+        "secretName": "example-secret"
+      }
+    },
+    "anotherSecretWithVersion": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/rg-ai-keyvault/providers/Microsoft.KeyVault/vaults/kv-ai-lab-SUFFIX"
+        },
+        "secretName": "versioned-secret",
+        "secretVersion": "SPECIFIC_VERSION_ID"
+      }
+    }
+  }
+}
