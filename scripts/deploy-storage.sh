@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 #
-# deploy-storage.sh - Deploy Private Azure Storage Account with CMK
+# deploy-storage.sh - Enable CMK Encryption on Existing Storage Account
 # 
-# Purpose: Orchestrate deployment of storage resource group and CMK-enabled storage account
-#          with private endpoint connectivity to core infrastructure
+# Feature: 010-storage-cmk-refactor
+# Purpose: Enable customer-managed key encryption on pre-deployed storage account
+#          using key from pre-deployed Key Vault
 #
 # Usage: ./scripts/deploy-storage.sh [--parameter-file <path>] [--skip-whatif] [--auto-approve]
 #
 # Prerequisites:
-# - Core infrastructure deployed (run scripts/deploy-core.sh first)
+# - Key Vault deployed in rg-ai-keyvault (008-private-keyvault)
+# - Storage Account deployed in rg-ai-storage (009-private-storage)
 # - VPN connection established (for DNS verification)
 #
 
@@ -19,14 +21,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Default values
-PARAMETER_FILE="${REPO_ROOT}/bicep/storage/main.parameters.json"
-TEMPLATE_FILE="${REPO_ROOT}/bicep/storage/main.bicep"
-DEPLOYMENT_NAME="deploy-ai-storage-$(date +%Y%m%d-%H%M%S)"
+PARAMETER_FILE="${REPO_ROOT}/bicep/storage-cmk/main.parameters.json"
+TEMPLATE_FILE="${REPO_ROOT}/bicep/storage-cmk/main.bicep"
+DEPLOYMENT_NAME="deploy-cmk-storage-$(date +%Y%m%d-%H%M%S)"
 SKIP_WHATIF=false
 AUTO_APPROVE=false
-LOCATION="eastus"
+LOCATION="eastus2"
 
-# NFR-002: Track deployment time
+# NFR-002: Track deployment time (target: < 3 minutes)
 START_TIME=""
 END_TIME=""
 
@@ -61,10 +63,10 @@ usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-Deploy Private Azure Storage Account with CMK encryption and private endpoint
+Enable CMK encryption on existing Storage Account using Key Vault key
 
 OPTIONS:
-    -p, --parameter-file PATH   Path to parameter file (default: bicep/storage/main.parameters.json)
+    -p, --parameter-file PATH   Path to parameter file (default: bicep/storage-cmk/main.parameters.json)
     -s, --skip-whatif           Skip what-if analysis (not recommended)
     -a, --auto-approve          Skip confirmation prompt (use with caution)
     -h, --help                  Show this help message
@@ -74,17 +76,26 @@ EXAMPLES:
     $0
 
     # Use custom parameter file
-    $0 --parameter-file bicep/storage/main.parameters.prod.json
+    $0 --parameter-file bicep/storage-cmk/main.parameters.prod.json
 
     # Automated deployment (CI/CD)
     $0 --auto-approve
+
+PREREQUISITES:
+    - Key Vault deployed: ./scripts/deploy-keyvault.sh
+    - Storage Account deployed: Deploy via 009-private-storage
 
 EOF
     exit 1
 }
 
+# ============================================================================
+# PREREQUISITE VALIDATION (US2: T015-T020)
+# ============================================================================
+
 check_prerequisites() {
     log_info "Checking prerequisites..."
+    local PREREQ_FAILED=false
     
     # Check Azure CLI
     if ! command -v az &> /dev/null; then
@@ -111,45 +122,101 @@ check_prerequisites() {
         exit 1
     fi
     
-    # Check core infrastructure exists
-    local CORE_RG
-    CORE_RG=$(jq -r '.parameters.coreResourceGroupName.value // "rg-ai-core"' "$PARAMETER_FILE")
+    # Read parameters
+    local KV_RG STORAGE_RG STORAGE_SUFFIX KV_NAME_PARAM
+    KV_RG=$(jq -r '.parameters.keyVaultResourceGroupName.value // "rg-ai-keyvault"' "$PARAMETER_FILE")
+    STORAGE_RG=$(jq -r '.parameters.storageResourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
+    STORAGE_SUFFIX=$(jq -r '.parameters.storageNameSuffix.value' "$PARAMETER_FILE")
+    KV_NAME_PARAM=$(jq -r '.parameters.keyVaultName.value // ""' "$PARAMETER_FILE")
     
-    if ! az group show --name "$CORE_RG" &> /dev/null; then
-        log_error "Core infrastructure resource group not found: $CORE_RG"
-        log_info "Deploy core infrastructure first: ./scripts/deploy-core.sh"
-        exit 1
+    local STORAGE_NAME="stailab${STORAGE_SUFFIX}"
+    
+    # T015: Check Key Vault resource group exists
+    if ! az group show --name "$KV_RG" &> /dev/null; then
+        log_error "Key Vault resource group not found: $KV_RG"
+        log_info "Deploy Key Vault infrastructure first: ./scripts/deploy-keyvault.sh"
+        PREREQ_FAILED=true
+    else
+        log_success "Key Vault resource group exists: $KV_RG"
     fi
     
-    # Check Key Vault exists
+    # T016: Check Key Vault exists in RG
     local KV_NAME
-    KV_NAME=$(jq -r '.parameters.keyVaultName.value' "$PARAMETER_FILE")
-    
-    if [[ -z "$KV_NAME" || "$KV_NAME" == "null" ]]; then
-        log_error "keyVaultName not set in parameter file"
-        exit 1
+    if [[ -n "$KV_NAME_PARAM" && "$KV_NAME_PARAM" != "null" ]]; then
+        KV_NAME="$KV_NAME_PARAM"
+    else
+        # Auto-discover Key Vault in resource group
+        KV_NAME=$(az keyvault list --resource-group "$KV_RG" --query "[0].name" -o tsv 2>/dev/null || echo "")
     fi
     
-    if ! az keyvault show --name "$KV_NAME" --resource-group "$CORE_RG" &> /dev/null; then
-        log_error "Key Vault not found: $KV_NAME in $CORE_RG"
-        exit 1
+    if [[ -z "$KV_NAME" ]]; then
+        log_error "No Key Vault found in $KV_RG"
+        log_info "Deploy Key Vault infrastructure first: ./scripts/deploy-keyvault.sh"
+        PREREQ_FAILED=true
+    else
+        if ! az keyvault show --name "$KV_NAME" --resource-group "$KV_RG" &> /dev/null; then
+            log_error "Key Vault not found: $KV_NAME in $KV_RG"
+            PREREQ_FAILED=true
+        else
+            log_success "Key Vault exists: $KV_NAME"
+            
+            # T019: Check soft-delete and purge protection
+            local SOFT_DELETE PURGE_PROTECTION
+            SOFT_DELETE=$(az keyvault show --name "$KV_NAME" --resource-group "$KV_RG" --query "properties.enableSoftDelete" -o tsv 2>/dev/null || echo "false")
+            PURGE_PROTECTION=$(az keyvault show --name "$KV_NAME" --resource-group "$KV_RG" --query "properties.enablePurgeProtection" -o tsv 2>/dev/null || echo "false")
+            
+            if [[ "$SOFT_DELETE" != "true" ]]; then
+                log_error "Key Vault soft-delete not enabled (required for CMK)"
+                PREREQ_FAILED=true
+            else
+                log_success "Key Vault soft-delete enabled"
+            fi
+            
+            if [[ "$PURGE_PROTECTION" != "true" ]]; then
+                log_error "Key Vault purge protection not enabled (required for CMK)"
+                PREREQ_FAILED=true
+            else
+                log_success "Key Vault purge protection enabled"
+            fi
+        fi
     fi
     
-    # Check VNet exists
-    local VNET_NAME
-    VNET_NAME=$(jq -r '.parameters.vnetName.value // "vnet-ai-sharedservices"' "$PARAMETER_FILE")
-    
-    if ! az network vnet show --name "$VNET_NAME" --resource-group "$CORE_RG" &> /dev/null; then
-        log_error "VNet not found: $VNET_NAME in $CORE_RG"
-        exit 1
+    # T017: Check Storage resource group exists
+    if ! az group show --name "$STORAGE_RG" &> /dev/null; then
+        log_error "Storage resource group not found: $STORAGE_RG"
+        log_info "Deploy Storage infrastructure first via 009-private-storage"
+        PREREQ_FAILED=true
+    else
+        log_success "Storage resource group exists: $STORAGE_RG"
     fi
     
-    # Check private DNS zone exists
-    local DNS_ZONE
-    DNS_ZONE=$(jq -r '.parameters.privateDnsZoneName.value // "privatelink.blob.core.windows.net"' "$PARAMETER_FILE")
+    # T018: Check Storage Account exists
+    if ! az storage account show --name "$STORAGE_NAME" --resource-group "$STORAGE_RG" &> /dev/null; then
+        log_error "Storage Account not found: $STORAGE_NAME in $STORAGE_RG"
+        log_info "Deploy Storage infrastructure first via 009-private-storage"
+        PREREQ_FAILED=true
+    else
+        log_success "Storage Account exists: $STORAGE_NAME"
+        
+        # Check if CMK already configured (edge case detection)
+        local CURRENT_KEY_SOURCE
+        CURRENT_KEY_SOURCE=$(az storage account show --name "$STORAGE_NAME" --resource-group "$STORAGE_RG" --query "encryption.keySource" -o tsv 2>/dev/null || echo "")
+        
+        if [[ "$CURRENT_KEY_SOURCE" == "Microsoft.Keyvault" ]]; then
+            log_warning "Storage Account already has CMK configured - will update with new key"
+        fi
+    fi
     
-    if ! az network private-dns zone show --name "$DNS_ZONE" --resource-group "$CORE_RG" &> /dev/null; then
-        log_error "Private DNS zone not found: $DNS_ZONE in $CORE_RG"
+    # T020: Display clear error messages with remediation steps
+    if [[ "$PREREQ_FAILED" == "true" ]]; then
+        echo ""
+        log_error "Prerequisites check failed. Please resolve the issues above before continuing."
+        echo ""
+        echo "Deployment order:"
+        echo "  1. Core infrastructure: ./scripts/deploy-core.sh"
+        echo "  2. Key Vault: ./scripts/deploy-keyvault.sh"
+        echo "  3. Storage Account: Deploy via 009-private-storage"
+        echo "  4. CMK Encryption: $0 (this script)"
         exit 1
     fi
     
@@ -158,9 +225,6 @@ check_prerequisites() {
 
 run_whatif() {
     log_info "Running what-if analysis..."
-    
-    local LOCATION
-    LOCATION=$(jq -r '.parameters.location.value // "eastus"' "$PARAMETER_FILE")
     
     az deployment sub what-if \
         --location "$LOCATION" \
@@ -178,7 +242,7 @@ confirm_deployment() {
     fi
     
     echo ""
-    read -rp "Do you want to proceed with deployment? (yes/no): " CONFIRM
+    read -rp "Do you want to proceed with CMK deployment? (yes/no): " CONFIRM
     
     if [[ "$CONFIRM" != "yes" ]]; then
         log_warning "Deployment cancelled by user"
@@ -187,11 +251,8 @@ confirm_deployment() {
 }
 
 deploy() {
-    log_info "Starting deployment..."
+    log_info "Starting CMK deployment..."
     START_TIME=$(date +%s)
-    
-    local LOCATION
-    LOCATION=$(jq -r '.parameters.location.value // "eastus"' "$PARAMETER_FILE")
     
     az deployment sub create \
         --location "$LOCATION" \
@@ -204,119 +265,72 @@ deploy() {
     
     log_success "Deployment completed in ${DURATION} seconds"
     
-    # NFR-002: Check if deployment time exceeded 5 minutes (300 seconds)
-    if [[ $DURATION -gt 300 ]]; then
-        log_warning "Deployment exceeded NFR-002 target of 5 minutes (${DURATION}s > 300s)"
+    # NFR-002: Check if deployment time exceeded 3 minutes (180 seconds)
+    if [[ $DURATION -gt 180 ]]; then
+        log_warning "Deployment exceeded NFR-002 target of 3 minutes (${DURATION}s > 180s)"
     else
-        log_success "NFR-002 PASS: Deployment completed within 5 minutes (${DURATION}s)"
+        log_success "NFR-002 PASS: Deployment completed within 3 minutes (${DURATION}s)"
     fi
 }
 
 show_outputs() {
     log_info "Deployment outputs:"
     
-    local STORAGE_RG
-    STORAGE_RG=$(jq -r '.parameters.resourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
+    local STORAGE_RG STORAGE_SUFFIX KV_RG
+    STORAGE_RG=$(jq -r '.parameters.storageResourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
+    STORAGE_SUFFIX=$(jq -r '.parameters.storageNameSuffix.value' "$PARAMETER_FILE")
+    KV_RG=$(jq -r '.parameters.keyVaultResourceGroupName.value // "rg-ai-keyvault"' "$PARAMETER_FILE")
     
-    local STORAGE_NAME
-    STORAGE_NAME=$(jq -r '.parameters.storageAccountName.value' "$PARAMETER_FILE")
+    local STORAGE_NAME="stailab${STORAGE_SUFFIX}"
+    local IDENTITY_NAME="id-${STORAGE_NAME}-cmk"
     
     echo ""
-    echo "Storage Account Name: $STORAGE_NAME"
+    echo "Storage Account: $STORAGE_NAME"
     echo "Resource Group: $STORAGE_RG"
-    
-    # Get private endpoint IP
-    local PE_IP
-    PE_IP=$(az network private-endpoint show \
-        --name "pe-${STORAGE_NAME}-blob" \
-        --resource-group "$STORAGE_RG" \
-        --query "customDnsConfigs[0].ipAddresses[0]" \
-        --output tsv 2>/dev/null || echo "N/A")
-    
-    echo "Private Endpoint IP: $PE_IP"
-    echo ""
+    echo "Managed Identity: $IDENTITY_NAME"
     
     # Verify CMK encryption
-    local KEY_SOURCE
+    local KEY_SOURCE KEY_NAME KEY_VAULT_URI
     KEY_SOURCE=$(az storage account show \
         --name "$STORAGE_NAME" \
         --resource-group "$STORAGE_RG" \
         --query "encryption.keySource" \
         --output tsv 2>/dev/null || echo "N/A")
     
-    if [[ "$KEY_SOURCE" == "Microsoft.Keyvault" ]]; then
-        log_success "CMK encryption verified: $KEY_SOURCE"
-    else
-        log_warning "CMK encryption status: $KEY_SOURCE"
-    fi
-    
-    # Verify public access disabled
-    local PUBLIC_ACCESS
-    PUBLIC_ACCESS=$(az storage account show \
+    KEY_NAME=$(az storage account show \
         --name "$STORAGE_NAME" \
         --resource-group "$STORAGE_RG" \
-        --query "publicNetworkAccess" \
+        --query "encryption.keyvaultproperties.keyname" \
         --output tsv 2>/dev/null || echo "N/A")
     
-    if [[ "$PUBLIC_ACCESS" == "Disabled" ]]; then
-        log_success "Public access disabled: $PUBLIC_ACCESS"
-    else
-        log_warning "Public access status: $PUBLIC_ACCESS"
-    fi
-}
-
-grant_deployer_access() {
-    log_info "Granting deployer data access..."
-    
-    local STORAGE_RG
-    STORAGE_RG=$(jq -r '.parameters.resourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
-    
-    local STORAGE_NAME
-    STORAGE_NAME=$(jq -r '.parameters.storageAccountName.value' "$PARAMETER_FILE")
-    
-    # Get current user
-    local CURRENT_USER
-    CURRENT_USER=$(az account show --query user.name -o tsv 2>/dev/null || echo "")
-    
-    if [[ -z "$CURRENT_USER" ]]; then
-        log_warning "Could not determine current user - skipping data access grant"
-        return
-    fi
-    
-    # Get storage account resource ID
-    local STORAGE_ID
-    STORAGE_ID=$(az storage account show \
+    KEY_VAULT_URI=$(az storage account show \
         --name "$STORAGE_NAME" \
         --resource-group "$STORAGE_RG" \
-        --query id -o tsv 2>/dev/null || echo "")
+        --query "encryption.keyvaultproperties.keyvaulturi" \
+        --output tsv 2>/dev/null || echo "N/A")
     
-    if [[ -z "$STORAGE_ID" ]]; then
-        log_warning "Could not get storage account ID - skipping data access grant"
-        return
-    fi
-    
-    # Check if role already assigned
-    local EXISTING
-    EXISTING=$(az role assignment list \
-        --assignee "$CURRENT_USER" \
-        --role "Storage Blob Data Contributor" \
-        --scope "$STORAGE_ID" \
-        --query "[].id" -o tsv 2>/dev/null || echo "")
-    
-    if [[ -n "$EXISTING" ]]; then
-        log_success "Deployer already has Storage Blob Data Contributor role"
-        return
-    fi
-    
-    # Assign role
-    if az role assignment create \
-        --assignee "$CURRENT_USER" \
-        --role "Storage Blob Data Contributor" \
-        --scope "$STORAGE_ID" \
-        --output none 2>/dev/null; then
-        log_success "Granted Storage Blob Data Contributor to: $CURRENT_USER"
+    echo ""
+    if [[ "$KEY_SOURCE" == "Microsoft.Keyvault" ]]; then
+        log_success "CMK encryption enabled"
+        echo "  Key Source: $KEY_SOURCE"
+        echo "  Key Name: $KEY_NAME"
+        echo "  Key Vault URI: $KEY_VAULT_URI"
     else
-        log_warning "Could not grant data access - run: ./scripts/grant-storage-roles.sh --user $CURRENT_USER"
+        log_error "CMK encryption not configured (keySource: $KEY_SOURCE)"
+    fi
+    
+    # Verify user-assigned identity
+    local IDENTITY_ID
+    IDENTITY_ID=$(az storage account show \
+        --name "$STORAGE_NAME" \
+        --resource-group "$STORAGE_RG" \
+        --query "encryption.encryptionIdentity.encryptionUserAssignedIdentity" \
+        --output tsv 2>/dev/null || echo "N/A")
+    
+    if [[ -n "$IDENTITY_ID" && "$IDENTITY_ID" != "null" && "$IDENTITY_ID" != "N/A" ]]; then
+        log_success "User-assigned identity configured for CMK"
+    else
+        log_warning "User-assigned identity not detected"
     fi
 }
 
@@ -351,7 +365,8 @@ done
 
 echo ""
 echo "=============================================="
-echo " Deploy Private Storage Account with CMK"
+echo " Enable CMK Encryption on Storage Account"
+echo " Feature: 010-storage-cmk-refactor"
 echo "=============================================="
 echo ""
 
@@ -364,8 +379,7 @@ fi
 
 deploy
 show_outputs
-grant_deployer_access
 
 echo ""
-log_success "Storage deployment complete!"
-log_info "Test connectivity: nslookup <storage-name>.blob.core.windows.net 10.1.0.68"
+log_success "CMK deployment complete!"
+log_info "Validate: ./scripts/validate-storage.sh --deployed"

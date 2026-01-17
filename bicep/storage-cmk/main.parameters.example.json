@@ -1,0 +1,72 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2",
+      "metadata": {
+        "description": "Azure region for managed identity"
+      }
+    },
+    "environment": {
+      "value": "dev",
+      "metadata": {
+        "description": "Environment tag (dev, test, or prod)"
+      }
+    },
+    "owner": {
+      "value": "<YOUR_NAME_OR_TEAM>",
+      "metadata": {
+        "description": "Owner identifier for resource tagging"
+      }
+    },
+    "storageNameSuffix": {
+      "value": "<MMDD_SUFFIX>",
+      "metadata": {
+        "description": "Storage account name suffix (must match existing storage account stailab<suffix>)"
+      }
+    },
+    "keyVaultResourceGroupName": {
+      "value": "rg-ai-keyvault",
+      "metadata": {
+        "description": "Key Vault resource group name"
+      }
+    },
+    "storageResourceGroupName": {
+      "value": "rg-ai-storage",
+      "metadata": {
+        "description": "Storage resource group name"
+      }
+    },
+    "keyVaultName": {
+      "value": "",
+      "metadata": {
+        "description": "Key Vault name (auto-discovered from rg-ai-keyvault if empty)"
+      }
+    },
+    "encryptionKeyName": {
+      "value": "storage-encryption-key",
+      "metadata": {
+        "description": "Encryption key name in Key Vault"
+      }
+    },
+    "keySize": {
+      "value": 4096,
+      "metadata": {
+        "description": "Key size in bits (2048, 3072, or 4096)"
+      }
+    },
+    "keyRotationInterval": {
+      "value": "P18M",
+      "metadata": {
+        "description": "Key rotation interval in ISO 8601 duration (P18M = 18 months)"
+      }
+    },
+    "keyExpiryTime": {
+      "value": "P2Y",
+      "metadata": {
+        "description": "Key expiry time in ISO 8601 duration (P2Y = 2 years)"
+      }
+    }
+  }
+}
