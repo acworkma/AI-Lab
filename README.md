@@ -81,8 +81,8 @@ Infrastructure projects deploy foundational capabilities that other projects con
 
 Solution projects consume deployed infrastructure to accomplish specific use cases. Each deploys to its own dedicated resource group.
 
-- **[Private Storage Account with Customer Managed Key](docs/storage/README.md)**  
-  Deploy an Azure Storage Account with customer-managed encryption key stored in Key Vault, integrated with private endpoint for secure data storage. Includes comprehensive RBAC and permission documentation.
+- **[Private Storage Account with Customer Managed Key](docs/storage-cmk/README.md)**  
+  Enable customer-managed encryption key (CMK) on an existing private Storage Account using a key stored in the private Key Vault. Includes managed identity, RBAC setup, and key rotation policy.
 
 ---
 
