@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "14864625789846024694"
+      "templateHash": "14734120880032962999"
     }
   },
   "parameters": {
@@ -234,12 +234,12 @@
       },
       "value": "[resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName'))]"
     },
-    "privateIpAddress": {
+    "privateEndpointName": {
       "type": "string",
       "metadata": {
-        "description": "Private IP address of the private endpoint"
+        "description": "Private endpoint name (use az cli to get IP: az network nic show --ids $(az network private-endpoint show -n <pe-name> -g <rg> --query networkInterfaces[0].id -o tsv) --query ipConfigurations[0].privateIPAddress)"
       },
-      "value": "[reference(resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName')), '2023-11-01').customDnsConfigs[0].ipAddresses[0]]"
+      "value": "[variables('privateEndpointName')]"
     }
   }
 }

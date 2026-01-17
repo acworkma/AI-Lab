@@ -179,5 +179,5 @@ output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob
 @description('Resource ID of the private endpoint')
 output privateEndpointId string = privateEndpoint.id
 
-@description('Private IP address of the private endpoint')
-output privateIpAddress string = privateEndpoint.properties.customDnsConfigs[0].ipAddresses[0]
+@description('Private endpoint name (use az cli to get IP: az network nic show --ids $(az network private-endpoint show -n <pe-name> -g <rg> --query networkInterfaces[0].id -o tsv) --query ipConfigurations[0].privateIPAddress)')
+output privateEndpointName string = privateEndpoint.name

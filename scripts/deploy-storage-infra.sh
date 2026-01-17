@@ -145,6 +145,12 @@ check_storage_name_available() {
     local suffix=$(jq -r '.parameters.storageNameSuffix.value' "$PARAMETER_FILE")
     local storage_name="stailab${suffix}"
     
+    # First check if it already exists in our resource group (allow update)
+    if az storage account show --name "$storage_name" --resource-group "rg-ai-storage" &> /dev/null; then
+        log_success "Storage account exists (update mode): $storage_name"
+        return 0
+    fi
+    
     local result=$(az storage account check-name --name "$storage_name" --query 'nameAvailable' -o tsv)
     
     if [[ "$result" == "true" ]]; then
@@ -205,8 +211,15 @@ deploy() {
     # Extract outputs
     local storage_name=$(jq -r '.properties.outputs.storageAccountName.value' /tmp/deployment-output.json)
     local blob_endpoint=$(jq -r '.properties.outputs.blobEndpoint.value' /tmp/deployment-output.json)
-    local private_ip=$(jq -r '.properties.outputs.privateIpAddress.value' /tmp/deployment-output.json)
+    local pe_name=$(jq -r '.properties.outputs.privateEndpointName.value' /tmp/deployment-output.json)
     local rg_name=$(jq -r '.properties.outputs.resourceGroupName.value' /tmp/deployment-output.json)
+    
+    # Get private IP via network interface (not available in Bicep output)
+    local nic_id=$(az network private-endpoint show --name "$pe_name" --resource-group "$rg_name" --query 'networkInterfaces[0].id' -o tsv 2>/dev/null)
+    local private_ip="(pending)"
+    if [[ -n "$nic_id" ]]; then
+        private_ip=$(az network nic show --ids "$nic_id" --query 'ipConfigurations[0].privateIPAddress' -o tsv 2>/dev/null || echo "(pending)")
+    fi
     
     echo ""
     echo "=========================================="

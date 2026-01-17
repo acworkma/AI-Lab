@@ -134,5 +134,5 @@ output blobEndpoint string = storageAccount.outputs.blobEndpoint
 @description('Private endpoint resource ID')
 output privateEndpointId string = storageAccount.outputs.privateEndpointId
 
-@description('Private IP address')
-output privateIpAddress string = storageAccount.outputs.privateIpAddress
+@description('Private endpoint name')
+output privateEndpointName string = storageAccount.outputs.privateEndpointName
