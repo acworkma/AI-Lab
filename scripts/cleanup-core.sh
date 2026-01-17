@@ -6,9 +6,8 @@
 #   - Warns if spoke connections exist
 #   - Prompts for confirmation
 #   - Deletes resource group (cascades to all resources)
-#   - Optional Key Vault purge
 #
-# Usage: ./scripts/cleanup-core.sh [--auto-approve] [--purge-keyvault]
+# Usage: ./scripts/cleanup-core.sh [--auto-approve]
 #
 
 set -euo pipefail
@@ -20,7 +19,6 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Default values
 RESOURCE_GROUP="rg-ai-core"
 AUTO_APPROVE=false
-PURGE_KEYVAULT=false
 
 # Colors for output
 RED='\033[0;31m'
@@ -57,7 +55,6 @@ Safely delete Core Azure vWAN Infrastructure
 
 OPTIONS:
     -a, --auto-approve      Skip confirmation prompts (use with caution)
-    -p, --purge-keyvault    Purge Key Vault immediately (permanent deletion)
     -h, --help              Show this help message
 
 EXAMPLES:
@@ -67,13 +64,11 @@ EXAMPLES:
     # Automated cleanup (CI/CD)
     $0 --auto-approve
 
-    # Cleanup with Key Vault purge
-    $0 --purge-keyvault
-
 WARNING:
     This will permanently delete all resources in rg-ai-core:
     - Virtual WAN hub and VPN Gateway
-    - Key Vault (soft-deleted for 90 days unless purged)
+    - DNS Resolver and Private DNS Zones
+    - Shared Services VNet
     - All spoke connections (if any)
 
 EOF
@@ -169,16 +164,12 @@ confirm_deletion() {
     echo "  - Virtual WAN (vwan-ai-hub)"
     echo "  - Virtual Hub (hub-ai-eastus2)"
     echo "  - VPN Gateway (vpngw-ai-hub)"
-    echo "  - Key Vault (soft-deleted for 90 days unless purged)"
+    echo "  - Shared Services VNet (vnet-ai-shared)"
+    echo "  - DNS Resolver (dnsr-ai-shared)"
+    echo "  - Private DNS Zones"
     echo "  - All spoke connections (spoke VNets remain intact)"
     echo ""
     
-    if [ "$PURGE_KEYVAULT" = true ]; then
-        log_error "⚠️  PURGE MODE ENABLED ⚠️"
-        echo "  Key Vault will be PERMANENTLY DELETED (cannot be recovered)"
-        echo ""
-    fi
-
     read -p "Type 'DELETE' to confirm deletion: " -r
     echo
     if [[ ! $REPLY == "DELETE" ]]; then
@@ -236,37 +227,6 @@ delete_resource_group() {
     echo ""
 }
 
-purge_keyvault() {
-    if [ "$PURGE_KEYVAULT" = false ]; then
-        log_info "Key Vault will be soft-deleted (recoverable for 90 days)"
-        log_info "To purge permanently later: az keyvault purge --name <vault-name>"
-        return 0
-    fi
-
-    log_info "Checking for soft-deleted Key Vaults..."
-
-    # Wait for resource group deletion to complete soft-delete
-    sleep 30
-
-    # Find soft-deleted vaults
-    local deleted_vaults=$(az keyvault list-deleted \
-        --query "[?properties.tags.purpose=='Core hub infrastructure for AI labs'].name" -o tsv 2>/dev/null || echo "")
-
-    if [ -z "$deleted_vaults" ]; then
-        log_warning "No soft-deleted Key Vaults found (may still be deleting)"
-        return 0
-    fi
-
-    echo "$deleted_vaults" | while read vault; do
-        log_warning "Purging Key Vault: $vault (PERMANENT)"
-        
-        if az keyvault purge --name "$vault" &>/dev/null; then
-            log_success "Key Vault purged: $vault"
-        else
-            log_error "Failed to purge Key Vault: $vault"
-        fi
-    done
-
     echo ""
 }
 
@@ -279,10 +239,6 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         -a|--auto-approve)
             AUTO_APPROVE=true
-            shift
-            ;;
-        -p|--purge-keyvault)
-            PURGE_KEYVAULT=true
             shift
             ;;
         -h|--help)
@@ -307,7 +263,6 @@ list_resources
 confirm_deletion
 delete_spoke_connections
 delete_resource_group
-purge_keyvault
 
 echo ""
 log_success "Cleanup initiated successfully!"
@@ -319,15 +274,5 @@ echo ""
 log_info "Verify deletion:"
 echo "  az group show --name $RESOURCE_GROUP"
 echo "  (Should return: ResourceGroupNotFound)"
-echo ""
-
-if [ "$PURGE_KEYVAULT" = true ]; then
-    log_success "Key Vault purge completed (permanent deletion)"
-else
-    log_info "Key Vault soft-deleted (recoverable for 90 days)"
-    log_info "  To recover: az keyvault recover --name <vault-name>"
-    log_info "  To purge: az keyvault purge --name <vault-name>"
-fi
-
 echo ""
 log_info "To redeploy infrastructure: ./scripts/deploy-core.sh"

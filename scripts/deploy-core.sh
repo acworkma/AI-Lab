@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# deploy-core.sh - Deploy Core Azure vWAN Infrastructure with Global Secure Access
+# deploy-core.sh - Deploy Core Azure vWAN Infrastructure with P2S VPN
 # 
-# Purpose: Orchestrate deployment of resource group, Virtual WAN hub, site-to-site VPN Gateway, 
-#          and Key Vault with what-if validation and error handling
+# Purpose: Orchestrate deployment of resource group, Virtual WAN hub, Point-to-Site VPN Gateway,
+#          DNS Resolver, and Private DNS Zones with what-if validation and error handling
 #
 # Usage: ./scripts/deploy-core.sh [--parameter-file <path>] [--skip-whatif] [--auto-approve]
 #
@@ -126,16 +126,10 @@ check_prerequisites() {
 validate_parameters() {
     log_info "Validating parameters..."
 
-    # Check if keyVaultName contains CHANGEME placeholder
-    local kv_name=$(jq -r '.parameters.keyVaultName.value // empty' "$PARAMETER_FILE")
-    if [[ "$kv_name" == *"CHANGEME"* ]]; then
-        log_error "Key Vault name contains placeholder 'CHANGEME'. Please set a unique name in $PARAMETER_FILE"
-        exit 1
-    fi
-
-    # Validate Key Vault name format (3-24 chars, alphanumeric and hyphens)
-    if [[ ! "$kv_name" =~ ^[a-zA-Z0-9-]{3,24}$ ]]; then
-        log_error "Invalid Key Vault name format: $kv_name (must be 3-24 characters, alphanumeric and hyphens)"
+    # Check if aadTenantId contains placeholder
+    local tenant_id=$(jq -r '.parameters.aadTenantId.value // empty' "$PARAMETER_FILE")
+    if [[ "$tenant_id" == *"YOUR_ENTRA_TENANT_ID"* ]] || [[ -z "$tenant_id" ]]; then
+        log_error "Microsoft Entra ID Tenant ID not set. Please set aadTenantId in $PARAMETER_FILE"
         exit 1
     fi
 
@@ -185,8 +179,8 @@ confirm_deployment() {
         echo "  - Virtual WAN: vwan-ai-hub (existing)"
         echo "  - Virtual Hub: hub-ai-eastus2 (existing)"
         echo "  - VPN Gateway: vpngw-ai-hub (existing)"
-        echo "  - Key Vault: $(jq -r '.parameters.keyVaultName.value' "$PARAMETER_FILE") (existing)"
         echo "  + Shared Services VNet: vnet-ai-shared (NEW)"
+        echo "  + DNS Resolver: dnsr-ai-shared (NEW)"
         echo "  + Private DNS Zones: 5 zones for ACR, Key Vault, Storage, SQL (NEW)"
         echo ""
         log_warning "Estimated update time: 5-10 minutes"
@@ -196,8 +190,8 @@ confirm_deployment() {
         echo "  - Virtual WAN: vwan-ai-hub"
         echo "  - Virtual Hub: hub-ai-eastus2"
         echo "  - VPN Gateway: vpngw-ai-hub"
-        echo "  - Key Vault: $(jq -r '.parameters.keyVaultName.value' "$PARAMETER_FILE")"
         echo "  - Shared Services VNet: vnet-ai-shared"
+        echo "  - DNS Resolver: dnsr-ai-shared"
         echo "  - Private DNS Zones: 5 zones for ACR, Key Vault, Storage, SQL"
         echo ""
         log_warning "Estimated deployment time: 25-30 minutes"
@@ -254,11 +248,10 @@ show_outputs() {
         "  - Routing State: \(.vhubRoutingState.value)",
         "VPN Gateway: \(.vpnGatewayName.value)",
         "  - Scale Units: \(.vpnGatewayScaleUnit.value)",
-        "Key Vault: \(.keyVaultName.value)",
-        "  - URI: \(.keyVaultUri.value)",
         "Shared Services VNet: \(.sharedServicesVnetName.value)",
         "  - Address Prefix: \(.sharedServicesVnetAddressPrefix.value)",
         "  - Private Endpoint Subnet: \(.privateEndpointSubnetName.value)",
+        "DNS Resolver Inbound IP: \(.dnsResolverInboundIp.value)",
         "Private DNS Zones: 5 zones created",
         "  - privatelink.azurecr.io",
         "  - privatelink.vaultcore.azure.net",

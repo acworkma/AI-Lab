@@ -86,24 +86,6 @@
         "description": "Microsoft Entra ID Issuer URL. Replace YOUR_ENTRA_TENANT_ID with your tenant ID. Format: https://sts.windows.net/{tenantId}/"
       }
     },
-    "keyVaultName": {
-      "value": "kv-ai-core-CHANGEME",
-      "metadata": {
-        "description": "Key Vault name (MUST be globally unique, 3-24 characters, alphanumeric and hyphens). REQUIRED: Change 'CHANGEME' to a unique suffix."
-      }
-    },
-    "keyVaultSku": {
-      "value": "standard",
-      "metadata": {
-        "description": "Key Vault SKU. Allowed values: standard, premium. Default: standard"
-      }
-    },
-    "enablePurgeProtection": {
-      "value": false,
-      "metadata": {
-        "description": "Enable purge protection for Key Vault (recommended for production). Default: false"
-      }
-    },
     "deployedBy": {
       "value": "manual",
       "metadata": {
