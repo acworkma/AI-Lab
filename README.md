@@ -66,7 +66,7 @@ Infrastructure projects deploy foundational capabilities that other projects con
 - **[Private Azure Key Vault](docs/keyvault/README.md)**  
   Deploy a private Key Vault with RBAC authorization, private endpoint, and DNS integration for secure centralized secrets management. Supports Bicep Key Vault references for consuming secrets in other deployments.
 
-- **[Private Storage Account](docs/storage-infra/README.md)** 🆕  
+- **[Private Storage Account](docs/storage-infra/README.md)**  
   Deploy a private Azure Storage Account with RBAC-only authentication (shared keys disabled), private endpoint, and DNS integration. Enforces TLS 1.2 minimum and provides comprehensive validation scripts.
 
 - **[Private Azure Container Registry](docs/registry/README.md)**  
