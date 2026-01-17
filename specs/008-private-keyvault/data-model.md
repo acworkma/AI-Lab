@@ -172,35 +172,34 @@ When private endpoint is created with DNS zone group, an A record is automatical
 
 ## Resource Dependency Graph
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    rg-ai-keyvault (NEW)                         │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │                                                            │ │
-│  │  ┌──────────────────┐      ┌─────────────────────────────┐│ │
-│  │  │    Key Vault     │◄─────│     Private Endpoint        ││ │
-│  │  │ kv-ai-lab-<suffix>│      │  kv-ai-lab-<suffix>-pe     ││ │
-│  │  │                  │      │                             ││ │
-│  │  │  • RBAC enabled  │      │  ┌───────────────────────┐  ││ │
-│  │  │  • Private only  │      │  │  DNS Zone Group       │  ││ │
-│  │  │  • Soft-delete   │      │  │  (auto A-record)      │  ││ │
-│  │  └──────────────────┘      │  └───────────┬───────────┘  ││ │
-│  │                            └──────────────┼──────────────┘│ │
-│  └───────────────────────────────────────────┼───────────────┘ │
-└──────────────────────────────────────────────┼─────────────────┘
-                                               │
-                   References                  │
-                       ▼                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    rg-ai-core (EXISTING)                        │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  Private DNS Zone                  │  Shared Services VNet │  │
-│  │  privatelink.vaultcore.azure.net  │  vnet-ai-shared       │  │
-│  │                                    │  └─ snet-private-     │  │
-│  │  (A record auto-registered)        │     endpoints         │  │
-│  │                                    │     10.1.0.0/26       │  │
-│  └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph RG1["rg-ai-keyvault (NEW)"]
+        KV["Key Vault<br/>kv-ai-lab-MMDD<br/>• RBAC enabled<br/>• Private only<br/>• Soft-delete"]
+        PE["Private Endpoint<br/>kv-ai-lab-MMDD-pe"]
+        DZG["DNS Zone Group<br/>(auto A-record)"]
+        
+        PE --> KV
+        DZG --> PE
+    end
+    
+    subgraph RG2["rg-ai-core (EXISTING)"]
+        DNS["Private DNS Zone<br/>privatelink.vaultcore.azure.net<br/>(A record auto-registered)"]
+        VNET["Shared Services VNet<br/>vnet-ai-shared"]
+        SUBNET["PrivateEndpointSubnet<br/>10.1.0.0/26"]
+        
+        VNET --> SUBNET
+    end
+    
+    DZG -.->|References| DNS
+    PE -.->|References| SUBNET
+
+    style KV fill:#0078d4,color:#fff
+    style PE fill:#50e6ff,color:#000
+    style DZG fill:#50e6ff,color:#000
+    style DNS fill:#7fba00,color:#000
+    style VNET fill:#7fba00,color:#000
+    style SUBNET fill:#7fba00,color:#000
 ```
 
 ---
