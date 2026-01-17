@@ -5,18 +5,18 @@
 ```mermaid
 graph TB
     subgraph "Remote VPN Clients"
-        CLIENT1[Laptop<br/>Azure VPN Client]
-        CLIENT2[Desktop<br/>Azure VPN Client]
-        CLIENT3[Mobile<br/>Azure VPN Client]
+        CLIENT1["Laptop - Azure VPN Client"]
+        CLIENT2["Desktop - Azure VPN Client"]
+        CLIENT3["Mobile - Azure VPN Client"]
     end
     
     subgraph "Azure Subscription"
         subgraph "rg-ai-core (East US 2)"
             subgraph "Virtual WAN Hub (10.0.0.0/16)"
-                VWAN[vwan-ai-hub<br/>Standard SKU]
-                VHUB[hub-ai-eastus2<br/>Address: 10.0.0.0/16]
-                VPNCONFIG[vpnconfig-ai-hub<br/>VPN Server Config<br/>Auth: Microsoft Entra ID<br/>Protocol: OpenVPN]
-                VPNGW[vpngw-ai-hub<br/>Point-to-Site VPN<br/>Client Pool: 172.16.0.0/24<br/>1 Scale Unit (500 Mbps)]
+                VWAN["vwan-ai-hub - Standard SKU"]
+                VHUB["hub-ai-eastus2 - Address: 10.0.0.0/16"]
+                VPNCONFIG["vpnconfig-ai-hub - VPN Server Config - Auth: Microsoft Entra ID - Protocol: OpenVPN"]
+                VPNGW["vpngw-ai-hub - Point-to-Site VPN - Client Pool: 172.16.0.0/24 - 1 Scale Unit (500 Mbps)"]
                 
                 VWAN --> VHUB
                 VHUB --> VPNGW
@@ -25,28 +25,28 @@ graph TB
         end
         
         subgraph "rg-ai-storage (Spoke 1)"
-            VNET1[vnet-storage<br/>10.1.0.0/16]
-            VM1[Azure VMs<br/>Storage Services]
+            VNET1["vnet-storage - 10.1.0.0/16"]
+            VM1["Azure VMs - Storage Services"]
             VNET1 --> VM1
         end
         
         subgraph "rg-ai-ml (Spoke 2)"
-            VNET2[vnet-ml<br/>10.2.0.0/16]
-            VM2[ML Compute<br/>Training Resources]
+            VNET2["vnet-ml - 10.2.0.0/16"]
+            VM2["ML Compute - Training Resources"]
             VNET2 --> VM2
         end
         
         subgraph "rg-ai-other (Spoke 3)"
-            VNET3[vnet-other<br/>10.3.0.0/16]
-            VM3[Lab Resources<br/>Experiments]
+            VNET3["vnet-other - 10.3.0.0/16"]
+            VM3["Lab Resources - Experiments"]
             VNET3 --> VM3
         end
     end
     
     %% Connections
-    CLIENT1 -->|OpenVPN Tunnel<br/>Entra ID Auth| VPNGW
-    CLIENT2 -->|OpenVPN Tunnel<br/>Entra ID Auth| VPNGW
-    CLIENT3 -->|OpenVPN Tunnel<br/>Entra ID Auth| VPNGW
+    CLIENT1 -->|OpenVPN Tunnel - Entra ID Auth| VPNGW
+    CLIENT2 -->|OpenVPN Tunnel - Entra ID Auth| VPNGW
+    CLIENT3 -->|OpenVPN Tunnel - Entra ID Auth| VPNGW
     VHUB -.->|VNet Connection| VNET1
     VHUB -.->|VNet Connection| VNET2
     VHUB -.->|VNet Connection| VNET3
@@ -99,20 +99,20 @@ graph TB
 
 ```mermaid
 graph LR
-    A[Start Deployment] --> B[Create Resource Group]
-    B --> C{Parallel Deployment}
-    C --> D[Deploy Virtual WAN]
-    C --> E[Deploy Shared VNet]
-    D --> F[Deploy Virtual Hub]
-    E --> G[Deploy DNS Resolver]
-    F --> H[Deploy VPN Gateway<br/>15-20 min]
-    G --> I[Deploy Private DNS Zones]
-    H --> J[VPN Gateway Ready]
+    A["Start Deployment"] --> B["Create Resource Group"]
+    B --> C{"Parallel Deployment"}
+    C --> D["Deploy Virtual WAN"]
+    C --> E["Deploy Shared VNet"]
+    D --> F["Deploy Virtual Hub"]
+    E --> G["Deploy DNS Resolver"]
+    F --> H["Deploy VPN Gateway - 15-20 min"]
+    G --> I["Deploy Private DNS Zones"]
+    H --> J["VPN Gateway Ready"]
     I --> J
-    J --> K[Configure VPN Server]
-    K --> L[Deploy Spoke Labs]
-    L --> M[Connect Spokes to Hub]
-    M --> N[End - Full Topology Ready]
+    J --> K["Configure VPN Server"]
+    K --> L["Deploy Spoke Labs"]
+    L --> M["Connect Spokes to Hub"]
+    M --> N["End - Full Topology Ready"]
     
     style A fill:#90EE90
     style N fill:#90EE90
