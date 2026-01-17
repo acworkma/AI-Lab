@@ -9,29 +9,29 @@ AI-Lab is a collection of modular Azure infrastructure projects, all connected t
 ### Core Concept: Hub-Spoke Architecture
 
 ```
-                    ┌─────────────────────────┐
-                    │   Remote VPN Clients    │
-                    │ (Entra ID Authentication)│
-                    └───────────┬─────────────┘
-                                │
-                    ┌───────────▼─────────────┐
-                    │   Virtual WAN Hub       │
-                    │   (rg-ai-core)          │
-                    │ • P2S VPN Gateway       │
-                    │ • Key Vault (shared)    │
-                    └────────┬────────────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-         ┌────▼────┐    ┌────▼────┐   ┌────▼────┐
-         │ Project │    │ Project │   │ Project │
-         │   #1    │    │   #2    │   │   #3    │
-         │ (Spoke) │    │ (Spoke) │   │ (Spoke) │
-         └─────────┘    └─────────┘   └─────────┘
+                    ┌───────────────────────┐
+                    │  Remote VPN Clients   │
+                    │   (Entra ID Auth)     │
+                    └─────────┬─────────────┘
+                              │
+                    ┌─────────▼─────────────┐
+                    │   Virtual WAN Hub     │
+                    │     (rg-ai-core)      │
+                    │  • P2S VPN Gateway    │
+                    │  • DNS Resolver       │
+                    └─────────┬─────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              │               │               │
+         ┌────▼────┐    ┌─────▼────┐    ┌────▼────┐
+         │ Project │    │ Project  │    │ Project │
+         │   #1    │    │   #2     │    │   #3    │
+         │ (Spoke) │    │ (Spoke)  │    │ (Spoke) │
+         └─────────┘    └──────────┘    └─────────┘
 ```
 
 **Benefits**:
-- 🔒 **Centralized Security**: Single VPN gateway and Key Vault for all projects
+- 🔒 **Centralized Security**: Single VPN gateway for all projects
 - 🔌 **Easy Connectivity**: New projects auto-connect to the hub
 - 🧩 **Modular Design**: Deploy/delete projects independently
 - 🎛️ **Simplified Management**: One hub to rule them all
@@ -46,8 +46,8 @@ AI-Lab is a collection of modular Azure infrastructure projects, all connected t
 The foundational Virtual WAN hub that all other projects connect to. Includes:
 - Virtual WAN hub with Point-to-Site VPN
 - Microsoft Entra ID authentication for remote access
-- Centralized Azure Key Vault for secrets management
 - Private DNS Resolver for cross-network name resolution
+- Private DNS Zones for private endpoint resolution
 - Network routing for spoke connectivity
 
 **[📖 Full Documentation →](docs/core-infrastructure/README.md)**
