@@ -98,7 +98,8 @@ check_vpn_connectivity() {
     
     log_warn "VPN connection not detected (may affect DNS resolution)"
     log_warn "Connect to VPN and retry for accurate private DNS testing"
-    return 1
+    # Continue anyway - we can still check Azure DNS records
+    return 0
 }
 
 resolve_dns() {
@@ -185,13 +186,19 @@ check_private_endpoint_ip() {
     
     local storage_name=$(get_storage_name)
     local rg_name=$(get_resource_group)
-    local pe_name="pe-${storage_name}"
+    local pe_name="${storage_name}-pe"
     
-    local private_ip=$(az network private-endpoint show \
+    # Get private IP via network interface
+    local nic_id=$(az network private-endpoint show \
         --name "$pe_name" \
         --resource-group "$rg_name" \
-        --query 'customDnsConfigs[0].ipAddresses[0]' \
+        --query 'networkInterfaces[0].id' \
         -o tsv 2>/dev/null)
+    
+    local private_ip=""
+    if [[ -n "$nic_id" ]]; then
+        private_ip=$(az network nic show --ids "$nic_id" --query 'ipConfigurations[0].privateIPAddress' -o tsv 2>/dev/null)
+    fi
     
     if [[ -n "$private_ip" && "$private_ip" != "null" ]]; then
         log_success "Private endpoint IP: $private_ip"

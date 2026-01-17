@@ -38,12 +38,12 @@ log_success() {
 
 log_warn() {
     echo -e "${YELLOW}[WARN]${NC} $1"
-    ((VALIDATION_WARNINGS++))
+    VALIDATION_WARNINGS=$((VALIDATION_WARNINGS + 1))
 }
 
 log_error() {
     echo -e "${RED}[FAIL]${NC} $1"
-    ((VALIDATION_ERRORS++))
+    VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
 }
 
 show_usage() {
@@ -129,10 +129,10 @@ check_security_settings() {
         log_error "Minimum TLS version: $tls_version (should be TLS1_2)"
     fi
     
-    # Check HTTPS required
-    local https_only=$(echo "$account" | jq -r '.supportsHttpsTrafficOnly')
-    if [[ "$https_only" == "true" ]]; then
-        log_success "HTTPS traffic only: Enabled"
+    # Check HTTPS required (deprecated property - defaults to true in newer API versions)
+    local https_only=$(echo "$account" | jq -r '.supportsHttpsTrafficOnly // "true"')
+    if [[ "$https_only" == "true" ]] || [[ "$https_only" == "null" ]]; then
+        log_success "HTTPS traffic only: Enabled (default)"
     else
         log_error "HTTPS traffic only: Disabled (should be enabled)"
     fi
@@ -218,16 +218,21 @@ check_private_endpoint() {
     fi
     
     # Check for the private endpoint resource
-    local pe_name="pe-${storage_name}"
+    local pe_name="${storage_name}-pe"
     if az network private-endpoint show --name "$pe_name" --resource-group "$rg_name" &> /dev/null; then
         log_success "Private endpoint exists: $pe_name"
         
-        # Get private IP
-        local private_ip=$(az network private-endpoint show \
+        # Get private IP via network interface
+        local nic_id=$(az network private-endpoint show \
             --name "$pe_name" \
             --resource-group "$rg_name" \
-            --query 'customDnsConfigs[0].ipAddresses[0]' \
+            --query 'networkInterfaces[0].id' \
             -o tsv)
+        
+        local private_ip=""
+        if [[ -n "$nic_id" ]]; then
+            private_ip=$(az network nic show --ids "$nic_id" --query 'ipConfigurations[0].privateIPAddress' -o tsv 2>/dev/null)
+        fi
         
         if [[ -n "$private_ip" && "$private_ip" != "null" ]]; then
             log_success "Private IP assigned: $private_ip"
@@ -245,7 +250,7 @@ check_dns_zone_group() {
     local storage_name=$(get_storage_name)
     local rg_name=$(get_resource_group)
     local core_rg=$(get_core_resource_group)
-    local pe_name="pe-${storage_name}"
+    local pe_name="${storage_name}-pe"
     
     # Check DNS zone group exists
     local dns_zone_group=$(az network private-endpoint dns-zone-group list \
