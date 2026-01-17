@@ -109,9 +109,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     
     // Network configuration (FR-004, SR-001)
     // All traffic must use private endpoint
+    // Note: AzureServices bypass required when enabledForTemplateDeployment is true
     publicNetworkAccess: 'Disabled'
     networkAcls: {
-      bypass: 'None'           // No Azure service bypass
+      bypass: enabledForTemplateDeployment ? 'AzureServices' : 'None'
       defaultAction: 'Deny'    // Deny all public access
       ipRules: []              // No IP allowlist
       virtualNetworkRules: []  // No VNet rules (using private endpoint)
