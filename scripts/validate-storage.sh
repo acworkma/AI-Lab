@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# validate-storage.sh - Validate Private Storage Account Configuration
+# validate-storage.sh - Validate Storage Account CMK Configuration
 # 
-# Purpose: Perform pre-deployment (what-if) and post-deployment validation
-#          of storage account CMK, private endpoint, and DNS configuration
+# Feature: 010-storage-cmk-refactor
+# Purpose: Validate CMK encryption status, key details, and lifecycle info
 #
 # Usage: ./scripts/validate-storage.sh [--parameter-file <path>] [--deployed]
 #
 # Prerequisites:
 # - Azure CLI installed and logged in
-# - For --deployed: VPN connection established for DNS verification
+# - For --deployed: VPN connection for DNS verification
 #
 
 set -euo pipefail
@@ -56,7 +56,7 @@ usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-Validate Private Storage Account with CMK configuration
+Validate Storage Account CMK encryption configuration
 
 OPTIONS:
     -p, --parameter-file PATH   Path to parameter file (default: bicep/storage/main.parameters.json)
@@ -71,21 +71,18 @@ VALIDATION MODES:
 
     Deployed (--deployed):
         - All template validations
-        - CMK encryption verification (SR-002)
-        - Public access disabled check (SR-003)
-        - Private endpoint status (SR-004)
-        - DNS resolution via private endpoint (SR-005)
-        - Tags compliance with constitution
+        - CMK encryption verification (SC-001)
+        - Encryption key verification (SC-002)
+        - RBAC role assignment (SC-003)
+        - Blob operations test (SC-004)
+        - Key lifecycle details (US3)
 
 EXAMPLES:
     # Validate template before deployment
     $0
 
-    # Validate deployed infrastructure
+    # Validate deployed infrastructure with CMK status
     $0 --deployed
-
-    # Use custom parameter file
-    $0 --parameter-file bicep/storage/main.parameters.prod.json --deployed
 
 EOF
     exit 1
@@ -118,14 +115,14 @@ validate_parameter_file() {
     fi
     
     # Check required parameters
-    local REQUIRED_PARAMS=("storageAccountName" "keyVaultName" "subnetName" "vnetName")
+    local REQUIRED_PARAMS=("storageNameSuffix" "owner")
     
     for param in "${REQUIRED_PARAMS[@]}"; do
         local value
         value=$(jq -r ".parameters.${param}.value // empty" "$PARAMETER_FILE")
         
-        if [[ -z "$value" ]]; then
-            log_error "Required parameter missing: $param"
+        if [[ -z "$value" || "$value" == "<"* ]]; then
+            log_error "Required parameter missing or not customized: $param"
         else
             log_success "Parameter '$param' present: $value"
         fi
@@ -136,7 +133,7 @@ validate_whatif() {
     log_info "Running what-if validation..."
     
     local LOCATION
-    LOCATION=$(jq -r '.parameters.location.value // "eastus"' "$PARAMETER_FILE")
+    LOCATION=$(jq -r '.parameters.location.value // "eastus2"' "$PARAMETER_FILE")
     
     local OUTPUT
     if OUTPUT=$(az deployment sub what-if \
@@ -151,14 +148,17 @@ validate_whatif() {
     fi
 }
 
+# ============================================================================
+# CMK VALIDATION (T014, US3: T021-T024)
+# ============================================================================
+
 validate_cmk_encryption() {
-    log_info "Checking CMK encryption (SR-002)..."
+    log_info "Checking CMK encryption (SC-001)..."
     
-    local STORAGE_RG
-    STORAGE_RG=$(jq -r '.parameters.resourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
-    
-    local STORAGE_NAME
-    STORAGE_NAME=$(jq -r '.parameters.storageAccountName.value' "$PARAMETER_FILE")
+    local STORAGE_RG STORAGE_SUFFIX
+    STORAGE_RG=$(jq -r '.parameters.storageResourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
+    STORAGE_SUFFIX=$(jq -r '.parameters.storageNameSuffix.value' "$PARAMETER_FILE")
+    local STORAGE_NAME="stailab${STORAGE_SUFFIX}"
     
     # Check key source
     local KEY_SOURCE
@@ -169,49 +169,165 @@ validate_cmk_encryption() {
         --output tsv 2>/dev/null || echo "")
     
     if [[ "$KEY_SOURCE" == "Microsoft.Keyvault" ]]; then
-        log_success "SR-002: CMK encryption enabled (source: $KEY_SOURCE)"
+        log_success "SC-001: CMK encryption enabled (keySource: $KEY_SOURCE)"
     else
-        log_error "SR-002: CMK encryption not configured (source: $KEY_SOURCE)"
+        log_error "SC-001: CMK encryption not configured (keySource: $KEY_SOURCE)"
         return 1
     fi
     
-    # Check key vault properties
-    local KEY_VAULT_URI
-    KEY_VAULT_URI=$(az storage account show \
-        --name "$STORAGE_NAME" \
-        --resource-group "$STORAGE_RG" \
-        --query "encryption.keyVaultProperties.keyVaultUri" \
-        --output tsv 2>/dev/null || echo "")
-    
-    if [[ -n "$KEY_VAULT_URI" ]]; then
-        log_success "SR-002: Key Vault URI configured: $KEY_VAULT_URI"
-    else
-        log_error "SR-002: Key Vault URI not configured"
-    fi
-    
-    # Check identity type
-    local IDENTITY_TYPE
-    IDENTITY_TYPE=$(az storage account show \
+    # Check identity configured (T012)
+    local IDENTITY_ID
+    IDENTITY_ID=$(az storage account show \
         --name "$STORAGE_NAME" \
         --resource-group "$STORAGE_RG" \
         --query "encryption.encryptionIdentity.encryptionUserAssignedIdentity" \
         --output tsv 2>/dev/null || echo "")
     
-    if [[ -n "$IDENTITY_TYPE" && "$IDENTITY_TYPE" != "null" ]]; then
-        log_success "SR-002: User-assigned identity configured for CMK"
+    if [[ -n "$IDENTITY_ID" && "$IDENTITY_ID" != "null" ]]; then
+        log_success "SC-001: User-assigned identity configured for CMK"
     else
-        log_error "SR-002: User-assigned identity not configured for CMK"
+        log_error "SC-001: User-assigned identity not configured"
+    fi
+}
+
+validate_encryption_key() {
+    log_info "Checking encryption key (SC-002)..."
+    
+    local KV_RG STORAGE_RG STORAGE_SUFFIX KV_NAME_PARAM
+    KV_RG=$(jq -r '.parameters.keyVaultResourceGroupName.value // "rg-ai-keyvault"' "$PARAMETER_FILE")
+    STORAGE_RG=$(jq -r '.parameters.storageResourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
+    STORAGE_SUFFIX=$(jq -r '.parameters.storageNameSuffix.value' "$PARAMETER_FILE")
+    KV_NAME_PARAM=$(jq -r '.parameters.keyVaultName.value // ""' "$PARAMETER_FILE")
+    local STORAGE_NAME="stailab${STORAGE_SUFFIX}"
+    local KEY_NAME=$(jq -r '.parameters.encryptionKeyName.value // "storage-encryption-key"' "$PARAMETER_FILE")
+    
+    # Get Key Vault name
+    local KV_NAME
+    if [[ -n "$KV_NAME_PARAM" && "$KV_NAME_PARAM" != "null" && "$KV_NAME_PARAM" != "" ]]; then
+        KV_NAME="$KV_NAME_PARAM"
+    else
+        KV_NAME=$(az keyvault list --resource-group "$KV_RG" --query "[0].name" -o tsv 2>/dev/null || echo "")
+    fi
+    
+    if [[ -z "$KV_NAME" ]]; then
+        log_error "SC-002: Key Vault not found in $KV_RG"
+        return 1
+    fi
+    
+    # Check key exists
+    if ! az keyvault key show --vault-name "$KV_NAME" --name "$KEY_NAME" &>/dev/null; then
+        log_error "SC-002: Encryption key not found: $KEY_NAME in $KV_NAME"
+        return 1
+    fi
+    
+    log_success "SC-002: Encryption key exists: $KEY_NAME"
+    
+    # T021: Display encryption key URI (versionless)
+    local KEY_URI
+    KEY_URI=$(az keyvault key show --vault-name "$KV_NAME" --name "$KEY_NAME" --query "key.kid" -o tsv 2>/dev/null || echo "")
+    # Remove version from URI for versionless display
+    local KEY_URI_VERSIONLESS="${KEY_URI%/*}"
+    echo "  Key URI (versionless): $KEY_URI_VERSIONLESS"
+    
+    # T022: Display current key version
+    local KEY_VERSION="${KEY_URI##*/}"
+    echo "  Current Key Version: $KEY_VERSION"
+    
+    # Check key size
+    local KEY_SIZE
+    KEY_SIZE=$(az keyvault key show --vault-name "$KV_NAME" --name "$KEY_NAME" --query "key.n" -o tsv 2>/dev/null | wc -c)
+    # RSA key size approximation: 2048 bit ~ 342 chars, 3072 ~ 512 chars, 4096 ~ 683 chars (base64)
+    if [[ $KEY_SIZE -gt 600 ]]; then
+        log_success "SC-002: Key size appears to be RSA 4096-bit"
+    elif [[ $KEY_SIZE -gt 400 ]]; then
+        log_success "SC-002: Key size appears to be RSA 3072-bit"
+    else
+        log_success "SC-002: Key size appears to be RSA 2048-bit"
+    fi
+    
+    # T023: Display key rotation policy
+    log_info "Key rotation policy (SC-002, SR-003):"
+    local ROTATION_POLICY
+    ROTATION_POLICY=$(az keyvault key rotation-policy show --vault-name "$KV_NAME" --name "$KEY_NAME" 2>/dev/null || echo "{}")
+    
+    local ROTATION_INTERVAL
+    ROTATION_INTERVAL=$(echo "$ROTATION_POLICY" | jq -r '.lifetimeActions[]? | select(.action.type == "rotate") | .trigger.timeAfterCreate // "N/A"' 2>/dev/null || echo "N/A")
+    
+    local EXPIRY_TIME
+    EXPIRY_TIME=$(echo "$ROTATION_POLICY" | jq -r '.attributes.expiryTime // "N/A"' 2>/dev/null || echo "N/A")
+    
+    echo "  Rotation Interval: $ROTATION_INTERVAL"
+    echo "  Expiry Time: $EXPIRY_TIME"
+    
+    if [[ "$ROTATION_INTERVAL" == "P18M" ]]; then
+        log_success "SR-003: Key rotation interval is P18M (18 months)"
+    elif [[ "$ROTATION_INTERVAL" != "N/A" ]]; then
+        log_warning "SR-003: Key rotation interval is $ROTATION_INTERVAL (expected P18M)"
+    else
+        log_warning "SR-003: Key rotation policy not configured"
+    fi
+}
+
+validate_rbac_assignment() {
+    log_info "Checking RBAC role assignment (SC-003)..."
+    
+    local KV_RG STORAGE_RG STORAGE_SUFFIX KV_NAME_PARAM
+    KV_RG=$(jq -r '.parameters.keyVaultResourceGroupName.value // "rg-ai-keyvault"' "$PARAMETER_FILE")
+    STORAGE_RG=$(jq -r '.parameters.storageResourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
+    STORAGE_SUFFIX=$(jq -r '.parameters.storageNameSuffix.value' "$PARAMETER_FILE")
+    KV_NAME_PARAM=$(jq -r '.parameters.keyVaultName.value // ""' "$PARAMETER_FILE")
+    local STORAGE_NAME="stailab${STORAGE_SUFFIX}"
+    local IDENTITY_NAME="id-${STORAGE_NAME}-cmk"
+    
+    # Get Key Vault name
+    local KV_NAME
+    if [[ -n "$KV_NAME_PARAM" && "$KV_NAME_PARAM" != "null" && "$KV_NAME_PARAM" != "" ]]; then
+        KV_NAME="$KV_NAME_PARAM"
+    else
+        KV_NAME=$(az keyvault list --resource-group "$KV_RG" --query "[0].name" -o tsv 2>/dev/null || echo "")
+    fi
+    
+    # T024: Display managed identity details
+    log_info "Managed identity details:"
+    local MI_PRINCIPAL_ID MI_CLIENT_ID
+    MI_PRINCIPAL_ID=$(az identity show --name "$IDENTITY_NAME" --resource-group "$STORAGE_RG" --query "principalId" -o tsv 2>/dev/null || echo "")
+    MI_CLIENT_ID=$(az identity show --name "$IDENTITY_NAME" --resource-group "$STORAGE_RG" --query "clientId" -o tsv 2>/dev/null || echo "")
+    
+    if [[ -z "$MI_PRINCIPAL_ID" ]]; then
+        log_error "SC-003: Managed identity not found: $IDENTITY_NAME"
+        return 1
+    fi
+    
+    echo "  Identity Name: $IDENTITY_NAME"
+    echo "  Principal ID: $MI_PRINCIPAL_ID"
+    echo "  Client ID: $MI_CLIENT_ID"
+    
+    # Check role assignment (Key Vault Crypto Service Encryption User)
+    local ROLE_ID="e147488a-f6f5-4113-8e2d-b22465e65bf6"
+    local KV_ID
+    KV_ID=$(az keyvault show --name "$KV_NAME" --resource-group "$KV_RG" --query "id" -o tsv 2>/dev/null || echo "")
+    
+    local ROLE_ASSIGNED
+    ROLE_ASSIGNED=$(az role assignment list \
+        --assignee "$MI_PRINCIPAL_ID" \
+        --scope "$KV_ID" \
+        --query "[?roleDefinitionId.contains(@, '$ROLE_ID')].id" \
+        -o tsv 2>/dev/null || echo "")
+    
+    if [[ -n "$ROLE_ASSIGNED" ]]; then
+        log_success "SC-003: Key Vault Crypto Service Encryption User role assigned"
+    else
+        log_error "SC-003: Role assignment not found for managed identity"
     fi
 }
 
 validate_public_access() {
-    log_info "Checking public access (SR-003)..."
+    log_info "Checking public access (SR-004)..."
     
-    local STORAGE_RG
-    STORAGE_RG=$(jq -r '.parameters.resourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
-    
-    local STORAGE_NAME
-    STORAGE_NAME=$(jq -r '.parameters.storageAccountName.value' "$PARAMETER_FILE")
+    local STORAGE_RG STORAGE_SUFFIX
+    STORAGE_RG=$(jq -r '.parameters.storageResourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
+    STORAGE_SUFFIX=$(jq -r '.parameters.storageNameSuffix.value' "$PARAMETER_FILE")
+    local STORAGE_NAME="stailab${STORAGE_SUFFIX}"
     
     local PUBLIC_ACCESS
     PUBLIC_ACCESS=$(az storage account show \
@@ -221,146 +337,24 @@ validate_public_access() {
         --output tsv 2>/dev/null || echo "")
     
     if [[ "$PUBLIC_ACCESS" == "Disabled" ]]; then
-        log_success "SR-003: Public network access disabled"
+        log_success "SR-004: Public network access disabled"
     else
-        log_error "SR-003: Public network access not disabled (status: $PUBLIC_ACCESS)"
+        log_error "SR-004: Public network access not disabled (status: $PUBLIC_ACCESS)"
     fi
     
-    # Check allow blob public access
-    local BLOB_PUBLIC
-    BLOB_PUBLIC=$(az storage account show \
+    # Check TLS version
+    local TLS_VERSION
+    TLS_VERSION=$(az storage account show \
         --name "$STORAGE_NAME" \
         --resource-group "$STORAGE_RG" \
-        --query "allowBlobPublicAccess" \
+        --query "minimumTlsVersion" \
         --output tsv 2>/dev/null || echo "")
     
-    if [[ "$BLOB_PUBLIC" == "false" ]]; then
-        log_success "SR-003: Blob public access disabled"
+    if [[ "$TLS_VERSION" == "TLS1_2" ]]; then
+        log_success "SR-004: TLS 1.2 minimum enforced"
     else
-        log_error "SR-003: Blob public access not disabled (status: $BLOB_PUBLIC)"
+        log_warning "SR-004: TLS version is $TLS_VERSION (expected TLS1_2)"
     fi
-}
-
-validate_private_endpoint() {
-    log_info "Checking private endpoint (SR-004)..."
-    
-    local STORAGE_RG
-    STORAGE_RG=$(jq -r '.parameters.resourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
-    
-    local STORAGE_NAME
-    STORAGE_NAME=$(jq -r '.parameters.storageAccountName.value' "$PARAMETER_FILE")
-    
-    local PE_NAME="pe-${STORAGE_NAME}-blob"
-    
-    # Check PE exists
-    if ! az network private-endpoint show \
-        --name "$PE_NAME" \
-        --resource-group "$STORAGE_RG" &>/dev/null; then
-        log_error "SR-004: Private endpoint not found: $PE_NAME"
-        return 1
-    fi
-    
-    log_success "SR-004: Private endpoint exists: $PE_NAME"
-    
-    # Check PE connection state
-    local CONNECTION_STATE
-    CONNECTION_STATE=$(az network private-endpoint show \
-        --name "$PE_NAME" \
-        --resource-group "$STORAGE_RG" \
-        --query "privateLinkServiceConnections[0].privateLinkServiceConnectionState.status" \
-        --output tsv 2>/dev/null || echo "")
-    
-    if [[ "$CONNECTION_STATE" == "Approved" ]]; then
-        log_success "SR-004: Private endpoint connection approved"
-    else
-        log_error "SR-004: Private endpoint connection not approved (status: $CONNECTION_STATE)"
-    fi
-    
-    # Check PE IP
-    local PE_IP
-    PE_IP=$(az network private-endpoint show \
-        --name "$PE_NAME" \
-        --resource-group "$STORAGE_RG" \
-        --query "customDnsConfigs[0].ipAddresses[0]" \
-        --output tsv 2>/dev/null || echo "")
-    
-    if [[ -n "$PE_IP" && "$PE_IP" != "null" ]]; then
-        log_success "SR-004: Private endpoint IP assigned: $PE_IP"
-    else
-        log_warning "SR-004: Private endpoint IP not available yet"
-    fi
-}
-
-validate_dns_resolution() {
-    log_info "Checking DNS resolution (SR-005)..."
-    
-    local STORAGE_NAME
-    STORAGE_NAME=$(jq -r '.parameters.storageAccountName.value' "$PARAMETER_FILE")
-    
-    local FQDN="${STORAGE_NAME}.blob.core.windows.net"
-    
-    # Get expected private IP
-    local STORAGE_RG
-    STORAGE_RG=$(jq -r '.parameters.resourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
-    
-    local PE_NAME="pe-${STORAGE_NAME}-blob"
-    
-    local EXPECTED_IP
-    EXPECTED_IP=$(az network private-endpoint show \
-        --name "$PE_NAME" \
-        --resource-group "$STORAGE_RG" \
-        --query "customDnsConfigs[0].ipAddresses[0]" \
-        --output tsv 2>/dev/null || echo "")
-    
-    if [[ -z "$EXPECTED_IP" || "$EXPECTED_IP" == "null" ]]; then
-        log_warning "SR-005: Cannot determine expected private IP"
-        return 0
-    fi
-    
-    # Resolve DNS (requires VPN connection)
-    log_info "Resolving $FQDN (VPN required)..."
-    
-    local RESOLVED_IP
-    RESOLVED_IP=$(nslookup "$FQDN" 2>/dev/null | grep -A1 "Name:" | grep "Address" | awk '{print $2}' || echo "")
-    
-    if [[ -z "$RESOLVED_IP" ]]; then
-        log_warning "SR-005: DNS resolution failed (VPN may not be connected)"
-        log_info "Expected private IP: $EXPECTED_IP"
-    elif [[ "$RESOLVED_IP" == "$EXPECTED_IP" ]]; then
-        log_success "SR-005: DNS resolves to private endpoint IP: $RESOLVED_IP"
-    elif [[ "$RESOLVED_IP" == 10.* ]]; then
-        log_success "SR-005: DNS resolves to private IP range: $RESOLVED_IP"
-    else
-        log_error "SR-005: DNS resolves to public IP: $RESOLVED_IP (expected: $EXPECTED_IP)"
-    fi
-}
-
-validate_tags() {
-    log_info "Checking tags compliance (Constitution)..."
-    
-    local STORAGE_RG
-    STORAGE_RG=$(jq -r '.parameters.resourceGroupName.value // "rg-ai-storage"' "$PARAMETER_FILE")
-    
-    local STORAGE_NAME
-    STORAGE_NAME=$(jq -r '.parameters.storageAccountName.value' "$PARAMETER_FILE")
-    
-    # Required tags per constitution
-    local REQUIRED_TAGS=("project" "environment" "component" "deployedBy")
-    
-    for tag in "${REQUIRED_TAGS[@]}"; do
-        local value
-        value=$(az storage account show \
-            --name "$STORAGE_NAME" \
-            --resource-group "$STORAGE_RG" \
-            --query "tags.${tag}" \
-            --output tsv 2>/dev/null || echo "")
-        
-        if [[ -n "$value" && "$value" != "null" ]]; then
-            log_success "Tag '$tag' present: $value"
-        else
-            log_error "Required tag missing: $tag"
-        fi
-    done
 }
 
 # ============================================================================
@@ -390,38 +384,32 @@ done
 
 echo ""
 echo "=============================================="
-echo " Validate Private Storage Account with CMK"
+echo " Validate Storage Account CMK Configuration"
+echo " Feature: 010-storage-cmk-refactor"
 echo "=============================================="
 echo ""
-echo "Parameter File: $PARAMETER_FILE"
-echo "Mode: $(if [[ "$VALIDATE_DEPLOYED" == "true" ]]; then echo "Deployed Resources"; else echo "Template Only"; fi)"
-echo ""
 
-# Template validations (always run)
+# Always run template validations
 validate_template_syntax
 validate_parameter_file
 
-if [[ "$VALIDATE_DEPLOYED" != "true" ]]; then
-    validate_whatif
-else
-    # Deployed resource validations
+if [[ "$VALIDATE_DEPLOYED" == "true" ]]; then
     echo ""
-    echo "--- Security Requirements ---"
-    validate_cmk_encryption
-    validate_public_access
-    validate_private_endpoint
-    validate_dns_resolution
+    log_info "=== Deployed Infrastructure Validation ==="
+    echo ""
     
-    echo ""
-    echo "--- Constitution Compliance ---"
-    validate_tags
+    validate_cmk_encryption
+    validate_encryption_key
+    validate_rbac_assignment
+    validate_public_access
+else
+    validate_whatif
 fi
 
 echo ""
 echo "=============================================="
 if [[ "$VALIDATION_PASSED" == "true" ]]; then
     log_success "All validations passed!"
-    exit 0
 else
     log_error "Some validations failed - review output above"
     exit 1

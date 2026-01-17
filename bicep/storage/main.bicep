@@ -1,15 +1,16 @@
-// Main Bicep Template - Private Azure Storage Account with CMK
-// Orchestrates deployment of storage resource group and CMK-enabled storage account
-// Purpose: Secure blob storage with customer-managed encryption keys and private endpoint
+// Main Bicep Template - Enable CMK on Existing Private Storage Account
+// Feature: 010-storage-cmk-refactor
+// Purpose: Enable customer-managed key encryption on pre-deployed storage account
+//          using key from pre-deployed Key Vault
 
 targetScope = 'subscription'
 
 // ============================================================================
-// PARAMETERS
+// PARAMETERS (per contracts/bicep-interface.md)
 // ============================================================================
 
-@description('Azure region for all resources')
-param location string = 'eastus'
+@description('Azure region for managed identity')
+param location string = 'eastus2'
 
 @description('Environment tag (dev, test, or prod)')
 @allowed([
@@ -24,49 +25,30 @@ param environment string = 'dev'
 @maxLength(100)
 param owner string
 
-@description('Storage account name (3-24 lowercase letters/numbers, globally unique)')
-@minLength(3)
-@maxLength(24)
-param storageAccountName string
+@description('Storage account name suffix (must match existing storage account stailab<suffix>)')
+param storageNameSuffix string
+
+@description('Key Vault resource group name')
+param keyVaultResourceGroupName string = 'rg-ai-keyvault'
 
 @description('Storage resource group name')
-param resourceGroupName string = 'rg-ai-storage'
+param storageResourceGroupName string = 'rg-ai-storage'
 
-@description('Core infrastructure resource group name')
-param coreResourceGroupName string = 'rg-ai-core'
+@description('Key Vault name (auto-discovered if empty)')
+param keyVaultName string = ''
 
-@description('Name of the Key Vault in core resource group')
-param keyVaultName string
+@description('Encryption key name')
+param encryptionKeyName string = 'storage-encryption-key'
 
-@description('Name of the shared services VNet in core resource group')
-param vnetName string = 'vnet-ai-sharedservices'
+@description('Key size in bits')
+@allowed([2048, 3072, 4096])
+param keySize int = 4096
 
-@description('Subnet name for private endpoints')
-param privateEndpointSubnetName string = 'snet-private-endpoints'
+@description('Key rotation interval in ISO 8601 duration format')
+param keyRotationInterval string = 'P18M'
 
-@description('Private DNS zone name for blob storage')
-#disable-next-line no-hardcoded-env-urls
-param privateDnsZoneName string = 'privatelink.blob.core.windows.net'
-
-@description('Storage account SKU')
-@allowed([
-  'Standard_LRS'
-  'Standard_ZRS'
-  'Standard_GRS'
-])
-param skuName string = 'Standard_LRS'
-
-@description('Log Analytics workspace ID for diagnostics (empty = no logging)')
-param logAnalyticsWorkspaceId string = ''
-
-@description('Enable blob versioning')
-param enableVersioning bool = false
-
-@description('Deployment method for tagging (manual or automation)')
-param deployedBy string = 'manual'
-
-@description('Additional custom tags')
-param customTags object = {}
+@description('Key expiry time in ISO 8601 duration format')
+param keyExpiryTime string = 'P2Y'
 
 @description('Deployment timestamp (auto-generated)')
 param deploymentTimestamp string = utcNow('yyyy-MM-ddTHH:mm:ssZ')
@@ -75,92 +57,140 @@ param deploymentTimestamp string = utcNow('yyyy-MM-ddTHH:mm:ssZ')
 // VARIABLES
 // ============================================================================
 
+// Storage account name follows 009-private-storage pattern: stailab<suffix>
+var storageAccountName = 'stailab${storageNameSuffix}'
+
 // Managed identity name derived from storage account
 var managedIdentityName = 'id-${storageAccountName}-cmk'
 
-// Encryption key name
-var encryptionKeyName = 'storage-encryption-key'
+// Key Vault Crypto Service Encryption User role ID
+var keyVaultCryptoServiceEncryptionUserRoleId = 'e147488a-f6f5-4113-8e2d-b22465e65bf6'
 
-// Merged tags combining constitutional requirements and custom tags
-var allTags = union({
+// Tags for new resources (CMK-specific)
+var cmkTags = {
   environment: environment
-  purpose: 'Private storage with CMK encryption for AI labs'
+  purpose: 'CMK encryption identity for storage account'
   owner: owner
-  deployedBy: deployedBy
+  deployedBy: 'bicep'
   deployedDate: deploymentTimestamp
-  feature: '005-storage-cmk'
-}, customTags)
+  feature: '010-storage-cmk-refactor'
+}
 
 // ============================================================================
-// RESOURCE GROUP
+// EXISTING RESOURCE REFERENCES (T004, T005)
 // ============================================================================
 
-// Resource Group - Container for storage infrastructure
-module storageResourceGroup '../modules/resource-group.bicep' = {
-  name: 'deploy-${resourceGroupName}'
+// Reference existing Key Vault resource group
+resource keyVaultRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  name: keyVaultResourceGroupName
+}
+
+// Reference existing Storage resource group
+resource storageRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+  name: storageResourceGroupName
+}
+
+// ============================================================================
+// KEY VAULT DISCOVERY (when keyVaultName not provided)
+// ============================================================================
+
+// Module to discover Key Vault name in rg-ai-keyvault
+module keyVaultDiscovery 'kv-discovery.bicep' = {
+  name: 'discover-keyvault-${deploymentTimestamp}'
+  scope: keyVaultRg
   params: {
-    name: resourceGroupName
-    location: location
-    environment: environment
-    purpose: 'Private storage with CMK encryption for AI labs'
-    owner: owner
-    deployedBy: deployedBy
-    additionalTags: union({
-      project: 'ai-lab'
-      component: 'storage'
-      feature: '005-storage-cmk'
-    }, customTags)
+    providedKeyVaultName: keyVaultName
   }
 }
 
 // ============================================================================
-// STORAGE MODULE
+// USER-ASSIGNED MANAGED IDENTITY (T008)
 // ============================================================================
 
-// Deploy storage account with CMK, private endpoint, and diagnostics
-module storage '../modules/storage.bicep' = {
-  name: 'deploy-${storageAccountName}'
-  scope: resourceGroup(resourceGroupName)
+// Create managed identity in storage resource group for Key Vault access
+module managedIdentity 'mi-cmk.bicep' = {
+  name: 'deploy-mi-${managedIdentityName}'
+  scope: storageRg
+  params: {
+    name: managedIdentityName
+    location: location
+    tags: cmkTags
+  }
+}
+
+// ============================================================================
+// ENCRYPTION KEY (T009)
+// ============================================================================
+
+// Create encryption key in Key Vault with rotation policy
+module encryptionKey '../modules/storage-key.bicep' = {
+  name: 'deploy-key-${encryptionKeyName}'
+  scope: keyVaultRg
+  params: {
+    keyVaultName: keyVaultDiscovery.outputs.keyVaultName
+    keyName: encryptionKeyName
+    keySize: keySize
+    keyRotationInterval: keyRotationInterval
+    keyExpiryTime: keyExpiryTime
+  }
+}
+
+// ============================================================================
+// RBAC ROLE ASSIGNMENT (T010)
+// ============================================================================
+
+// Assign Key Vault Crypto Service Encryption User role to managed identity
+module rbacAssignment '../modules/storage-rbac.bicep' = {
+  name: 'deploy-rbac-cmk-${storageAccountName}'
+  scope: keyVaultRg
+  params: {
+    keyVaultName: keyVaultDiscovery.outputs.keyVaultName
+    principalId: managedIdentity.outputs.principalId
+    roleDefinitionId: keyVaultCryptoServiceEncryptionUserRoleId
+  }
+}
+
+// ============================================================================
+// STORAGE ACCOUNT CMK UPDATE (T011, T012)
+// ============================================================================
+
+// Update storage account with CMK configuration
+module storageCmk 'storage-cmk-update.bicep' = {
+  name: 'update-cmk-${storageAccountName}'
+  scope: storageRg
   params: {
     storageAccountName: storageAccountName
-    location: location
-    keyVaultName: keyVaultName
-    keyVaultResourceGroup: coreResourceGroupName
-    managedIdentityName: managedIdentityName
-    vnetName: vnetName
-    vnetResourceGroup: coreResourceGroupName
-    privateEndpointSubnetName: privateEndpointSubnetName
-    privateDnsZoneName: privateDnsZoneName
-    privateDnsZoneResourceGroup: coreResourceGroupName
-    skuName: skuName
-    enableVersioning: enableVersioning
-    logAnalyticsWorkspaceId: logAnalyticsWorkspaceId
-    encryptionKeyName: encryptionKeyName
-    tags: allTags
+    managedIdentityId: managedIdentity.outputs.id
+    keyVaultUri: keyVaultDiscovery.outputs.keyVaultUri
+    keyName: encryptionKeyName
   }
   dependsOn: [
-    storageResourceGroup
+    encryptionKey
+    rbacAssignment
   ]
 }
 
 // ============================================================================
-// OUTPUTS
+// OUTPUTS (per contracts/bicep-interface.md - T007)
 // ============================================================================
 
-@description('Storage account name')
-output storageAccountName string = storage.outputs.storageAccountName
-
-@description('Storage account resource ID')
-output storageAccountId string = storage.outputs.storageAccountId
-
-@description('Blob service endpoint URL')
-output blobEndpoint string = storage.outputs.blobEndpoint
-
-@description('Private endpoint IP address')
-output blobPrivateIpAddress string = storage.outputs.blobPrivateIpAddress
+@description('Managed identity resource ID')
+output managedIdentityId string = managedIdentity.outputs.id
 
 @description('Managed identity principal ID')
-output managedIdentityPrincipalId string = storage.outputs.managedIdentityPrincipalId
+output managedIdentityPrincipalId string = managedIdentity.outputs.principalId
 
-@description('Resource group name')
-output resourceGroupName string = resourceGroupName
+@description('Encryption key name')
+output encryptionKeyName string = encryptionKey.outputs.keyName
+
+@description('Encryption key URI (versionless)')
+output encryptionKeyUri string = encryptionKey.outputs.keyUri
+
+@description('Storage account name')
+output storageAccountName string = storageAccountName
+
+@description('CMK enabled status')
+output cmkEnabled bool = true
+
+@description('Key Vault name')
+output keyVaultName string = keyVaultDiscovery.outputs.keyVaultName

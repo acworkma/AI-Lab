@@ -2,460 +2,312 @@
 
 ## Overview
 
-This module deploys a private Azure Storage Account with customer-managed key (CMK) encryption using a key stored in the core Key Vault. The Storage Account is accessible only via private endpoint connected to the core shared services infrastructure, ensuring all data is encrypted with organizational control over encryption keys and accessed only through the VPN.
+This module enables customer-managed key (CMK) encryption on an existing private Storage Account using a key stored in a separate private Key Vault. This is a **Solution Project** that consumes infrastructure from:
+- **008-private-keyvault**: Private Key Vault in `rg-ai-keyvault`
+- **009-private-storage**: Private Storage Account in `rg-ai-storage`
+
+**Feature**: 010-storage-cmk-refactor
+
+**Architecture**:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        rg-ai-keyvault                           │
+│  ┌─────────────────┐         ┌──────────────────────────────┐  │
+│  │   Key Vault     │ STORES  │  Encryption Key              │  │
+│  │   (existing)    │─────────│  storage-encryption-key      │  │
+│  │                 │         │  RSA-4096, P18M rotation     │  │
+│  └────────┬────────┘         └──────────────────────────────┘  │
+│           │                                                     │
+│           │ ROLE: Key Vault Crypto Service Encryption User      │
+└───────────│─────────────────────────────────────────────────────┘
+            │
+            │ GRANTS ACCESS TO
+            ▼
+┌───────────────────────────────────────────────────────────────────┐
+│                        rg-ai-storage                              │
+│  ┌─────────────────┐         ┌──────────────────────────────┐   │
+│  │ Managed Identity│◄────────│  Storage Account             │   │
+│  │ id-stailab*-cmk │  USES   │  stailab* (existing)         │   │
+│  └─────────────────┘         │  CMK: Microsoft.Keyvault     │   │
+│                              └──────────────────────────────┘   │
+└───────────────────────────────────────────────────────────────────┘
+```
 
 **Key Components**:
-- **Resource Group**: `rg-ai-storage` - Container for storage resources
-- **Storage Account**: `stai<env><unique>` - StorageV2 with CMK encryption
-- **Managed Identity**: Service principal for accessing encryption key
-- **Encryption Key**: Customer-managed key in core Key Vault
-- **Private Endpoint**: Connected to `vnet-ai-shared/PrivateEndpointSubnet`
-- **DNS Integration**: `privatelink.blob.core.windows.net` private DNS zone
+- **Managed Identity**: `id-stailab<suffix>-cmk` - User-assigned identity for Key Vault access
+- **Encryption Key**: `storage-encryption-key` - RSA 4096-bit with P18M rotation policy
+- **RBAC Role**: Key Vault Crypto Service Encryption User (e147488a-f6f5-4113-8e2d-b22465e65bf6)
 
 **Deployment Region**: East US 2
 
 ## Prerequisites
 
-### Required Infrastructure
+### Required Infrastructure (Deployed First)
 
-1. **Core Infrastructure Deployed**:
-   - Run `./scripts/deploy-core.sh` first
-   - Must include:
-     - Resource group `rg-ai-core`
-     - Virtual WAN hub and vHub
-     - Shared services VNet (`vnet-ai-shared` with address space `10.1.0.0/24`)
-     - Private endpoint subnet (`PrivateEndpointSubnet`)
-     - Key Vault (`kv-ai-core-*`)
-     - Private DNS zone for `privatelink.blob.core.windows.net`
-   - Verify outputs include `privateEndpointSubnetId`, `blobDnsZoneId`, `keyVaultId`
+1. **Core Infrastructure** (`rg-ai-core`):
+   - Deploy via `./scripts/deploy-core.sh`
+   - Includes: vWAN hub, VPN gateway, shared services VNet, private DNS zones
 
-2. **VPN Connection**:
-   - Azure VPN Client installed and configured
-   - Connected to `vpngw-ai-hub` VPN gateway
+2. **Private Key Vault** (`rg-ai-keyvault`):
+   - Deploy via `./scripts/deploy-keyvault.sh`
+   - **Required settings**: Soft-delete enabled, Purge protection enabled
+   - Verify: `az keyvault show --name <kv-name> -g rg-ai-keyvault --query "{softDelete:properties.enableSoftDelete, purgeProtection:properties.enablePurgeProtection}"`
+
+3. **Private Storage Account** (`rg-ai-storage`):
+   - Deploy via 009-private-storage feature
+   - Storage account name pattern: `stailab<suffix>`
+
+4. **VPN Connection**:
    - Required for DNS resolution and storage access
    - See [VPN client setup guide](../core-infrastructure/vpn-client-setup.md)
 
 ### Required Tools
 
 - **Azure CLI** (version 2.50.0 or later)
-- **jq** (for JSON parsing in deployment script)
+- **jq** (for JSON parsing in scripts)
 
-### Required Azure Permissions
+### Required Permissions
 
-To deploy this module, your Azure user account needs the following roles/permissions:
+| Role | Scope | Purpose |
+|------|-------|---------|
+| Key Vault Contributor | rg-ai-keyvault | Create encryption key |
+| User Access Administrator | rg-ai-keyvault | Assign RBAC role to managed identity |
+| Contributor | rg-ai-storage | Create managed identity, update storage |
 
-#### Deployment Permissions (required to deploy resources)
-- **Subscription Level**:
-  - `Storage Account Contributor` - Create and manage storage accounts
-  - `Key Vault Administrator` (or equivalent) - Create/manage encryption keys in Key Vault
-  - `Network Contributor` - Create private endpoints and manage networking
-  - `User Access Administrator` - Assign RBAC roles to managed identity
+## CMK Deployment
 
-#### Key Vault Permissions (required for CMK setup)
-- **Key Vault Access Policy** or **RBAC Role**:
-  - `Key Vault Crypto Service Encryption User` - Allow Storage Account to access encryption key
-  - `Key Vault Secrets Officer` (deployment only) - Create/manage encryption key
+### Step 1: Verify Prerequisites
 
-#### Storage Account Management Permissions (post-deployment)
-- **Storage Account Level**:
-  - `Storage Account Contributor` - Modify configuration, add containers
-  - `Storage Blob Data Owner` or `Storage Blob Data Contributor` - Upload/download data
-
-#### Typical Role Combination for Deployment
-If your organization uses custom roles, ensure you have:
-1. `Contributor` role on the subscription (simplest, includes all above), OR
-2. Combination of:
-   - `Storage Account Contributor`
-   - `Network Contributor`
-   - `User Access Administrator`
-   - `Key Vault Administrator` (or custom role with key creation permissions)
-
-#### Service Principal/Managed Identity Permissions
-The Storage Account managed identity automatically gets:
-- **Role**: `Key Vault Crypto Service Encryption User` (assigned during deployment)
-- **Scope**: Key Vault (`kv-ai-core-*`)
-- **Purpose**: Access encryption key without human intervention
-
-### Permission Verification
-
-Before deployment, verify your permissions:
+The deployment script automatically validates prerequisites. Run the check manually:
 
 ```bash
-# Check your current roles
-az role assignment list --assignee $(az account show --query user.name -o tsv) \
-  --query "[].roleDefinitionName" -o table
+# Check Key Vault exists with required settings
+az keyvault show --name <kv-name> --resource-group rg-ai-keyvault \
+  --query "{name:name, softDelete:properties.enableSoftDelete, purgeProtection:properties.enablePurgeProtection}"
 
-# Verify Key Vault access
-az keyvault show --name kv-ai-core-CHANGEME
-
-# Verify DNS zone exists
-az network private-dns zone show \
-  --resource-group rg-ai-core \
-  --name privatelink.blob.core.windows.net
+# Check Storage Account exists
+az storage account show --name stailab<suffix> --resource-group rg-ai-storage \
+  --query "{name:name, publicAccess:publicNetworkAccess, encryption:encryption.keySource}"
 ```
 
-If you lack required permissions, contact your subscription owner or Azure administrator.
+### Step 2: Configure Parameters
 
-## Deployment
-
-### Step 1: Verify Core Infrastructure
-
-```bash
-# Check that core infrastructure is deployed
-az group show --name rg-ai-core
-
-# Verify shared services VNet exists
-az network vnet show \
-  --resource-group rg-ai-core \
-  --name vnet-ai-shared
-
-# Verify private endpoint subnet exists
-az network vnet subnet show \
-  --resource-group rg-ai-core \
-  --vnet-name vnet-ai-shared \
-  --name PrivateEndpointSubnet
-
-# Verify Key Vault exists
-az keyvault show --name kv-ai-core-<YOUR_SUFFIX>
-
-# Verify private DNS zone exists
-az network private-dns zone show \
-  --resource-group rg-ai-core \
-  --name privatelink.blob.core.windows.net
-```
-
-All commands should return successfully with resource details. If any fail, redeploy core infrastructure.
-
-### Step 2: Customize Parameters
-
-Edit `bicep/registry/main.parameters.json` (create if needed):
+Edit `bicep/storage/main.parameters.json`:
 
 ```json
 {
-  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/deploymentParameters.json#",
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "location": {
-      "value": "eastus2"
-    },
-    "environment": {
-      "value": "dev"
-    },
-    "owner": {
-      "value": "AI-Lab Team"
-    },
-    "storageAccountName": {
-      "value": "staidevlab001"  # Must be globally unique (3-24 chars)
-    },
-    "coreResourceGroupName": {
-      "value": "rg-ai-core"
-    },
-    "keyVaultName": {
-      "value": "kv-ai-core-CHANGEME"  # Match your core deployment
-    },
-    "encryptionKeyName": {
-      "value": "storage-encryption-key"
-    },
-    "vnetResourceGroupName": {
-      "value": "rg-ai-core"
-    },
-    "vnetName": {
-      "value": "vnet-ai-shared"
-    },
-    "privateEndpointSubnetName": {
-      "value": "PrivateEndpointSubnet"
-    },
-    "tags": {
-      "value": {
-        "project": "AI-Lab",
-        "service": "Storage"
-      }
-    }
+    "location": { "value": "eastus2" },
+    "environment": { "value": "dev" },
+    "owner": { "value": "your-name" },
+    "storageNameSuffix": { "value": "0117" },
+    "keyVaultResourceGroupName": { "value": "rg-ai-keyvault" },
+    "storageResourceGroupName": { "value": "rg-ai-storage" },
+    "keyVaultName": { "value": "" },
+    "encryptionKeyName": { "value": "storage-encryption-key" },
+    "keySize": { "value": 4096 },
+    "keyRotationInterval": { "value": "P18M" },
+    "keyExpiryTime": { "value": "P2Y" }
   }
 }
 ```
 
-### Step 3: Deploy Storage Account
+**Note**: If `keyVaultName` is empty, the script auto-discovers the Key Vault in `rg-ai-keyvault`.
+
+### Step 3: Deploy CMK Encryption
 
 ```bash
-# Create resource group
-az group create \
-  --name rg-ai-storage \
-  --location eastus2
+# Standard deployment with what-if review
+./scripts/deploy-storage.sh
 
-# Deploy storage module
-az deployment group create \
-  --resource-group rg-ai-storage \
-  --template-file bicep/storage.bicep \
-  --parameters bicep/storage.parameters.json
-
-# Capture outputs
-STORAGE_ID=$(az deployment group show \
-  --resource-group rg-ai-storage \
-  --name storage \
-  --query "properties.outputs.storageAccountId.value" -o tsv)
-
-STORAGE_NAME=$(az deployment group show \
-  --resource-group rg-ai-storage \
-  --name storage \
-  --query "properties.outputs.storageAccountName.value" -o tsv)
-
-echo "Storage Account: $STORAGE_NAME"
-echo "Resource ID: $STORAGE_ID"
+# Or skip confirmation for CI/CD
+./scripts/deploy-storage.sh --auto-approve
 ```
 
-### Step 4: Verify Deployment
+The deployment:
+1. Validates prerequisites (Key Vault, Storage Account exist)
+2. Creates user-assigned managed identity
+3. Creates encryption key with rotation policy
+4. Assigns Key Vault Crypto Service Encryption User role
+5. Updates Storage Account with CMK configuration
+
+### Step 4: Validate Deployment
 
 ```bash
-# Check storage account exists
-az storage account show \
-  --name $STORAGE_NAME \
-  --resource-group rg-ai-storage \
-  --query "{name:name, encryption:encryption, kind:kind, primaryEndpoints:primaryEndpoints}"
-
-# Verify CMK encryption
-az storage account show \
-  --name $STORAGE_NAME \
-  --resource-group rg-ai-storage \
-  --query "encryption"
-
-# Check private endpoint
-az network private-endpoint show \
-  --name pe-storage-blob \
-  --resource-group rg-ai-storage
-
-# Verify managed identity
-IDENTITY=$(az storage account show \
-  --name $STORAGE_NAME \
-  --resource-group rg-ai-storage \
-  --query "identity.principalId" -o tsv)
-
-az ad sp show --id $IDENTITY --query displayName
+# Run validation script
+./scripts/validate-storage.sh --deployed
 ```
 
-## Usage
-
-### Set Storage Account Name
-
-Before running the commands below, set the storage account name variable:
-
-```bash
-# Set storage account name (replace with your actual name)
-STORAGE_NAME="stailab001"
-
-# Or retrieve from the deployment output
-STORAGE_NAME=$(az storage account list --resource-group rg-ai-storage --query "[0].name" -o tsv)
+Expected output:
 ```
-
-### Create a Blob Container
-
-```bash
-# Create container
-az storage container create \
-  --account-name $STORAGE_NAME \
-  --name data \
-  --auth-mode login
-```
-
-### Upload Data (from VPN-connected client)
-
-```bash
-# Ensure VPN is connected
-# Create a test file
-echo "Test data" > test.txt
-
-# Upload to storage
-az storage blob upload \
-  --account-name $STORAGE_NAME \
-  --container-name data \
-  --name test.txt \
-  --file test.txt \
-  --auth-mode login
-```
-
-### Download Data
-
-```bash
-# Download from storage
-az storage blob download \
-  --account-name $STORAGE_NAME \
-  --container-name data \
-  --name test.txt \
-  --file downloaded.txt \
-  --auth-mode login
-
-# Verify contents
-cat downloaded.txt
+[✓ PASS] SC-001: CMK encryption enabled (keySource: Microsoft.Keyvault)
+[✓ PASS] SC-001: User-assigned identity configured for CMK
+[✓ PASS] SC-002: Encryption key exists: storage-encryption-key
+[✓ PASS] SC-002: Key size appears to be RSA 4096-bit
+[✓ PASS] SR-003: Key rotation interval is P18M (18 months)
+[✓ PASS] SC-003: Key Vault Crypto Service Encryption User role assigned
+[✓ PASS] SR-004: Public network access disabled
 ```
 
 ## Security
 
 ### Customer Managed Key Encryption
 
-The Storage Account uses a customer-managed encryption key (CMK) stored in the core Key Vault. This provides:
+The Storage Account uses a customer-managed encryption key (CMK) stored in the private Key Vault. This provides:
 
 - **Organizational Control**: You manage the encryption key lifecycle
-- **Key Rotation**: Rotate keys annually or per policy
+- **Key Rotation**: Automatic rotation every 18 months (P18M)
 - **Audit Trail**: All key access is logged in Azure Monitor
 - **Compliance**: Meets regulatory requirements for key management
+- **Versionless URI**: Uses versionless key URI for automatic rotation support
 
 ### Key Rotation
 
-```bash
-# List versions of encryption key
-az keyvault key list-versions \
-  --vault-name kv-ai-core-CHANGEME \
-  --name storage-encryption-key
+Keys are automatically rotated per the configured policy. To manually rotate:
 
-# Create new key version (automatic rotation)
-az keyvault key rotate \
-  --vault-name kv-ai-core-CHANGEME \
-  --name storage-encryption-key
+```bash
+# Get Key Vault name
+KV_NAME=$(az keyvault list -g rg-ai-keyvault --query "[0].name" -o tsv)
+
+# Create new key version
+az keyvault key rotate --vault-name $KV_NAME --name storage-encryption-key
+
+# Verify new version
+az keyvault key show --vault-name $KV_NAME --name storage-encryption-key --query "key.kid"
 ```
 
 ### Managed Identity
 
-The Storage Account uses a managed identity to access the encryption key. This eliminates the need for:
-- Service account passwords
-- Connection strings with secrets
-- Key Vault connection secrets
-
-The managed identity is automatically assigned the `Key Vault Crypto Service Encryption User` role during deployment.
-
-### Network Security
-
-- **Public Access**: Disabled - storage is not accessible from the internet
-- **Private Endpoint**: All traffic flows through the private endpoint in the shared services VNet
-- **DNS Resolution**: Private DNS resolves storage FQDN to private IP (10.1.0.x)
-- **VPN Required**: Access requires VPN connection to the hub
+The Storage Account uses a user-assigned managed identity to access the encryption key:
+- **Identity Name**: `id-stailab<suffix>-cmk`
+- **RBAC Role**: Key Vault Crypto Service Encryption User
+- **Permissions**: Wrap/Unwrap key operations only (least privilege)
 
 ## Troubleshooting
 
-### Issue: "Public endpoints are disabled" error when uploading
+### Issue: Prerequisites check fails
 
-**Cause**: Storage account has public access disabled (expected behavior)
-
-**Solution**: Ensure you are connected to VPN and using private endpoint DNS:
-
-```bash
-# Verify you're connected to VPN
-# Use storage account's private endpoint DNS
-nslookup ${STORAGE_NAME}.blob.core.windows.net 10.1.0.68
-```
-
-### Issue: Private endpoint DNS resolution returns public IP
-
-**Cause**: DNS query is not going through the resolver, or DNS zone link is missing
+**Symptom**: Deployment script exits with prerequisite errors
 
 **Solution**:
 
 ```bash
-# Verify DNS zone is linked to shared VNet
-az network private-dns link vnet show \
-  --resource-group rg-ai-core \
-  --zone-name privatelink.blob.core.windows.net \
-  --name vnet-link
+# Verify deployment order
+# 1. Core: ./scripts/deploy-core.sh
+# 2. Key Vault: ./scripts/deploy-keyvault.sh
+# 3. Storage: Deploy via 009-private-storage
+# 4. CMK: ./scripts/deploy-storage.sh (this script)
 
-# If missing, link it:
-az network private-dns link vnet create \
-  --resource-group rg-ai-core \
-  --zone-name privatelink.blob.core.windows.net \
-  --name vnet-link \
-  --virtual-network /subscriptions/{sub}/resourceGroups/rg-ai-core/providers/Microsoft.Network/virtualNetworks/vnet-ai-shared \
-  --registration-enabled false
+# Check Key Vault has required settings
+az keyvault show --name <kv-name> -g rg-ai-keyvault \
+  --query "{softDelete:properties.enableSoftDelete, purgeProtection:properties.enablePurgeProtection}"
+# Both must be true
 ```
 
-### Issue: "The user, group, or application does not have the right permissions" when deploying
+### Issue: "Key Vault Crypto Service Encryption User role not assigned"
 
-**Cause**: User account lacks required permissions
-
-**Solution**: Verify permissions and request elevated access:
-
-```bash
-# Check current roles
-az role assignment list --assignee $(az account show --query user.name -o tsv) \
-  --query "[].roleDefinitionName" -o table
-
-# Request: Storage Account Contributor, Network Contributor, Key Vault Administrator
-```
-
-### Issue: Encryption key not found or Key Vault access denied
-
-**Cause**: Managed identity doesn't have permission to access Key Vault
+**Symptom**: Storage operations fail after CMK enablement
 
 **Solution**:
 
 ```bash
-# Get managed identity
-IDENTITY=$(az storage account show \
-  --name $STORAGE_NAME \
-  --resource-group rg-ai-storage \
-  --query "identity.principalId" -o tsv)
+# Get managed identity principal ID
+IDENTITY_NAME="id-stailab<suffix>-cmk"
+PRINCIPAL_ID=$(az identity show -n $IDENTITY_NAME -g rg-ai-storage --query principalId -o tsv)
 
-# Verify Key Vault role assignment
-az role assignment list \
-  --assignee $IDENTITY \
-  --scope /subscriptions/{sub}/resourceGroups/rg-ai-core/providers/Microsoft.KeyVault/vaults/kv-ai-core-CHANGEME
+# Get Key Vault ID
+KV_ID=$(az keyvault show -n <kv-name> -g rg-ai-keyvault --query id -o tsv)
 
-# If missing, assign role (requires Key Vault Administrator)
+# Assign role manually
 az role assignment create \
-  --assignee-object-id $IDENTITY \
+  --assignee-object-id $PRINCIPAL_ID \
   --role "Key Vault Crypto Service Encryption User" \
-  --scope /subscriptions/{sub}/resourceGroups/rg-ai-core/providers/Microsoft.KeyVault/vaults/kv-ai-core-CHANGEME
+  --scope $KV_ID
 ```
 
-## FAQ
+### Issue: Storage Account already has CMK from different Key Vault
 
-### Q: Can I use the same encryption key for multiple storage accounts?
+**Symptom**: Warning during deployment about existing CMK configuration
 
-**A**: Yes, multiple Storage Accounts can share the same Key Vault encryption key. Each references the same key by name. Key rotation affects all accounts using that key.
-
-### Q: What happens if the Key Vault key is deleted?
-
-**A**: Storage Account operations will fail with "Key not found" errors. Keys are soft-deleted by default (30-day recovery window). Restore the key or recover from backups.
-
-### Q: Can I disable public access after deployment?
-
-**A**: Public access should already be disabled during deployment. If you enabled it, disable it:
+**Solution**: The deployment will overwrite the existing CMK configuration. If this is unintended:
 
 ```bash
-az storage account update \
-  --name $STORAGE_NAME \
-  --resource-group rg-ai-storage \
-  --default-action Deny
+# Check current CMK configuration
+az storage account show -n stailab<suffix> -g rg-ai-storage \
+  --query "encryption.keyvaultproperties"
 ```
 
-### Q: How do I monitor encryption key usage?
+### Issue: "Public endpoints are disabled" error
 
-**A**: Check Azure Monitor / Log Analytics:
+**Symptom**: Cannot access storage from internet
+
+**Solution**: This is expected - connect via VPN:
 
 ```bash
-# Query Key Vault operations
-az monitor metrics list \
-  --resource /subscriptions/{sub}/resourceGroups/rg-ai-core/providers/Microsoft.KeyVault/vaults/kv-ai-core-CHANGEME \
-  --metric "ServiceApiLatency" \
-  --interval PT1M
+# Verify VPN connection
+# Resolve storage via private DNS
+nslookup stailab<suffix>.blob.core.windows.net 10.1.0.68
 ```
 
-### Q: Can I use storage from outside VPN?
+### Issue: Key Vault soft-deleted with same name
 
-**A**: No - public endpoint is disabled and private endpoint is accessible only from networks with routing to the shared services VNet. This includes:
-- VPN-connected clients (recommended)
-- Resources in peered VNets
-- Resources in the shared services VNet itself
+**Symptom**: Cannot create Key Vault key
 
-Non-VPN access is blocked by design.
+**Solution**:
+
+```bash
+# Check for soft-deleted Key Vault
+az keyvault list-deleted --query "[?name=='<kv-name>']"
+
+# Recover or purge as needed
+az keyvault recover --name <kv-name>
+# OR
+az keyvault purge --name <kv-name>
+```
+
+## Usage
+
+### Upload/Download Data (VPN Required)
+
+```bash
+STORAGE_NAME="stailab<suffix>"
+
+# Create container
+az storage container create --account-name $STORAGE_NAME --name data --auth-mode login
+
+# Upload file
+az storage blob upload --account-name $STORAGE_NAME --container-name data \
+  --name test.txt --file test.txt --auth-mode login
+
+# Download file
+az storage blob download --account-name $STORAGE_NAME --container-name data \
+  --name test.txt --file downloaded.txt --auth-mode login
+```
+
+### View CMK Status
+
+```bash
+# Quick status check
+az storage account show -n stailab<suffix> -g rg-ai-storage \
+  --query "{keySource:encryption.keySource, keyVault:encryption.keyvaultproperties.keyvaulturi, keyName:encryption.keyvaultproperties.keyname}"
+
+# Full validation
+./scripts/validate-storage.sh --deployed
+```
 
 ## Reference
 
-- [Azure Storage Account Overview](https://learn.microsoft.com/azure/storage/common/storage-account-overview)
-- [Customer Managed Keys for Storage Encryption](https://learn.microsoft.com/azure/storage/common/customer-managed-keys-overview)
-- [Azure Storage Private Endpoints](https://learn.microsoft.com/azure/storage/common/storage-private-endpoints)
-- [Azure Key Vault Best Practices](https://learn.microsoft.com/azure/key-vault/general/best-practices)
-- [RBAC for Storage Accounts](https://learn.microsoft.com/azure/storage/common/authorization-resource-provider)
+- [Customer Managed Keys for Azure Storage](https://learn.microsoft.com/azure/storage/common/customer-managed-keys-overview)
+- [Configure CMK for Existing Storage Account](https://learn.microsoft.com/azure/storage/common/customer-managed-keys-configure-existing-account)
+- [Key Vault Key Rotation](https://learn.microsoft.com/azure/key-vault/keys/how-to-configure-key-rotation)
+- [Key Vault Crypto Service Encryption User Role](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#key-vault-crypto-service-encryption-user)
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-01-07  
-**Status**: In Development
+**Feature**: 010-storage-cmk-refactor  
+**Version**: 2.0.0  
+**Last Updated**: 2026-01-17  
+**Status**: Complete
+

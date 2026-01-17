@@ -9,46 +9,31 @@
       "value": "dev"
     },
     "owner": {
-      "value": "ai-platform-team"
+      "value": "adworkma"
     },
-    "storageAccountName": {
-      "value": "stailab001"
+    "storageNameSuffix": {
+      "value": "0117"
     },
-    "resourceGroupName": {
+    "keyVaultResourceGroupName": {
+      "value": "rg-ai-keyvault"
+    },
+    "storageResourceGroupName": {
       "value": "rg-ai-storage"
     },
-    "coreResourceGroupName": {
-      "value": "rg-ai-core"
-    },
     "keyVaultName": {
-      "value": "kv-ai-core-lab1"
-    },
-    "vnetName": {
-      "value": "vnet-ai-shared"
-    },
-    "privateEndpointSubnetName": {
-      "value": "PrivateEndpointSubnet"
-    },
-    "privateDnsZoneName": {
-      "value": "privatelink.blob.core.windows.net"
-    },
-    "skuName": {
-      "value": "Standard_LRS"
-    },
-    "logAnalyticsWorkspaceId": {
       "value": ""
     },
-    "enableVersioning": {
-      "value": false
+    "encryptionKeyName": {
+      "value": "storage-encryption-key"
     },
-    "deployedBy": {
-      "value": "manual"
+    "keySize": {
+      "value": 4096
     },
-    "customTags": {
-      "value": {
-        "feature": "005-storage-cmk",
-        "costCenter": "ai-research"
-      }
+    "keyRotationInterval": {
+      "value": "P18M"
+    },
+    "keyExpiryTime": {
+      "value": "P2Y"
     }
   }
 }
