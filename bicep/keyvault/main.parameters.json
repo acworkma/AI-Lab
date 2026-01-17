@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "owner": {
+      "value": "ai-lab-team"
+    },
+    "environment": {
+      "value": "dev"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "resourceGroupName": {
+      "value": "rg-ai-keyvault"
+    },
+    "coreResourceGroupName": {
+      "value": "rg-ai-core"
+    },
+    "vnetName": {
+      "value": "vnet-ai-shared"
+    },
+    "privateEndpointSubnetName": {
+      "value": "PrivateEndpointSubnet"
+    },
+    "enablePurgeProtection": {
+      "value": false
+    },
+    "deployedBy": {
+      "value": "manual"
+    }
+  }
+}
