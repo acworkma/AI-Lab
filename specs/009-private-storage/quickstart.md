@@ -208,7 +208,33 @@ az role assignment create \
 
 ## Using the Storage Account
 
-### Create a Container
+### Using the Ops Script (Recommended)
+
+The `storage-infra-ops.sh` script provides convenient wrappers for common operations:
+
+```bash
+# Test connectivity
+./scripts/storage-infra-ops.sh test
+
+# Create a container
+./scripts/storage-infra-ops.sh create-container mydata
+
+# Upload a file
+./scripts/storage-infra-ops.sh upload mydata ./localfile.txt
+
+# List blobs
+./scripts/storage-infra-ops.sh list-blobs mydata
+
+# Download a blob
+./scripts/storage-infra-ops.sh download mydata localfile.txt ./downloaded.txt
+
+# List all containers
+./scripts/storage-infra-ops.sh list-containers
+```
+
+### Manual Azure CLI Commands
+
+#### Create a Container
 
 ```bash
 az storage container create \

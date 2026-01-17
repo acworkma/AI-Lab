@@ -24,10 +24,10 @@ description: "Task list for Private Azure Storage Account infrastructure"
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create Bicep module scaffold `bicep/modules/storage-account.bicep`
-- [ ] T002 Create orchestration scaffold `bicep/storage-infra/main.bicep`
-- [ ] T003 [P] Create parameter template `bicep/storage-infra/main.parameters.example.json`
-- [ ] T004 [P] Create script stubs `scripts/deploy-storage-infra.sh` and `scripts/validate-storage-infra.sh`
+- [X] T001 Create Bicep module scaffold `bicep/modules/storage-account.bicep`
+- [X] T002 Create orchestration scaffold `bicep/storage-infra/main.bicep`
+- [X] T003 [P] Create parameter template `bicep/storage-infra/main.parameters.example.json`
+- [X] T004 [P] Create script stubs `scripts/deploy-storage-infra.sh` and `scripts/validate-storage-infra.sh`
 
 ---
 
@@ -35,8 +35,8 @@ description: "Task list for Private Azure Storage Account infrastructure"
 
 **Purpose**: Core prerequisites before any user story
 
-- [ ] T005 Populate `bicep/storage-infra/main.parameters.json` with dev defaults (location, owner, suffix)
-- [ ] T006 Implement prerequisite checks in `scripts/validate-storage-infra.sh` (rg-ai-core, vnet, dns zone)
+- [X] T005 Populate `bicep/storage-infra/main.parameters.json` with dev defaults (location, owner, suffix)
+- [X] T006 Implement prerequisite checks in `scripts/validate-storage-infra.sh` (rg-ai-core, vnet, dns zone)
 
 **Checkpoint**: Foundation ready - user story implementation can begin
 
@@ -47,22 +47,22 @@ description: "Task list for Private Azure Storage Account infrastructure"
 **Goal**: Deploy storage account with private endpoint, RBAC-only auth, DNS integration
 **Independent Test**: Deploy to `rg-ai-storage`, verify private endpoint, confirm public access disabled, validate DNS resolution
 
-- [ ] T007 [US1] Implement storage account resource in `bicep/modules/storage-account.bicep` with:
+- [X] T007 [US1] Implement storage account resource in `bicep/modules/storage-account.bicep` with:
   - StorageV2, Standard_LRS
   - allowSharedKeyAccess: false
   - minimumTlsVersion: TLS1_2
   - supportsHttpsTrafficOnly: true
   - publicNetworkAccess: Disabled
-- [ ] T008 [US1] Implement blob services with soft-delete in `bicep/modules/storage-account.bicep`
-- [ ] T009 [US1] Implement private endpoint resource in `bicep/modules/storage-account.bicep` with groupIds: ['blob']
-- [ ] T010 [US1] Implement DNS zone group for privatelink.blob.core.windows.net in `bicep/modules/storage-account.bicep`
-- [ ] T011 [P] [US1] Add optional RBAC assignment (Storage Blob Data Contributor) in `bicep/modules/storage-account.bicep`
-- [ ] T012 [US1] Add outputs (storageAccountId, storageAccountName, blobEndpoint, privateEndpointId, privateIpAddress) in `bicep/modules/storage-account.bicep`
-- [ ] T013 [US1] Wire orchestration to module with RG creation and core references in `bicep/storage-infra/main.bicep`
-- [ ] T014 [US1] Implement `scripts/deploy-storage-infra.sh` with what-if, validation, timing capture
-- [ ] T015 [US1] Implement post-deployment checks in `scripts/validate-storage-infra.sh` (shared key disabled, public access disabled, TLS)
-- [ ] T016 [P] [US1] Implement `scripts/validate-storage-infra-dns.sh` for DNS resolution check (<100ms target)
-- [ ] T017 [P] [US1] Implement `scripts/cleanup-storage-infra.sh` for resource group deletion
+- [X] T008 [US1] Implement blob services with soft-delete in `bicep/modules/storage-account.bicep`
+- [X] T009 [US1] Implement private endpoint resource in `bicep/modules/storage-account.bicep` with groupIds: ['blob']
+- [X] T010 [US1] Implement DNS zone group for privatelink.blob.core.windows.net in `bicep/modules/storage-account.bicep`
+- [X] T011 [P] [US1] Add optional RBAC assignment (Storage Blob Data Contributor) in `bicep/modules/storage-account.bicep`
+- [X] T012 [US1] Add outputs (storageAccountId, storageAccountName, blobEndpoint, privateEndpointId, privateIpAddress) in `bicep/modules/storage-account.bicep`
+- [X] T013 [US1] Wire orchestration to module with RG creation and core references in `bicep/storage-infra/main.bicep`
+- [X] T014 [US1] Implement `scripts/deploy-storage-infra.sh` with what-if, validation, timing capture
+- [X] T015 [US1] Implement post-deployment checks in `scripts/validate-storage-infra.sh` (shared key disabled, public access disabled, TLS)
+- [X] T016 [P] [US1] Implement `scripts/validate-storage-infra-dns.sh` for DNS resolution check (<100ms target)
+- [X] T017 [P] [US1] Implement `scripts/cleanup-storage-infra.sh` for resource group deletion
 
 ---
 
@@ -71,9 +71,9 @@ description: "Task list for Private Azure Storage Account infrastructure"
 **Goal**: Data operations via CLI with `--auth-mode login` over VPN
 **Independent Test**: Create container, upload/download blob, verify with CLI commands
 
-- [ ] T018 [US2] Implement `scripts/grant-storage-infra-roles.sh` for RBAC assignment (Storage Blob Data Contributor/Reader)
-- [ ] T019 [P] [US2] Implement `scripts/storage-infra-ops.sh` with container create, blob upload/download, list operations
-- [ ] T020 [US2] Update `specs/009-private-storage/quickstart.md` with ops script references
+- [X] T018 [US2] Implement `scripts/grant-storage-infra-roles.sh` for RBAC assignment (Storage Blob Data Contributor/Reader)
+- [X] T019 [P] [US2] Implement `scripts/storage-infra-ops.sh` with container create, blob upload/download, list operations
+- [X] T020 [US2] Update `specs/009-private-storage/quickstart.md` with ops script references
 
 ---
 
@@ -82,18 +82,18 @@ description: "Task list for Private Azure Storage Account infrastructure"
 **Goal**: Consistent patterns matching key-vault.bicep, idempotent deployments, documentation
 **Independent Test**: Structure matches key-vault.bicep; what-if clean on redeploy; docs complete
 
-- [ ] T021 [US3] Ensure module pattern matches `bicep/modules/key-vault.bicep` (naming, params, outputs)
-- [ ] T022 [P] [US3] Add idempotency check to `scripts/validate-storage-infra.sh` (redeploy with no changes)
-- [ ] T023 [US3] Create `docs/storage-infra/README.md` with all required sections per constitution
-- [ ] T024 [US3] Update root `README.md` Infrastructure Projects section with storage-infra link
+- [X] T021 [US3] Ensure module pattern matches `bicep/modules/key-vault.bicep` (naming, params, outputs)
+- [X] T022 [P] [US3] Add idempotency check to `scripts/validate-storage-infra.sh` (redeploy with no changes)
+- [X] T023 [US3] Create `docs/storage-infra/README.md` with all required sections per constitution
+- [X] T024 [US3] Update root `README.md` Infrastructure Projects section with storage-infra link
 
 ---
 
 ## Final Phase: Polish & Cross-Cutting
 
-- [ ] T025 [P] Run `az bicep build` on all storage-infra Bicep files for validation
-- [ ] T026 Review and update `specs/009-private-storage/plan.md` Phase 2 status to COMPLETED
-- [ ] T027 [P] Validate tags (environment, purpose, owner, deployedBy) in deployment
+- [X] T025 [P] Run `az bicep build` on all storage-infra Bicep files for validation
+- [X] T026 Review and update `specs/009-private-storage/plan.md` Phase 2 status to COMPLETED
+- [X] T027 [P] Validate tags (environment, purpose, owner, deployedBy) in deployment
 
 ---
 
