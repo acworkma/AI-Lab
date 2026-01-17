@@ -45,28 +45,10 @@ resource storageAccountUpdate 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     
     // CMK encryption configuration (T011)
     encryption: {
-      services: {
-        blob: {
-          enabled: true
-          keyType: 'Account'
-        }
-        file: {
-          enabled: true
-          keyType: 'Account'
-        }
-        table: {
-          enabled: true
-          keyType: 'Account'
-        }
-        queue: {
-          enabled: true
-          keyType: 'Account'
-        }
-      }
       keySource: 'Microsoft.Keyvault'
       keyvaultproperties: {
-        keyVaultUri: keyVaultUri
-        keyName: keyName
+        keyvaulturi: keyVaultUri
+        keyname: keyName
         // Note: No keyVersion specified - uses versionless URI for auto-rotation
       }
       identity: {
@@ -83,7 +65,7 @@ output storageAccountName string = storageAccountUpdate.name
 output keySource string = storageAccountUpdate.properties.encryption.keySource
 
 @description('CMK Key Vault URI')
-output keyVaultUri string = storageAccountUpdate.properties.encryption.keyvaultproperties.keyVaultUri
+output keyVaultUri string = storageAccountUpdate.properties.encryption.keyvaultproperties.keyvaulturi
 
 @description('CMK key name')
-output keyName string = storageAccountUpdate.properties.encryption.keyvaultproperties.keyName
+output keyName string = storageAccountUpdate.properties.encryption.keyvaultproperties.keyname

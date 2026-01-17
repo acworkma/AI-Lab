@@ -2,11 +2,9 @@
 
 ## Overview
 
-This module enables customer-managed key (CMK) encryption on an existing private Storage Account using a key stored in a separate private Key Vault. This is a **Solution Project** that consumes infrastructure from:
-- **008-private-keyvault**: Private Key Vault in `rg-ai-keyvault`
-- **009-private-storage**: Private Storage Account in `rg-ai-storage`
-
-**Feature**: 010-storage-cmk-refactor
+This module enables customer-managed key (CMK) encryption on an existing private Storage Account using a key stored in a separate private Key Vault. Prerequisites:
+- Private Key Vault deployed in `rg-ai-keyvault`
+- Private Storage Account deployed in `rg-ai-storage`
 
 **Architecture**:
 ```
@@ -36,7 +34,7 @@ This module enables customer-managed key (CMK) encryption on an existing private
 **Key Components**:
 - **Managed Identity**: `id-stailab<suffix>-cmk` - User-assigned identity for Key Vault access
 - **Encryption Key**: `storage-encryption-key` - RSA 4096-bit with P18M rotation policy
-- **RBAC Role**: Key Vault Crypto Service Encryption User (e147488a-f6f5-4113-8e2d-b22465e65bf6)
+- **RBAC Role**: Key Vault Crypto Service Encryption User
 
 **Deployment Region**: East US 2
 
@@ -54,7 +52,7 @@ This module enables customer-managed key (CMK) encryption on an existing private
    - Verify: `az keyvault show --name <kv-name> -g rg-ai-keyvault --query "{softDelete:properties.enableSoftDelete, purgeProtection:properties.enablePurgeProtection}"`
 
 3. **Private Storage Account** (`rg-ai-storage`):
-   - Deploy via 009-private-storage feature
+   - Deploy via `./scripts/deploy-storage-infra.sh`
    - Storage account name pattern: `stailab<suffix>`
 
 4. **VPN Connection**:
@@ -197,7 +195,7 @@ The Storage Account uses a user-assigned managed identity to access the encrypti
 # Verify deployment order
 # 1. Core: ./scripts/deploy-core.sh
 # 2. Key Vault: ./scripts/deploy-keyvault.sh
-# 3. Storage: Deploy via 009-private-storage
+# 3. Storage: ./scripts/deploy-storage-infra.sh
 # 4. CMK: ./scripts/deploy-storage.sh (this script)
 
 # Check Key Vault has required settings
@@ -306,8 +304,6 @@ az storage account show -n stailab<suffix> -g rg-ai-storage \
 
 ---
 
-**Feature**: 010-storage-cmk-refactor  
 **Version**: 2.0.0  
-**Last Updated**: 2026-01-17  
-**Status**: Complete
+**Last Updated**: 2026-01-17
 

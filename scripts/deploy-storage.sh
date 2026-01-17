@@ -21,8 +21,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Default values
-PARAMETER_FILE="${REPO_ROOT}/bicep/storage/main.parameters.json"
-TEMPLATE_FILE="${REPO_ROOT}/bicep/storage/main.bicep"
+PARAMETER_FILE="${REPO_ROOT}/bicep/storage-cmk/main.parameters.json"
+TEMPLATE_FILE="${REPO_ROOT}/bicep/storage-cmk/main.bicep"
 DEPLOYMENT_NAME="deploy-cmk-storage-$(date +%Y%m%d-%H%M%S)"
 SKIP_WHATIF=false
 AUTO_APPROVE=false
@@ -66,7 +66,7 @@ Usage: $0 [OPTIONS]
 Enable CMK encryption on existing Storage Account using Key Vault key
 
 OPTIONS:
-    -p, --parameter-file PATH   Path to parameter file (default: bicep/storage/main.parameters.json)
+    -p, --parameter-file PATH   Path to parameter file (default: bicep/storage-cmk/main.parameters.json)
     -s, --skip-whatif           Skip what-if analysis (not recommended)
     -a, --auto-approve          Skip confirmation prompt (use with caution)
     -h, --help                  Show this help message
@@ -76,7 +76,7 @@ EXAMPLES:
     $0
 
     # Use custom parameter file
-    $0 --parameter-file bicep/storage/main.parameters.prod.json
+    $0 --parameter-file bicep/storage-cmk/main.parameters.prod.json
 
     # Automated deployment (CI/CD)
     $0 --auto-approve

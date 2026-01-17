@@ -50,8 +50,11 @@ param keyRotationInterval string = 'P18M'
 @description('Key expiry time in ISO 8601 duration format')
 param keyExpiryTime string = 'P2Y'
 
-@description('Deployment timestamp (auto-generated)')
+@description('Deployment timestamp for tags (auto-generated)')
 param deploymentTimestamp string = utcNow('yyyy-MM-ddTHH:mm:ssZ')
+
+@description('Deployment name suffix (auto-generated, no special characters)')
+param deploymentSuffix string = utcNow('yyyyMMddHHmmss')
 
 // ============================================================================
 // VARIABLES
@@ -96,7 +99,7 @@ resource storageRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
 
 // Module to discover Key Vault name in rg-ai-keyvault
 module keyVaultDiscovery 'kv-discovery.bicep' = {
-  name: 'discover-keyvault-${deploymentTimestamp}'
+  name: 'discover-keyvault-${deploymentSuffix}'
   scope: keyVaultRg
   params: {
     providedKeyVaultName: keyVaultName

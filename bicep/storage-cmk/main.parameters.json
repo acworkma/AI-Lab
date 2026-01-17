@@ -21,7 +21,7 @@
       "value": "rg-ai-storage"
     },
     "keyVaultName": {
-      "value": ""
+      "value": "kv-ai-lab-0117"
     },
     "encryptionKeyName": {
       "value": "storage-encryption-key"
