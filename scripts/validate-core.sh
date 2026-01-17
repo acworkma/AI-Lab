@@ -6,8 +6,9 @@
 #   - Resource existence and provisioning states
 #   - Naming conventions and tagging compliance
 #   - Virtual Hub routing readiness
-#   - VPN Gateway BGP configuration for Global Secure Access
-#   - Key Vault RBAC configuration and access
+#   - VPN Gateway configuration for P2S VPN
+#   - DNS Resolver configuration
+#   - Private DNS Zones
 #   - Configuration drift detection (what-if analysis)
 #
 # Usage: ./scripts/validate-core.sh [--resource-group <name>]
@@ -257,57 +258,6 @@ validate_vpn_gateway() {
     echo ""
 }
 
-validate_key_vault() {
-    log_info "Validating Key Vault..."
-
-    # Find Key Vault
-    local kv_name=$(az keyvault list --resource-group "$RESOURCE_GROUP" --query '[0].name' -o tsv)
-    
-    if [ -z "$kv_name" ]; then
-        log_fail "Key Vault not found in resource group"
-        return 1
-    fi
-    log_success "Key Vault found: $kv_name"
-
-    # Check RBAC authorization (constitutional requirement)
-    local rbac_enabled=$(az keyvault show --name "$kv_name" --query 'properties.enableRbacAuthorization' -o tsv)
-    if [ "$rbac_enabled" == "true" ]; then
-        log_success "Key Vault RBAC authorization enabled"
-    else
-        log_fail "Key Vault RBAC authorization disabled (constitution requires RBAC)"
-    fi
-
-    # Check soft-delete
-    local soft_delete=$(az keyvault show --name "$kv_name" --query 'properties.enableSoftDelete' -o tsv)
-    if [ "$soft_delete" == "true" ]; then
-        log_success "Key Vault soft-delete enabled"
-    else
-        log_warning "Key Vault soft-delete disabled (recommended to enable)"
-    fi
-
-    # Test access with secret operations (with timeout to prevent hanging)
-    log_info "Testing Key Vault access..."
-    if timeout 10 az keyvault secret set --vault-name "$kv_name" --name "validation-test" --value "success" &> /dev/null; then
-        log_success "Key Vault write access verified"
-        
-        # Test read
-        local secret_value=$(timeout 10 az keyvault secret show --vault-name "$kv_name" --name "validation-test" --query value -o tsv 2>/dev/null)
-        if [ "$secret_value" == "success" ]; then
-            log_success "Key Vault read access verified"
-        else
-            log_fail "Key Vault read access failed"
-        fi
-        
-        # Cleanup test secret
-        timeout 10 az keyvault secret delete --vault-name "$kv_name" --name "validation-test" &> /dev/null || true
-    else
-        log_warning "Key Vault write access denied (may need RBAC role assignment)"
-        log_info "  ℹ Assign role: az role assignment create --role 'Key Vault Secrets Officer' --assignee <user> --scope <vault-id>"
-    fi
-
-    echo ""
-}
-
 validate_configuration_drift() {
     log_info "Checking configuration drift (what-if analysis)..."
 
@@ -368,7 +318,6 @@ validate_resource_group
 validate_virtual_wan
 validate_virtual_hub
 validate_vpn_gateway
-validate_key_vault
 validate_configuration_drift
 
 # Summary

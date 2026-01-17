@@ -1,5 +1,5 @@
 // Main Bicep Template - Core Azure vWAN Infrastructure with P2S VPN
-// Orchestrates deployment of resource group, Virtual WAN hub, Point-to-Site VPN Gateway, and Key Vault
+// Orchestrates deployment of resource group, Virtual WAN hub, Point-to-Site VPN Gateway, DNS Resolver, and Private DNS Zones
 // Purpose: Foundation hub infrastructure for AI lab spoke connections with secure remote access
 
 targetScope = 'subscription'
@@ -67,21 +67,6 @@ param aadAudience string = '41b23e61-6c1e-4545-b367-cd054e0ed4b4'
 
 @description('Microsoft Entra ID Issuer URL')
 param aadIssuer string
-
-@description('Key Vault name (must be globally unique, 3-24 characters)')
-@minLength(3)
-@maxLength(24)
-param keyVaultName string
-
-@description('Key Vault SKU (standard or premium)')
-@allowed([
-  'standard'
-  'premium'
-])
-param keyVaultSku string = 'standard'
-
-@description('Enable purge protection for Key Vault (recommended for production)')
-param enablePurgeProtection bool = false
 
 @description('DNS Private Resolver name')
 param dnsResolverName string = 'dnsr-ai-shared'
@@ -194,33 +179,6 @@ module vpnGateway 'modules/vpn-gateway.bicep' = {
     vpnServerConfigurationId: vpnServerConfig.outputs.vpnServerConfigId
     vpnClientAddressPool: vpnClientAddressPool
     vpnGatewayScaleUnit: vpnGatewayScaleUnit
-    tags: allTags
-  }
-}
-
-// ============================================================================
-// KEY VAULT
-// ============================================================================
-
-// Key Vault - Centralized secrets management for all labs
-// Deployment time: ~1 minute
-// Can deploy in parallel with Virtual WAN (no dependency)
-// See research.md: Azure Key Vault Best Practices - RBAC authorization model
-module keyVault 'modules/key-vault.bicep' = {
-  name: 'deploy-key-vault'
-  scope: az.resourceGroup(resourceGroupName)
-  dependsOn: [
-    resourceGroup
-  ]
-  params: {
-    keyVaultName: keyVaultName
-    location: location
-    keyVaultSku: keyVaultSku
-    enableRbacAuthorization: true
-    enableSoftDelete: true
-    softDeleteRetentionInDays: 90
-    enablePurgeProtection: enablePurgeProtection
-    networkAclsDefaultAction: 'Allow'
     tags: allTags
   }
 }
@@ -349,16 +307,6 @@ output vpnClientAddressPool string = vpnGateway.outputs.vpnClientAddressPool
 
 @description('VPN Gateway scale units')
 output vpnGatewayScaleUnit int = vpnGateway.outputs.vpnGatewayScaleUnit
-
-// Key Vault Outputs
-@description('Resource ID of the Key Vault')
-output keyVaultId string = keyVault.outputs.keyVaultId
-
-@description('Name of the Key Vault')
-output keyVaultName string = keyVault.outputs.keyVaultName
-
-@description('Key Vault URI for secret references in parameter files')
-output keyVaultUri string = keyVault.outputs.keyVaultUri
 
 // Shared Services VNet Outputs
 @description('Resource ID of the shared services VNet')
