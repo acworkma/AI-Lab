@@ -1,0 +1,72 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "environment": {
+      "value": "dev",
+      "metadata": {
+        "description": "Environment tag (dev, test, prod)"
+      }
+    },
+    "owner": {
+      "value": "<your-name>",
+      "metadata": {
+        "description": "Owner tag value - REQUIRED"
+      }
+    },
+    "storageNameSuffix": {
+      "value": "<MMDD>",
+      "metadata": {
+        "description": "Unique suffix for storage account name (e.g., 0117 for Jan 17)"
+      }
+    },
+    "skuName": {
+      "value": "Standard_LRS",
+      "metadata": {
+        "description": "Storage SKU: Standard_LRS, Standard_GRS, or Standard_ZRS"
+      }
+    },
+    "enableBlobSoftDelete": {
+      "value": true,
+      "metadata": {
+        "description": "Enable blob soft-delete for data protection"
+      }
+    },
+    "softDeleteRetentionDays": {
+      "value": 7,
+      "metadata": {
+        "description": "Soft-delete retention period (1-365 days)"
+      }
+    },
+    "coreResourceGroupName": {
+      "value": "rg-ai-core",
+      "metadata": {
+        "description": "Resource group containing core infrastructure"
+      }
+    },
+    "vnetName": {
+      "value": "vnet-ai-shared",
+      "metadata": {
+        "description": "Shared services VNet name"
+      }
+    },
+    "subnetName": {
+      "value": "PrivateEndpointSubnet",
+      "metadata": {
+        "description": "Subnet for private endpoints"
+      }
+    },
+    "adminPrincipalId": {
+      "value": "",
+      "metadata": {
+        "description": "Optional: Azure AD principal ID for Storage Blob Data Contributor role"
+      }
+    }
+  }
+}
