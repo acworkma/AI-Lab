@@ -1,0 +1,266 @@
+<!--
+    Storage Operations Policy for Azure API Management
+    
+    Uses APIM managed identity to authenticate to Azure Blob Storage
+    Storage Account: stailab001
+    Container: data
+    
+    Operations:
+    - PUT /files/{filename}    - Upload blob
+    - GET /files               - List blobs  
+    - GET /files/{filename}    - Download blob
+    - DELETE /files/{filename} - Delete blob
+-->
+<policies>
+    <inbound>
+        <base />
+        
+        <!-- Authenticate to Azure Storage using managed identity -->
+        <authentication-managed-identity resource="https://storage.azure.com/" 
+                                          output-token-variable-name="storage-token" 
+                                          ignore-error="false" />
+        
+        <!-- Set Storage API version header -->
+        <set-header name="x-ms-version" exists-action="override">
+            <value>2023-11-03</value>
+        </set-header>
+        
+        <!-- Route based on operation -->
+        <choose>
+            <!-- PUT /files/{filename} - Upload blob -->
+            <when condition="@(context.Request.Method == &quot;PUT&quot; &amp;&amp; context.Request.MatchedParameters.ContainsKey(&quot;filename&quot;))">
+                <set-variable name="blobName" value="@(context.Request.MatchedParameters[&quot;filename&quot;])" />
+                <set-variable name="operation" value="upload" />
+                <set-header name="x-ms-blob-type" exists-action="override">
+                    <value>BlockBlob</value>
+                </set-header>
+            </when>
+            
+            <!-- GET /files - List blobs -->
+            <when condition="@(context.Request.Method == &quot;GET&quot; &amp;&amp; !context.Request.MatchedParameters.ContainsKey(&quot;filename&quot;))">
+                <set-variable name="operation" value="list" />
+            </when>
+            
+            <!-- GET /files/{filename} - Download blob -->
+            <when condition="@(context.Request.Method == &quot;GET&quot; &amp;&amp; context.Request.MatchedParameters.ContainsKey(&quot;filename&quot;))">
+                <set-variable name="blobName" value="@(context.Request.MatchedParameters[&quot;filename&quot;])" />
+                <set-variable name="operation" value="download" />
+            </when>
+            
+            <!-- DELETE /files/{filename} - Delete blob -->
+            <when condition="@(context.Request.Method == &quot;DELETE&quot; &amp;&amp; context.Request.MatchedParameters.ContainsKey(&quot;filename&quot;))">
+                <set-variable name="blobName" value="@(context.Request.MatchedParameters[&quot;filename&quot;])" />
+                <set-variable name="operation" value="delete" />
+            </when>
+        </choose>
+    </inbound>
+    
+    <backend>
+        <!-- Send request to Azure Storage -->
+        <choose>
+            <!-- Upload blob -->
+            <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;upload&quot;)">
+                <send-request mode="copy" response-variable-name="storage-response" timeout="120" ignore-error="false">
+                    <set-url>@($"https://stailab001.blob.core.windows.net/data/{context.Variables[&quot;blobName&quot;]}")</set-url>
+                    <set-method>PUT</set-method>
+                    <set-header name="Authorization" exists-action="override">
+                        <value>@($"Bearer {context.Variables[&quot;storage-token&quot;]}")</value>
+                    </set-header>
+                </send-request>
+            </when>
+            
+            <!-- List blobs -->
+            <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;list&quot;)">
+                <send-request mode="new" response-variable-name="storage-response" timeout="30" ignore-error="false">
+                    <set-url>https://stailab001.blob.core.windows.net/data?restype=container&amp;comp=list</set-url>
+                    <set-method>GET</set-method>
+                    <set-header name="Authorization" exists-action="override">
+                        <value>@($"Bearer {context.Variables[&quot;storage-token&quot;]}")</value>
+                    </set-header>
+                    <set-header name="x-ms-version" exists-action="override">
+                        <value>2023-11-03</value>
+                    </set-header>
+                </send-request>
+            </when>
+            
+            <!-- Download blob -->
+            <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;download&quot;)">
+                <send-request mode="new" response-variable-name="storage-response" timeout="120" ignore-error="false">
+                    <set-url>@($"https://stailab001.blob.core.windows.net/data/{context.Variables[&quot;blobName&quot;]}")</set-url>
+                    <set-method>GET</set-method>
+                    <set-header name="Authorization" exists-action="override">
+                        <value>@($"Bearer {context.Variables[&quot;storage-token&quot;]}")</value>
+                    </set-header>
+                    <set-header name="x-ms-version" exists-action="override">
+                        <value>2023-11-03</value>
+                    </set-header>
+                </send-request>
+            </when>
+            
+            <!-- Delete blob -->
+            <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;delete&quot;)">
+                <send-request mode="new" response-variable-name="storage-response" timeout="30" ignore-error="false">
+                    <set-url>@($"https://stailab001.blob.core.windows.net/data/{context.Variables[&quot;blobName&quot;]}")</set-url>
+                    <set-method>DELETE</set-method>
+                    <set-header name="Authorization" exists-action="override">
+                        <value>@($"Bearer {context.Variables[&quot;storage-token&quot;]}")</value>
+                    </set-header>
+                    <set-header name="x-ms-version" exists-action="override">
+                        <value>2023-11-03</value>
+                    </set-header>
+                </send-request>
+            </when>
+        </choose>
+    </backend>
+    
+    <outbound>
+        <base />
+        
+        <choose>
+            <!-- Upload response - 201 Created with blob metadata -->
+            <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;upload&quot;)">
+                <choose>
+                    <when condition="@(((IResponse)context.Variables[&quot;storage-response&quot;]).StatusCode == 201)">
+                        <return-response>
+                            <set-status code="201" reason="Created" />
+                            <set-header name="Content-Type" exists-action="override">
+                                <value>application/json</value>
+                            </set-header>
+                            <set-body>@{
+                                var response = (IResponse)context.Variables["storage-response"];
+                                var etag = response.Headers.GetValueOrDefault("ETag", "");
+                                var contentLength = context.Request.Headers.GetValueOrDefault("Content-Length", "0");
+                                var contentType = context.Request.Headers.GetValueOrDefault("Content-Type", "application/octet-stream");
+                                
+                                return new JObject(
+                                    new JProperty("name", (string)context.Variables["blobName"]),
+                                    new JProperty("contentType", contentType),
+                                    new JProperty("contentLength", int.Parse(contentLength)),
+                                    new JProperty("etag", etag)
+                                ).ToString();
+                            }</set-body>
+                        </return-response>
+                    </when>
+                    <otherwise>
+                        <return-response response-variable-name="storage-response" />
+                    </otherwise>
+                </choose>
+            </when>
+            
+            <!-- List response - Transform XML to JSON -->
+            <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;list&quot;)">
+                <choose>
+                    <when condition="@(((IResponse)context.Variables[&quot;storage-response&quot;]).StatusCode == 200)">
+                        <return-response>
+                            <set-status code="200" reason="OK" />
+                            <set-header name="Content-Type" exists-action="override">
+                                <value>application/json</value>
+                            </set-header>
+                            <set-body>@{
+                                var response = (IResponse)context.Variables["storage-response"];
+                                var body = response.Body.As&lt;string&gt;();
+                                var xml = XDocument.Parse(body);
+                                var blobs = xml.Descendants("Blob")
+                                    .Select(b =&gt; new JObject(
+                                        new JProperty("name", b.Element("Name")?.Value ?? ""),
+                                        new JProperty("contentLength", int.Parse(b.Element("Properties")?.Element("Content-Length")?.Value ?? "0")),
+                                        new JProperty("lastModified", b.Element("Properties")?.Element("Last-Modified")?.Value ?? ""),
+                                        new JProperty("contentType", b.Element("Properties")?.Element("Content-Type")?.Value ?? "application/octet-stream")
+                                    )).ToList();
+                                
+                                return new JObject(
+                                    new JProperty("files", new JArray(blobs)),
+                                    new JProperty("count", blobs.Count)
+                                ).ToString();
+                            }</set-body>
+                        </return-response>
+                    </when>
+                    <otherwise>
+                        <return-response response-variable-name="storage-response" />
+                    </otherwise>
+                </choose>
+            </when>
+            
+            <!-- Download response - Pass through with headers -->
+            <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;download&quot;)">
+                <choose>
+                    <when condition="@(((IResponse)context.Variables[&quot;storage-response&quot;]).StatusCode == 200)">
+                        <return-response response-variable-name="storage-response">
+                            <set-header name="Content-Type" exists-action="skip">
+                                <value>@(((IResponse)context.Variables["storage-response"]).Headers.GetValueOrDefault("Content-Type", "application/octet-stream"))</value>
+                            </set-header>
+                        </return-response>
+                    </when>
+                    <when condition="@(((IResponse)context.Variables[&quot;storage-response&quot;]).StatusCode == 404)">
+                        <return-response>
+                            <set-status code="404" reason="Not Found" />
+                            <set-header name="Content-Type" exists-action="override">
+                                <value>application/json</value>
+                            </set-header>
+                            <set-body>@{
+                                return new JObject(
+                                    new JProperty("error", new JObject(
+                                        new JProperty("code", "NotFound"),
+                                        new JProperty("message", "The specified file does not exist")
+                                    ))
+                                ).ToString();
+                            }</set-body>
+                        </return-response>
+                    </when>
+                    <otherwise>
+                        <return-response response-variable-name="storage-response" />
+                    </otherwise>
+                </choose>
+            </when>
+            
+            <!-- Delete response - 204 No Content -->
+            <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;delete&quot;)">
+                <choose>
+                    <when condition="@(((IResponse)context.Variables[&quot;storage-response&quot;]).StatusCode == 202)">
+                        <return-response>
+                            <set-status code="204" reason="No Content" />
+                        </return-response>
+                    </when>
+                    <when condition="@(((IResponse)context.Variables[&quot;storage-response&quot;]).StatusCode == 404)">
+                        <return-response>
+                            <set-status code="404" reason="Not Found" />
+                            <set-header name="Content-Type" exists-action="override">
+                                <value>application/json</value>
+                            </set-header>
+                            <set-body>@{
+                                return new JObject(
+                                    new JProperty("error", new JObject(
+                                        new JProperty("code", "NotFound"),
+                                        new JProperty("message", "The specified file does not exist")
+                                    ))
+                                ).ToString();
+                            }</set-body>
+                        </return-response>
+                    </when>
+                    <otherwise>
+                        <return-response response-variable-name="storage-response" />
+                    </otherwise>
+                </choose>
+            </when>
+        </choose>
+    </outbound>
+    
+    <on-error>
+        <base />
+        <!-- Generic error handling -->
+        <return-response>
+            <set-status code="500" reason="Internal Server Error" />
+            <set-header name="Content-Type" exists-action="override">
+                <value>application/json</value>
+            </set-header>
+            <set-body>@{
+                return new JObject(
+                    new JProperty("error", new JObject(
+                        new JProperty("code", "InternalError"),
+                        new JProperty("message", context.LastError.Message ?? "An unexpected error occurred")
+                    ))
+                ).ToString();
+            }</set-body>
+        </return-response>
+    </on-error>
+</policies>

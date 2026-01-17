@@ -1,103 +1,58 @@
 <!--
-    JWT Validation Policy Template for Azure API Management
+    JWT Validation Policy for Storage API
     
-    Purpose: Validate OAuth 2.0 / Entra ID tokens on API requests
-    
-    Usage:
-    1. Replace {tenant-id} with your Azure AD tenant ID
-    2. Replace {api-app-id} with your API's application ID
-    3. Apply this policy to your API's inbound processing
-    
-    Find your IDs:
-    - Tenant ID: az account show --query tenantId -o tsv
-    - App ID: az ad app list --display-name "your-api" --query "[].appId" -o tsv
+    Validates OAuth 2.0 bearer tokens from Entra ID
+    Tenant: MngEnvMCAP818246.onmicrosoft.com
+    App Registration: apim-ai-lab-0115-devportal
 -->
-
 <policies>
     <inbound>
         <base />
-        
-        <!-- JWT Token Validation -->
-        <validate-jwt 
-            header-name="Authorization" 
-            failed-validation-httpcode="401" 
-            failed-validation-error-message="Unauthorized. Access token is missing or invalid."
-            require-expiration-time="true"
-            require-scheme="Bearer"
-            require-signed-tokens="true"
-            output-token-variable-name="jwt">
-            
-            <!-- OpenID Connect Configuration for Entra ID -->
-            <openid-config url="https://login.microsoftonline.com/{tenant-id}/.well-known/openid-configuration" />
-            
-            <!-- Valid Audiences (your API's app ID URI) -->
+        <!-- Validate JWT token from Entra ID -->
+        <validate-jwt header-name="Authorization" 
+                      failed-validation-httpcode="401" 
+                      failed-validation-error-message="Unauthorized. Access token is missing or invalid."
+                      require-expiration-time="true"
+                      require-signed-tokens="true">
+            <!-- Use OpenID Connect discovery for key retrieval -->
+            <openid-config url="https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/v2.0/.well-known/openid-configuration" />
+            <!-- Allowed audiences (App Registration Client ID) -->
             <audiences>
-                <audience>api://{api-app-id}</audience>
-                <!-- Add additional audiences if needed -->
-                <!-- <audience>https://your-custom-audience.com</audience> -->
+                <audience>6cb63aba-6d0d-4f06-957e-c584fdeb23d7</audience>
+                <audience>api://6cb63aba-6d0d-4f06-957e-c584fdeb23d7</audience>
             </audiences>
-            
-            <!-- Valid Issuers (Entra ID STS) -->
+            <!-- Token issuer validation -->
             <issuers>
-                <!-- V1 endpoint issuer -->
-                <issuer>https://sts.windows.net/{tenant-id}/</issuer>
-                <!-- V2 endpoint issuer -->
-                <issuer>https://login.microsoftonline.com/{tenant-id}/v2.0</issuer>
+                <issuer>https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/v2.0</issuer>
+                <issuer>https://sts.windows.net/38c1a7b0-f16b-45fd-a528-87d8720e868e/</issuer>
             </issuers>
-            
-            <!-- Optional: Required Claims -->
-            <!-- Uncomment to require specific roles or scopes -->
-            <!--
-            <required-claims>
-                <claim name="roles" match="any">
-                    <value>API.Read</value>
-                    <value>API.Write</value>
-                </claim>
-            </required-claims>
-            -->
-            
         </validate-jwt>
-        
-        <!-- Optional: Extract claims to headers for backend -->
-        <!-- Uncomment to pass user info to backend service -->
-        <!--
-        <set-header name="X-User-ObjectId" exists-action="override">
-            <value>@(((Jwt)context.Variables["jwt"]).Claims.GetValueOrDefault("oid", "unknown"))</value>
-        </set-header>
-        <set-header name="X-User-Email" exists-action="override">
-            <value>@(((Jwt)context.Variables["jwt"]).Claims.GetValueOrDefault("preferred_username", "unknown"))</value>
-        </set-header>
-        <set-header name="X-User-Name" exists-action="override">
-            <value>@(((Jwt)context.Variables["jwt"]).Claims.GetValueOrDefault("name", "unknown"))</value>
-        </set-header>
-        -->
-        
     </inbound>
-    
     <backend>
         <base />
     </backend>
-    
     <outbound>
         <base />
     </outbound>
-    
     <on-error>
         <base />
-        
-        <!-- Custom error response for authentication failures -->
+        <!-- Return structured error for JWT validation failures -->
         <choose>
-            <when condition="@(context.Response.StatusCode == 401)">
-                <set-body>@{
-                    return new JObject(
-                        new JProperty("error", "unauthorized"),
-                        new JProperty("message", "Access token is missing, invalid, or expired."),
-                        new JProperty("details", context.LastError.Message)
-                    ).ToString();
-                }</set-body>
-                <set-header name="Content-Type" exists-action="override">
-                    <value>application/json</value>
-                </set-header>
+            <when condition="@(context.LastError.Source == &quot;validate-jwt&quot;)">
+                <return-response>
+                    <set-status code="401" reason="Unauthorized" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-body>@{
+                        return new JObject(
+                            new JProperty("error", new JObject(
+                                new JProperty("code", "Unauthorized"),
+                                new JProperty("message", context.LastError.Message)
+                            ))
+                        ).ToString();
+                    }</set-body>
+                </return-response>
             </when>
         </choose>
     </on-error>

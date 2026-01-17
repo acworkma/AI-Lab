@@ -37,9 +37,9 @@ An authenticated client uploads a file to blob storage through the APIM-protecte
 
 **Acceptance Scenarios**:
 
-1. **Given** a client with a valid OAuth token, **When** they POST a file to `/storage/upload`, **Then** the file is stored in the `data` container and a success response (201) is returned.
-2. **Given** a client with an expired OAuth token, **When** they POST a file to `/storage/upload`, **Then** a 401 Unauthorized response is returned.
-3. **Given** a client with no token, **When** they POST a file to `/storage/upload`, **Then** a 401 Unauthorized response is returned.
+1. **Given** a client with a valid OAuth token, **When** they PUT a file to `/storage/files/{filename}`, **Then** the file is stored in the `data` container and a success response (201) is returned.
+2. **Given** a client with an expired OAuth token, **When** they PUT a file to `/storage/files/{filename}`, **Then** a 401 Unauthorized response is returned.
+3. **Given** a client with no token, **When** they PUT a file to `/storage/files/{filename}`, **Then** a 401 Unauthorized response is returned.
 
 ---
 

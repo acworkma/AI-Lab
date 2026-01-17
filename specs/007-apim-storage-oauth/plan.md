@@ -1,6 +1,6 @@
 # Implementation Plan: APIM Storage OAuth Demo
 
-**Branch**: `007-apim-storage-oauth` | **Date**: 2025-01-15 | **Spec**: [spec.md](spec.md)
+**Branch**: `007-apim-storage-oauth` | **Date**: 2026-01-15 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `/specs/007-apim-storage-oauth/spec.md`
 **Project Type**: Solution
 

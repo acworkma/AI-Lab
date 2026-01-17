@@ -78,6 +78,9 @@ Solution projects consume deployed infrastructure to accomplish specific use cas
 - **[Private Storage Account with Customer Managed Key](docs/storage/README.md)**  
   Deploy an Azure Storage Account with customer-managed encryption key stored in Key Vault, integrated with private endpoint for secure data storage. Includes comprehensive RBAC and permission documentation.
 
+- **[Storage API via APIM with OAuth](docs/apim/storage-api-guide.md)**  
+  OAuth-protected REST API for Azure Blob Storage operations through API Management. Uses APIM managed identity to authenticate to storage, with JWT validation for client access. Supports upload, list, download, and delete operations.
+
 ---
 
 ## 🚀 Getting Started

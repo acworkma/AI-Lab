@@ -22,9 +22,9 @@ Based on plan.md structure:
 
 **Purpose**: Create directory structure and grant RBAC permissions
 
-- [ ] T001 Create directory structure: `bicep/apim/apis/` and `bicep/apim/policies/`
-- [ ] T002 Create RBAC script: `scripts/grant-apim-storage-role.sh` to assign Storage Blob Data Contributor to APIM MI
-- [ ] T003 Run RBAC script to grant APIM managed identity access to stailab001 storage account
+- [X] T001 Create directory structure: `bicep/apim/apis/` and `bicep/apim/policies/`
+- [X] T002 Create RBAC script: `scripts/grant-apim-storage-role.sh` to assign Storage Blob Data Contributor to APIM MI
+- [X] T003 Run RBAC script to grant APIM managed identity access to stailab001 storage account
 
 ---
 
@@ -34,12 +34,12 @@ Based on plan.md structure:
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create JWT validation policy in `bicep/apim/policies/jwt-validation.xml` with Entra ID OIDC config
-- [ ] T005 [P] Create base storage operations policy in `bicep/apim/policies/storage-operations.xml` with managed identity auth
-- [ ] T006 Create Storage API Bicep module in `bicep/apim/apis/storage-api.bicep` with all 4 operations
-- [ ] T007 [P] Create deployment script `scripts/deploy-storage-api.sh` for API deployment
+- [X] T004 Create JWT validation policy in `bicep/apim/policies/jwt-validation.xml` with Entra ID OIDC config
+- [X] T005 [P] Create base storage operations policy in `bicep/apim/policies/storage-operations.xml` with managed identity auth
+- [X] T006 Create Storage API Bicep module in `bicep/apim/apis/storage-api.bicep` with all 4 operations
+- [X] T007 [P] Create deployment script `scripts/deploy-storage-api.sh` for API deployment
 
-**Checkpoint**: API structure deployed to APIM - user story implementation can now begin
+**Checkpoint**: API structure deployed to APIM ✅ - user story implementation can now begin
 
 ---
 
@@ -51,13 +51,13 @@ Based on plan.md structure:
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement upload operation policy in `bicep/apim/policies/storage-operations.xml` (PUT /files/{filename})
-- [ ] T009 [US1] Add x-ms-blob-type and x-ms-version headers for BlockBlob upload
-- [ ] T010 [US1] Implement 201 response transformation with blob metadata (name, etag, contentLength)
-- [ ] T011 [US1] Add error handling for 400/401/413 responses in upload operation
-- [ ] T012 [US1] Deploy and test upload operation with curl command
+- [X] T008 [US1] Implement upload operation policy in `bicep/apim/policies/storage-operations.xml` (PUT /files/{filename})
+- [X] T009 [US1] Add x-ms-blob-type and x-ms-version headers for BlockBlob upload
+- [X] T010 [US1] Implement 201 response transformation with blob metadata (name, etag, contentLength)
+- [X] T011 [US1] Add error handling for 400/401/413 responses in upload operation
+- [X] T012 [US1] Deploy and test upload operation with curl command
 
-**Checkpoint**: User Story 1 complete - can upload files via OAuth-protected API
+**Checkpoint**: User Story 1 complete ✅ - can upload files via OAuth-protected API
 
 ---
 
@@ -69,13 +69,13 @@ Based on plan.md structure:
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Implement list operation policy in `bicep/apim/policies/storage-operations.xml` (GET /files)
-- [ ] T014 [US2] Add Storage List Blobs URL construction with restype=container&comp=list
-- [ ] T015 [US2] Implement XML to JSON transformation for blob list response
-- [ ] T016 [US2] Add count field to response JSON
-- [ ] T017 [US2] Deploy and test list operation with curl command
+- [X] T013 [US2] Implement list operation policy in `bicep/apim/policies/storage-operations.xml` (GET /files)
+- [X] T014 [US2] Add Storage List Blobs URL construction with restype=container&comp=list
+- [X] T015 [US2] Implement XML to JSON transformation for blob list response
+- [X] T016 [US2] Add count field to response JSON
+- [X] T017 [US2] Deploy and test list operation with curl command
 
-**Checkpoint**: User Stories 1 AND 2 complete - can upload and list files
+**Checkpoint**: User Stories 1 AND 2 complete ✅ - can upload and list files
 
 ---
 
@@ -87,12 +87,12 @@ Based on plan.md structure:
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Implement download operation policy in `bicep/apim/policies/storage-operations.xml` (GET /files/{filename})
-- [ ] T019 [US3] Pass through Content-Type and Content-Length headers from storage response
-- [ ] T020 [US3] Implement 404 error handling for missing blobs
-- [ ] T021 [US3] Deploy and test download operation with curl command
+- [X] T018 [US3] Implement download operation policy in `bicep/apim/policies/storage-operations.xml` (GET /files/{filename})
+- [X] T019 [US3] Pass through Content-Type and Content-Length headers from storage response
+- [X] T020 [US3] Implement 404 error handling for missing blobs
+- [X] T021 [US3] Deploy and test download operation with curl command
 
-**Checkpoint**: User Stories 1, 2, AND 3 complete - can upload, list, and download files
+**Checkpoint**: User Stories 1, 2, AND 3 complete ✅ - can upload, list, and download files
 
 ---
 
@@ -104,12 +104,12 @@ Based on plan.md structure:
 
 ### Implementation for User Story 4
 
-- [ ] T022 [US4] Implement delete operation policy in `bicep/apim/policies/storage-operations.xml` (DELETE /files/{filename})
-- [ ] T023 [US4] Return 204 No Content on successful deletion
-- [ ] T024 [US4] Implement 404 error handling for missing blobs
-- [ ] T025 [US4] Deploy and test delete operation with curl command
+- [X] T022 [US4] Implement delete operation policy in `bicep/apim/policies/storage-operations.xml` (DELETE /files/{filename})
+- [X] T023 [US4] Return 204 No Content on successful deletion
+- [X] T024 [US4] Implement 404 error handling for missing blobs
+- [X] T025 [US4] Deploy and test delete operation with curl command
 
-**Checkpoint**: All 4 CRUD operations complete
+**Checkpoint**: All 4 CRUD operations complete ✅
 
 ---
 
@@ -117,11 +117,13 @@ Based on plan.md structure:
 
 **Purpose**: Documentation, testing script, and validation
 
-- [ ] T026 [P] Create end-to-end test script `scripts/test-storage-api.sh` covering all operations
-- [ ] T027 [P] Create usage documentation in `docs/apim/storage-api-guide.md`
-- [ ] T028 [P] Update `bicep/apim/main.bicep` to include storage-api module reference
-- [ ] T029 Run quickstart.md validation to verify all steps work
-- [ ] T030 Update README.md with storage API information
+- [X] T026 [P] Create end-to-end test script `scripts/test-storage-api.sh` covering all operations
+- [X] T027 [P] Create usage documentation in `docs/apim/storage-api-guide.md`
+- [X] T028 [P] Update `bicep/apim/main.bicep` to include storage-api module reference
+- [X] T029 Run quickstart.md validation to verify all steps work
+- [X] T030 Update README.md with storage API information
+
+**All phases complete! ✅**
 
 ---
 
@@ -129,10 +131,10 @@ Based on plan.md structure:
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on Setup - BLOCKS all user stories
-- **User Stories (Phase 3-6)**: All depend on Foundational phase completion
-- **Polish (Phase 7)**: Depends on all user stories being complete
+- **Setup (Phase 1)**: No dependencies - can start immediately ✅
+- **Foundational (Phase 2)**: Depends on Setup - BLOCKS all user stories ✅
+- **User Stories (Phase 3-6)**: All depend on Foundational phase completion ✅
+- **Polish (Phase 7)**: Depends on all user stories being complete ✅
 
 ### User Story Dependencies
 
