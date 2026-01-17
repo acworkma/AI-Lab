@@ -62,57 +62,55 @@ This infrastructure establishes the foundational hub-spoke network topology for 
 ### Hub-Spoke Network Topology
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Remote VPN Clients                           │
-│       (Entra ID Authentication via Azure VPN Client)            │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ OpenVPN P2S Tunnel
-                           │
-┌──────────────────────────▼──────────────────────────────────────┐
-│                   rg-ai-core (Resource Group)                   │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────┐    │
-│  │  Virtual WAN Hub (hub-ai-eastus2)                      │    │
-│  │  Address Space: 10.0.0.0/16                            │    │
-│  │                                                          │    │
-│  │  ┌──────────────────────────────────────────────┐      │    │
-│  │  │  P2S VPN Gateway (vpngw-ai-hub)              │      │    │
-│  │  │  - Type: Point-to-Site                       │      │    │
-│  │  │  - Authentication: Microsoft Entra ID        │      │    │
-│  │  │  - Protocol: OpenVPN                         │      │    │
-│  │  │  - Client Pool: 172.16.0.0/24                │      │    │
-│  │  │  - Scale Units: 1 (500 Mbps)                 │      │    │
-│  │  └──────────────────────────────────────────────┘      │    │
-│  │                                                          │    │
-│  └────────────────┬─────────────────────────────────────────┤    │
-│                   │ Spoke Connections                       │    │
-│                   │                                          │    │
-│  ┌────────────────┴─────────────────────────────────────────┐   │
-│  │  Shared Services VNet (vnet-ai-shared)                   │   │
-│  │  Address Space: 10.1.0.0/24                              │   │
-│  │                                                            │   │
-│  │  ┌─────────────────────────────────────────────────┐     │   │
-│  │  │  DNS Private Resolver (dnsr-ai-shared)          │     │   │
-│  │  │  - Inbound Endpoint IP: 10.1.0.68               │     │   │
-│  │  │  - Queries Private DNS Zones                    │     │   │
-│  │  │  - Public DNS Fallback                          │     │   │
-│  │  └─────────────────────────────────────────────────┘     │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────────┘
-                           │
-                           │ VNet Connections
-                           │
-        ┌──────────────────┼──────────────────┐
-        │                  │                  │
-        ▼                  ▼                  ▼
-  ┌──────────┐      ┌──────────┐      ┌──────────┐
-  │ Spoke 1  │      │ Spoke 2  │      │ Spoke 3  │
-  │ rg-ai-   │      │ rg-ai-   │      │ rg-ai-   │
-  │ storage  │      │    ml    │      │  other   │
-  └──────────┘      └──────────┘      └──────────┘
-   10.1.0.0/16       10.2.0.0/16       10.3.0.0/16
-   (Private          (Private          (Private
-    Endpoints)        Endpoints)        Endpoints)
+┌───────────────────────────────────────────────────────────────┐
+│                      Remote VPN Clients                       │
+│          (Entra ID Authentication via Azure VPN Client)       │
+└─────────────────────────────┬─────────────────────────────────┘
+                              │ OpenVPN P2S Tunnel
+                              │
+┌─────────────────────────────▼─────────────────────────────────┐
+│                   rg-ai-core (Resource Group)                 │
+│                                                               │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │  Virtual WAN Hub (hub-ai-eastus2)                       │  │
+│  │  Address Space: 10.0.0.0/16                             │  │
+│  │                                                         │  │
+│  │  ┌───────────────────────────────────────────────────┐  │  │
+│  │  │  P2S VPN Gateway (vpngw-ai-hub)                   │  │  │
+│  │  │  - Type: Point-to-Site                            │  │  │
+│  │  │  - Authentication: Microsoft Entra ID             │  │  │
+│  │  │  - Protocol: OpenVPN                              │  │  │
+│  │  │  - Client Pool: 172.16.0.0/24                     │  │  │
+│  │  │  - Scale Units: 1 (500 Mbps)                      │  │  │
+│  │  └───────────────────────────────────────────────────┘  │  │
+│  │                                                         │  │
+│  └───────────────────────────┬─────────────────────────────┘  │
+│                              │ Spoke Connections              │
+│                              │                                │
+│  ┌───────────────────────────┴─────────────────────────────┐  │
+│  │  Shared Services VNet (vnet-ai-shared)                  │  │
+│  │  Address Space: 10.1.0.0/24                             │  │
+│  │                                                         │  │
+│  │  ┌───────────────────────────────────────────────────┐  │  │
+│  │  │  DNS Private Resolver (dnsr-ai-shared)            │  │  │
+│  │  │  - Inbound Endpoint IP: 10.1.0.68                 │  │  │
+│  │  │  - Queries Private DNS Zones                      │  │  │
+│  │  │  - Public DNS Fallback                            │  │  │
+│  │  └───────────────────────────────────────────────────┘  │  │
+│  └─────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────┘
+                              │
+                              │ VNet Connections
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+        ▼                     ▼                     ▼
+  ┌───────────┐        ┌───────────┐        ┌───────────┐
+  │  Spoke 1  │        │  Spoke 2  │        │  Spoke 3  │
+  │  rg-ai-   │        │  rg-ai-   │        │  rg-ai-   │
+  │  storage  │        │    ml     │        │   other   │
+  └───────────┘        └───────────┘        └───────────┘
+   10.1.0.0/16          10.2.0.0/16          10.3.0.0/16
 ```
 
 ### Point-to-Site VPN Access
