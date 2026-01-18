@@ -35,7 +35,7 @@ resource storageApi 'Microsoft.ApiManagement/service/apis@2023-09-01-preview' = 
     protocols: [
       'https'
     ]
-    serviceUrl: 'https://stailab001.blob.core.windows.net'
+    serviceUrl: 'https://stailab0117.blob.core.windows.net'
     isCurrent: true
   }
 }

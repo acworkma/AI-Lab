@@ -9,7 +9,7 @@ set -e
 # Configuration
 APIM_NAME="apim-ai-lab-0115"
 APIM_RG="rg-ai-apim"
-STORAGE_ACCOUNT="stailab001"
+STORAGE_ACCOUNT="stailab0117"
 STORAGE_RG="rg-ai-storage"
 ROLE="Storage Blob Data Contributor"
 

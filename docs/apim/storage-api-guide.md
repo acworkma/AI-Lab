@@ -11,7 +11,7 @@ The Storage API provides a secure REST interface for uploading, listing, downloa
 ```
 ┌─────────────┐      ┌─────────────────┐      ┌─────────────────┐
 │   Client    │──────│  Azure APIM     │──────│  Blob Storage   │
-│  (OAuth)    │ JWT  │  (Managed ID)   │ MI   │  (stailab001)   │
+│  (OAuth)    │ JWT  │  (Managed ID)   │ MI   │  (stailab0117)  │
 └─────────────┘      └─────────────────┘      └─────────────────┘
 ```
 
@@ -180,7 +180,7 @@ This script:
 ### Prerequisites
 
 1. APIM Standard v2 deployed (apim-ai-lab-0115)
-2. Storage account with container (stailab001/data)
+2. Storage account with container (stailab0117/data)
 3. App Registration for OAuth (6cb63aba-6d0d-4f06-957e-c584fdeb23d7)
 4. APIM Managed Identity has Storage Blob Data Contributor role
 
@@ -203,7 +203,7 @@ This script:
 | Resource | Name | Resource Group |
 |----------|------|----------------|
 | APIM | apim-ai-lab-0115 | rg-ai-apim |
-| Storage | stailab001 | rg-ai-storage |
+| Storage | stailab0117 | rg-ai-storage |
 | Container | data | - |
 | App Registration | apim-ai-lab-0115-devportal | - |
 | Tenant | 38c1a7b0-f16b-45fd-a528-87d8720e868e | - |
@@ -235,5 +235,5 @@ Ensure you include the `Authorization: Bearer <token>` header.
 
 ### Container not found
 
-- Verify container "data" exists in storage account stailab001
+- Verify container "data" exists in storage account stailab0117
 - Check storage account firewall settings allow APIM access

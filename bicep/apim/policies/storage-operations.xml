@@ -2,7 +2,7 @@
     Storage Operations Policy for Azure API Management
     
     Uses APIM managed identity to authenticate to Azure Blob Storage
-    Storage Account: stailab001
+    Storage Account: stailab0117
     Container: data
     
     Operations:
@@ -61,7 +61,7 @@
             <!-- Upload blob -->
             <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;upload&quot;)">
                 <send-request mode="copy" response-variable-name="storage-response" timeout="120" ignore-error="false">
-                    <set-url>@($"https://stailab001.blob.core.windows.net/data/{context.Variables[&quot;blobName&quot;]}")</set-url>
+                    <set-url>@($"https://stailab0117.blob.core.windows.net/data/{context.Variables[&quot;blobName&quot;]}")</set-url>
                     <set-method>PUT</set-method>
                     <set-header name="Authorization" exists-action="override">
                         <value>@($"Bearer {context.Variables[&quot;storage-token&quot;]}")</value>
@@ -72,7 +72,7 @@
             <!-- List blobs -->
             <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;list&quot;)">
                 <send-request mode="new" response-variable-name="storage-response" timeout="30" ignore-error="false">
-                    <set-url>https://stailab001.blob.core.windows.net/data?restype=container&amp;comp=list</set-url>
+                    <set-url>https://stailab0117.blob.core.windows.net/data?restype=container&amp;comp=list</set-url>
                     <set-method>GET</set-method>
                     <set-header name="Authorization" exists-action="override">
                         <value>@($"Bearer {context.Variables[&quot;storage-token&quot;]}")</value>
@@ -86,7 +86,7 @@
             <!-- Download blob -->
             <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;download&quot;)">
                 <send-request mode="new" response-variable-name="storage-response" timeout="120" ignore-error="false">
-                    <set-url>@($"https://stailab001.blob.core.windows.net/data/{context.Variables[&quot;blobName&quot;]}")</set-url>
+                    <set-url>@($"https://stailab0117.blob.core.windows.net/data/{context.Variables[&quot;blobName&quot;]}")</set-url>
                     <set-method>GET</set-method>
                     <set-header name="Authorization" exists-action="override">
                         <value>@($"Bearer {context.Variables[&quot;storage-token&quot;]}")</value>
@@ -100,7 +100,7 @@
             <!-- Delete blob -->
             <when condition="@((string)context.Variables[&quot;operation&quot;] == &quot;delete&quot;)">
                 <send-request mode="new" response-variable-name="storage-response" timeout="30" ignore-error="false">
-                    <set-url>@($"https://stailab001.blob.core.windows.net/data/{context.Variables[&quot;blobName&quot;]}")</set-url>
+                    <set-url>@($"https://stailab0117.blob.core.windows.net/data/{context.Variables[&quot;blobName&quot;]}")</set-url>
                     <set-method>DELETE</set-method>
                     <set-header name="Authorization" exists-action="override">
                         <value>@($"Bearer {context.Variables[&quot;storage-token&quot;]}")</value>
