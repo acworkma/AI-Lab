@@ -175,7 +175,7 @@ resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-09-01-pre
   parent: storageApi
   name: 'policy'
   properties: {
-    value: loadTextContent('../policies/jwt-validation.xml')
+    value: loadTextContent('./policies/jwt-validation.xml')
     format: 'xml'
   }
 }
@@ -187,7 +187,7 @@ resource listFilesPolicy 'Microsoft.ApiManagement/service/apis/operations/polici
   parent: listFilesOperation
   name: 'policy'
   properties: {
-    value: loadTextContent('../policies/storage-operations.xml')
+    value: loadTextContent('./policies/storage-operations.xml')
     format: 'xml'
   }
 }
@@ -197,7 +197,7 @@ resource uploadFilePolicy 'Microsoft.ApiManagement/service/apis/operations/polic
   parent: uploadFileOperation
   name: 'policy'
   properties: {
-    value: loadTextContent('../policies/storage-operations.xml')
+    value: loadTextContent('./policies/storage-operations.xml')
     format: 'xml'
   }
 }
@@ -207,7 +207,7 @@ resource downloadFilePolicy 'Microsoft.ApiManagement/service/apis/operations/pol
   parent: downloadFileOperation
   name: 'policy'
   properties: {
-    value: loadTextContent('../policies/storage-operations.xml')
+    value: loadTextContent('./policies/storage-operations.xml')
     format: 'xml'
   }
 }
@@ -217,7 +217,7 @@ resource deleteFilePolicy 'Microsoft.ApiManagement/service/apis/operations/polic
   parent: deleteFileOperation
   name: 'policy'
   properties: {
-    value: loadTextContent('../policies/storage-operations.xml')
+    value: loadTextContent('./policies/storage-operations.xml')
     format: 'xml'
   }
 }

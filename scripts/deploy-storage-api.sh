@@ -14,7 +14,7 @@ set -e
 APIM_NAME="apim-ai-lab-0115"
 APIM_RG="rg-ai-apim"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BICEP_DIR="$SCRIPT_DIR/../bicep/apim"
+BICEP_DIR="$SCRIPT_DIR/../bicep/storage-api"
 
 echo "=== Deploy Storage API to APIM ==="
 echo "APIM: $APIM_NAME"
@@ -23,8 +23,8 @@ echo "Bicep Directory: $BICEP_DIR"
 echo ""
 
 # Validate bicep files exist
-if [ ! -f "$BICEP_DIR/apis/storage-api.bicep" ]; then
-    echo "ERROR: $BICEP_DIR/apis/storage-api.bicep not found"
+if [ ! -f "$BICEP_DIR/main.bicep" ]; then
+    echo "ERROR: $BICEP_DIR/main.bicep not found"
     exit 1
 fi
 
@@ -39,14 +39,14 @@ if [ ! -f "$BICEP_DIR/policies/storage-operations.xml" ]; then
 fi
 
 echo "[1/3] Validating Bicep template..."
-az bicep build --file "$BICEP_DIR/apis/storage-api.bicep" --stdout > /dev/null
+az bicep build --file "$BICEP_DIR/main.bicep" --stdout > /dev/null
 echo "  Validation passed"
 
 echo ""
 echo "[2/3] Running what-if deployment..."
 az deployment group what-if \
     --resource-group "$APIM_RG" \
-    --template-file "$BICEP_DIR/apis/storage-api.bicep" \
+    --template-file "$BICEP_DIR/main.bicep" \
     --parameters apimName="$APIM_NAME"
 
 echo ""
@@ -62,7 +62,7 @@ echo ""
 echo "[3/3] Deploying Storage API..."
 az deployment group create \
     --resource-group "$APIM_RG" \
-    --template-file "$BICEP_DIR/apis/storage-api.bicep" \
+    --template-file "$BICEP_DIR/main.bicep" \
     --parameters apimName="$APIM_NAME" \
     --name "storage-api-$(date +%Y%m%d-%H%M%S)" \
     --output table

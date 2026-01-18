@@ -210,9 +210,9 @@ This script:
 
 ### File Paths
 
-- API Definition: `bicep/apim/apis/storage-api.bicep`
-- JWT Policy: `bicep/apim/policies/jwt-validation.xml`
-- Operations Policy: `bicep/apim/policies/storage-operations.xml`
+- API Definition: `bicep/storage-api/main.bicep`
+- JWT Policy: `bicep/storage-api/policies/jwt-validation.xml`
+- Operations Policy: `bicep/storage-api/policies/storage-operations.xml`
 - Deployment Script: `scripts/deploy-storage-api.sh`
 - Test Script: `scripts/test-storage-api.sh`
 
