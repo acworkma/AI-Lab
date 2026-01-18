@@ -248,6 +248,12 @@ Solution: Set a valid email in the parameter file (not a placeholder).
 
 ## Related Documentation
 
+**APIM Guides**:
+- [OAuth/Entra ID Setup](oauth-setup.md) - Configure OAuth authentication for APIs
+- [API Import Guide](import-api.md) - Import OpenAPI specs, Function Apps, manual APIs
+- [Storage API Guide](storage-api-guide.md) - OAuth-protected blob storage operations
+
+**Infrastructure**:
 - [Core Infrastructure](../core-infrastructure/README.md)
 - [VPN Client Setup](../core-infrastructure/vpn-client-setup.md)
 - [DNS Resolver Setup](../core-infrastructure/dns-resolver-setup.md)

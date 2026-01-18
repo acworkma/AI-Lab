@@ -67,7 +67,7 @@ Infrastructure projects deploy foundational capabilities that other projects con
   Deploy a private ACR with private endpoint integration for secure container image storage and management. Follows core infrastructure patterns with parameterized Bicep, RBAC, and VPN access via the hub network.
 
 - **[Azure API Management Standard v2](docs/apim/README.md)**  
-  Deploy Azure API Management Standard v2 as a centralized API gateway with public frontend and VNet-integrated backend for exposing internal APIs externally. Includes developer portal, OAuth setup guides, and JWT validation policies.
+  Deploy Azure API Management Standard v2 as a centralized API gateway with public frontend and VNet-integrated backend for exposing internal APIs externally. Includes developer portal, [OAuth setup guide](docs/apim/oauth-setup.md), [API import guide](docs/apim/import-api.md), and JWT validation policies.
 
 ---
 
