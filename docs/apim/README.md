@@ -163,8 +163,6 @@ Apply JWT validation for OAuth protection:
 </policies>
 ```
 
-See [bicep/apim/policies/jwt-validation.xml](../bicep/apim/policies/jwt-validation.xml) for a template.
-
 ### Backend Connectivity
 
 APIM can access backends through:

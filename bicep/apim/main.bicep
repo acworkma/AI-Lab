@@ -104,6 +104,20 @@ module apim '../modules/apim.bicep' = {
   }
 }
 
+// Deploy Storage API (OAuth-protected blob storage access)
+// Note: Deploy separately using scripts/deploy-storage-api.sh for incremental updates
+// Or include as module for full infrastructure deployment:
+// module storageApi 'apis/storage-api.bicep' = {
+//   name: 'deploy-storage-api'
+//   scope: apimResourceGroup
+//   params: {
+//     apimName: apim.outputs.apimName
+//   }
+//   dependsOn: [
+//     apim
+//   ]
+// }
+
 // Outputs
 @description('Name of the deployed APIM instance')
 output apimName string = apim.outputs.apimName

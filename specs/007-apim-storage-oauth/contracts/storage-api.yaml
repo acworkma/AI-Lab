@@ -1,0 +1,283 @@
+openapi: 3.0.3
+info:
+  title: Storage API
+  description: |
+    OAuth-protected API for managing files in Azure Blob Storage.
+    
+    This API uses Azure API Management to:
+    - Validate JWT tokens from Entra ID
+    - Use managed identity to authenticate to Azure Blob Storage
+    - Provide a simple RESTful interface for blob operations
+  version: 1.0.0
+  contact:
+    name: AI-Lab Infrastructure Team
+
+servers:
+  - url: https://apim-ai-lab-0115.azure-api.net/storage
+    description: Production APIM Gateway
+
+security:
+  - bearerAuth: []
+
+paths:
+  /files:
+    get:
+      summary: List all files
+      description: Returns a list of all files in the storage container
+      operationId: listFiles
+      tags:
+        - Files
+      responses:
+        '200':
+          description: Successful response with file list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileList'
+              example:
+                files:
+                  - name: document.pdf
+                    contentLength: 102400
+                    lastModified: "2025-01-15T10:30:00Z"
+                    contentType: application/pdf
+                  - name: image.png
+                    contentLength: 51200
+                    lastModified: "2025-01-14T08:15:00Z"
+                    contentType: image/png
+                count: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /files/{filename}:
+    parameters:
+      - $ref: '#/components/parameters/filename'
+    
+    get:
+      summary: Download a file
+      description: Downloads the specified file from storage
+      operationId: downloadFile
+      tags:
+        - Files
+      responses:
+        '200':
+          description: File content
+          headers:
+            Content-Type:
+              schema:
+                type: string
+              description: MIME type of the file
+            ETag:
+              schema:
+                type: string
+              description: Entity tag for the blob version
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    put:
+      summary: Upload a file
+      description: Uploads a file to storage, overwriting if it exists
+      operationId: uploadFile
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          '*/*':
+            schema:
+              type: string
+              format: binary
+      responses:
+        '201':
+          description: File created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileInfo'
+              example:
+                name: example.txt
+                contentType: text/plain
+                contentLength: 1234
+                etag: "0x8DC12345678ABCD"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: Payload too large (max 100MB)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    delete:
+      summary: Delete a file
+      description: Permanently deletes the specified file from storage
+      operationId: deleteFile
+      tags:
+        - Files
+      responses:
+        '204':
+          description: File deleted successfully (no content)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from Entra ID.
+        
+        Audience: 6cb63aba-6d0d-4f06-957e-c584fdeb23d7
+        Issuer: https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/v2.0
+
+  parameters:
+    filename:
+      name: filename
+      in: path
+      required: true
+      description: Name of the file (blob name)
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 1024
+      example: document.pdf
+
+  schemas:
+    FileList:
+      type: object
+      required:
+        - files
+        - count
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileListItem'
+        count:
+          type: integer
+          description: Total number of files
+          minimum: 0
+
+    FileListItem:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Blob name
+        contentLength:
+          type: integer
+          description: Size in bytes
+        lastModified:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+        contentType:
+          type: string
+          description: MIME type of the file
+
+    FileInfo:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Blob name
+        contentType:
+          type: string
+          description: MIME type
+        contentLength:
+          type: integer
+          description: Size in bytes
+        etag:
+          type: string
+          description: Entity tag for versioning
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Error code
+            message:
+              type: string
+              description: Human-readable error message
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: Unauthorized
+              message: "Access token is missing or invalid"
+
+    NotFound:
+      description: File not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: NotFound
+              message: "The specified file does not exist"
+
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: BadRequest
+              message: "Invalid filename or request body"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: InternalError
+              message: "An unexpected error occurred"
+
+tags:
+  - name: Files
+    description: File management operations

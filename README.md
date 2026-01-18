@@ -73,7 +73,7 @@ Infrastructure projects deploy foundational capabilities that other projects con
   Deploy a private ACR with private endpoint integration for secure container image storage and management. Follows core infrastructure patterns with parameterized Bicep, RBAC, and VPN access via the hub network.
 
 - **[Azure API Management Standard v2](docs/apim/README.md)**  
-  Deploy Azure API Management Standard v2 as a centralized API gateway with public frontend and VNet-integrated backend for exposing internal APIs externally. Includes developer portal, OAuth setup guides, and JWT validation policies.
+  Deploy Azure API Management Standard v2 as a centralized API gateway with public frontend and VNet-integrated backend for exposing internal APIs externally. Includes developer portal and VNet integration.
 
 ---
 
@@ -83,6 +83,9 @@ Solution projects consume deployed infrastructure to accomplish specific use cas
 
 - **[Private Storage Account with Customer Managed Key](docs/storage-cmk/README.md)**  
   Enable customer-managed encryption key (CMK) on an existing private Storage Account using a key stored in the private Key Vault. Includes managed identity, RBAC setup, and key rotation policy.
+
+- **[Storage API via APIM with OAuth](docs/storage-api/README.md)**  
+  OAuth-protected REST API for Azure Blob Storage operations through API Management. Uses APIM managed identity to authenticate to storage, with JWT validation for client access. Supports upload, list, download, and delete operations.
 
 ---
 

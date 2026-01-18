@@ -135,7 +135,7 @@ az ad app list --display-name "apim-api" --query "[].appId" -o tsv
 
 ### Policy Template
 
-See [jwt-validation.xml](../../bicep/apim/policies/jwt-validation.xml) for a ready-to-use template.
+See [jwt-validation.xml](../../bicep/storage-api/policies/jwt-validation.xml) for a ready-to-use template.
 
 ### Key Policy Settings
 
