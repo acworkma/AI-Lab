@@ -6,8 +6,12 @@ Auto-generated from all feature plans. Last updated: 2025-12-31
 - Bicep (Azure IaC) + Azure CLI 2.50.0+, jq (006-apim-std-v2)
 - N/A (stateless gateway) (006-apim-std-v2)
 - Bicep (Azure IaC), XML (APIM policies), Bash (scripts) + Azure API Management Standard v2, Azure Blob Storage, Entra ID (007-apim-storage-oauth)
-- Azure Blob Storage (stailab001, container: data) (007-apim-storage-oauth)
-
+- Azure Blob Storage (stailab0117, container: data) (007-apim-storage-oauth)
+- Bicep (Azure Resource Manager) + Azure CLI ≥2.50, Bicep CLI (bundled), Core infrastructure (rg-ai-core) (008-private-keyvault)
+- N/A (Key Vault is the storage layer for secrets) (008-private-keyvault)
+- Azure Storage Account (StorageV2, Standard_LRS, blob only) (009-private-storage)
+- Bicep (Azure DSL), Bash scripts + Azure Key Vault (existing), Azure Storage Account (existing), Azure Managed Identity (010-storage-cmk-refactor)
+- Azure Blob Storage with CMK encryption (010-storage-cmk-refactor)
 - Bicep (latest stable version compatible with Azure CLI) + Azure CLI (az deployment), Azure Virtual WAN, Azure VPN Gateway, Azure Key Vault (001-vwan-core)
 
 ## Project Structure
@@ -26,10 +30,12 @@ tests/
 Bicep (latest stable version compatible with Azure CLI): Follow standard conventions
 
 ## Recent Changes
+- 010-storage-cmk-refactor: Added Bicep (Azure DSL), Bash scripts + Azure Key Vault (existing), Azure Storage Account (existing), Azure Managed Identity
+- 009-private-storage: Added Bicep (Azure Resource Manager) + Azure CLI ≥2.50, Bicep CLI (bundled), Core infrastructure (rg-ai-core)
+- 008-private-keyvault: Added Bicep (Azure Resource Manager) + Azure CLI ≥2.50, Bicep CLI (bundled), Core infrastructure (rg-ai-core)
 - 007-apim-storage-oauth: Added Bicep (Azure IaC), XML (APIM policies), Bash (scripts) + Azure API Management Standard v2, Azure Blob Storage, Entra ID
 - 006-apim-std-v2: Added Bicep (Azure IaC) + Azure CLI 2.50.0+, jq
 - 005-storage-cmk: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

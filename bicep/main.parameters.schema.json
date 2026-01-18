@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "title": "Core Infrastructure Deployment Parameters",
-  "description": "Parameter schema for deploying Azure core infrastructure with vWAN hub, site-to-site VPN Gateway for Global Secure Access, and Key Vault",
+  "description": "Parameter schema for deploying Azure core infrastructure with vWAN hub, Point-to-Site VPN Gateway, DNS Resolver, and Private DNS Zones",
   "type": "object",
   "required": [
     "location",
@@ -87,27 +87,6 @@
       "default": 65515,
       "minimum": 64512,
       "maximum": 65534
-    },
-    "keyVaultName": {
-      "type": "string",
-      "description": "Name of the Key Vault (must be globally unique, 3-24 chars)",
-      "pattern": "^[a-z0-9-]{3,24}$",
-      "minLength": 3,
-      "maxLength": 24
-    },
-    "keyVaultSku": {
-      "type": "string",
-      "description": "Key Vault SKU",
-      "enum": [
-        "standard",
-        "premium"
-      ],
-      "default": "standard"
-    },
-    "enablePurgeProtection": {
-      "type": "boolean",
-      "description": "Enable purge protection for Key Vault (recommended for production)",
-      "default": false
     },
     "deployedBy": {
       "type": "string",

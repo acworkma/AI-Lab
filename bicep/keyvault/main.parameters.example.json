@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "owner": {
+      "value": "your-name-or-team",
+      "metadata": {
+        "description": "Owner identifier for resource tagging (required)"
+      }
+    },
+    "environment": {
+      "value": "dev",
+      "metadata": {
+        "description": "Environment tag: dev, test, or prod"
+      }
+    },
+    "keyVaultNameSuffix": {
+      "value": "",
+      "metadata": {
+        "description": "Optional: Unique suffix for Key Vault name (defaults to MMDD). Use if redeploying same day."
+      }
+    },
+    "location": {
+      "value": "eastus2",
+      "metadata": {
+        "description": "Azure region (should match core infrastructure)"
+      }
+    },
+    "resourceGroupName": {
+      "value": "rg-ai-keyvault",
+      "metadata": {
+        "description": "Resource group for Key Vault (will be created)"
+      }
+    },
+    "coreResourceGroupName": {
+      "value": "rg-ai-core",
+      "metadata": {
+        "description": "Existing core infrastructure resource group"
+      }
+    },
+    "vnetName": {
+      "value": "vnet-ai-shared",
+      "metadata": {
+        "description": "Existing shared services VNet in core RG"
+      }
+    },
+    "privateEndpointSubnetName": {
+      "value": "PrivateEndpointSubnet",
+      "metadata": {
+        "description": "Existing subnet for private endpoints"
+      }
+    },
+    "enablePurgeProtection": {
+      "value": false,
+      "metadata": {
+        "description": "Enable purge protection (set true for prod - CANNOT be disabled once enabled)"
+      }
+    },
+    "deployedBy": {
+      "value": "manual",
+      "metadata": {
+        "description": "Deployment method: manual or automation"
+      }
+    }
+  }
+}

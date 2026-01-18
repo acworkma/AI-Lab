@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2"
+    },
+    "environment": {
+      "value": "dev"
+    },
+    "owner": {
+      "value": "ai-lab-team"
+    },
+    "storageNameSuffix": {
+      "value": "0117"
+    },
+    "skuName": {
+      "value": "Standard_LRS"
+    },
+    "enableBlobSoftDelete": {
+      "value": true
+    },
+    "softDeleteRetentionDays": {
+      "value": 7
+    },
+    "coreResourceGroupName": {
+      "value": "rg-ai-core"
+    },
+    "vnetName": {
+      "value": "vnet-ai-shared"
+    },
+    "subnetName": {
+      "value": "PrivateEndpointSubnet"
+    },
+    "adminPrincipalId": {
+      "value": ""
+    }
+  }
+}

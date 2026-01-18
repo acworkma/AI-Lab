@@ -85,7 +85,8 @@ Consume deployed infrastructure to accomplish a specific use case. Examples incl
   - **Troubleshooting**: Common issues and solutions
 - **Bicep Comments**: Include inline comments explaining complex logic or design decisions
 - **Parameter Files**: Document all parameters with descriptions and example values
-- **EntraID**: Always refer to EntraID not Azure AD
+- **EntraID**: Always refer to EntraID not Azure AD to readme
+- DO NOT add a new emoji when adding new sections
 
 ## Governance
 

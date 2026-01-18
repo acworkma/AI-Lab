@@ -1,11 +1,21 @@
-// Key Vault Module
-// Creates Azure Key Vault for centralized secrets management across all AI labs
-// Purpose: Secure storage for VPN keys, connection strings, passwords, certificates
+// Azure Key Vault Module with Private Endpoint
+// Creates private Key Vault with RBAC authorization, soft-delete, and private endpoint connectivity
+// Purpose: Secure centralized secrets management with no public network exposure
+//
+// Security Decisions (SR-001 to SR-006):
+// - Public network access disabled (SR-001): All access via private endpoint only
+// - RBAC authorization (SR-002): Modern authorization model, no legacy access policies
+// - Soft-delete enabled (SR-003): Protection against accidental deletion, 90-day retention
+// - Purge protection configurable (SR-004): Disabled for lab, enable for production
+// - Template deployment enabled: Allows Bicep parameter file Key Vault references
 
 targetScope = 'resourceGroup'
 
-// Parameters
-@description('Name of the Key Vault (must be globally unique, 3-24 characters)')
+// ============================================================================
+// REQUIRED PARAMETERS
+// ============================================================================
+
+@description('Name of the Key Vault (3-24 characters, alphanumeric and hyphens)')
 @minLength(3)
 @maxLength(24)
 param keyVaultName string
@@ -13,89 +23,167 @@ param keyVaultName string
 @description('Azure region for deployment')
 param location string
 
-@description('Key Vault SKU (standard or premium)')
+@description('Resource ID of the subnet for private endpoint')
+param privateEndpointSubnetId string
+
+@description('Resource ID of the privatelink.vaultcore.azure.net DNS zone')
+param privateDnsZoneId string
+
+// ============================================================================
+// OPTIONAL PARAMETERS
+// ============================================================================
+
+@description('Key Vault SKU (standard or premium for HSM-backed keys)')
 @allowed([
   'standard'
   'premium'
 ])
-param keyVaultSku string = 'standard'
+param skuName string = 'standard'
 
-@description('Enable RBAC authorization (recommended over access policies)')
-param enableRbacAuthorization bool = true
-
-@description('Enable soft-delete with 90-day retention (cannot be disabled per Azure policy)')
-param enableSoftDelete bool = true
-
-@description('Soft-delete retention period in days')
-@minValue(7)
-@maxValue(90)
-param softDeleteRetentionInDays int = 90
-
-@description('Enable purge protection (recommended for production environments)')
+@description('Enable purge protection (CANNOT be disabled once enabled)')
 param enablePurgeProtection bool = false
 
-@description('Network access default action (Allow or Deny)')
-@allowed([
-  'Allow'
-  'Deny'
-])
-param networkAclsDefaultAction string = 'Allow'
+@description('Soft-delete retention in days (7-90)')
+@minValue(7)
+@maxValue(90)
+param softDeleteRetentionDays int = 90
 
-@description('Tags to apply to resources')
+@description('Allow Bicep/ARM template deployments to retrieve secrets')
+param enabledForTemplateDeployment bool = true
+
+@description('Allow VMs to retrieve certificates')
+param enabledForDeployment bool = false
+
+@description('Allow Azure Disk Encryption to retrieve secrets')
+param enabledForDiskEncryption bool = false
+
+@description('Resource tags')
 param tags object = {}
 
-// Key Vault - Centralized secrets management for all labs
-// Decision rationale: RBAC authorization model provides consistent permissions across Azure
-// See research.md: Azure Key Vault Best Practices - RBAC vs Access Policies
+// ============================================================================
+// VARIABLES
+// ============================================================================
+
+// Private endpoint naming convention
+var privateEndpointName = '${keyVaultName}-pe'
+var privateLinkServiceConnectionName = '${keyVaultName}-plsc'
+
+// ============================================================================
+// KEY VAULT RESOURCE
+// ============================================================================
+
+// Key Vault with RBAC authorization and private endpoint only access
+// SR-001: Public network access disabled
+// SR-002: RBAC authorization (enableRbacAuthorization: true)
+// SR-003: Soft-delete enabled
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
   tags: tags
   properties: {
-    // Tenant ID for Azure AD authentication
+    // Tenant configuration
     tenantId: subscription().tenantId
-    // SKU selection: standard for secrets/keys, premium adds HSM-backed keys
+    
+    // SKU configuration (FR-009: Standard SKU)
     sku: {
       family: 'A'
-      name: keyVaultSku
+      name: skuName
     }
-    // RBAC authorization model (recommended for new deployments)
-    // Access Policies are in maintenance mode per Microsoft guidance
-    enableRbacAuthorization: enableRbacAuthorization
-    // Soft-delete configuration (required by Azure policy, cannot be disabled)
-    // Provides 90-day recovery window for accidentally deleted secrets
-    enableSoftDelete: enableSoftDelete
-    softDeleteRetentionInDays: softDeleteRetentionInDays
-    // Purge protection prevents permanent deletion during retention period
-    // Enable for production to prevent malicious or accidental data loss
+    
+    // Authorization: RBAC only (FR-005, SR-002)
+    // No access policies - all permissions via Azure RBAC
+    enableRbacAuthorization: true
+    accessPolicies: []
+    
+    // Soft-delete configuration (FR-006, SR-003)
+    enableSoftDelete: true
+    softDeleteRetentionInDays: softDeleteRetentionDays
+    
+    // Purge protection (SR-004) - configurable, disabled for lab
     enablePurgeProtection: enablePurgeProtection ? true : null
-    // Network access controls
-    // Initially allow all networks for ease of setup
-    // Can restrict to vWAN subnet or private endpoint later for enhanced security
+    
+    // Template deployment integration (FR-003 for Bicep references)
+    enabledForTemplateDeployment: enabledForTemplateDeployment
+    enabledForDeployment: enabledForDeployment
+    enabledForDiskEncryption: enabledForDiskEncryption
+    
+    // Network configuration (FR-004, SR-001)
+    // All traffic must use private endpoint
+    // Note: AzureServices bypass required when enabledForTemplateDeployment is true
+    publicNetworkAccess: 'Disabled'
     networkAcls: {
-      bypass: 'AzureServices'
-      defaultAction: networkAclsDefaultAction
-      ipRules: []
-      virtualNetworkRules: []
+      bypass: enabledForTemplateDeployment ? 'AzureServices' : 'None'
+      defaultAction: 'Deny'    // Deny all public access
+      ipRules: []              // No IP allowlist
+      virtualNetworkRules: []  // No VNet rules (using private endpoint)
     }
-    // Public network access enabled initially
-    // Can disable and use private endpoint for production
-    publicNetworkAccess: 'Enabled'
   }
 }
 
-// Outputs for use by main template, spoke labs, and validation scripts
-@description('Resource ID of the Key Vault')
-output keyVaultId string = keyVault.id
+// ============================================================================
+// PRIVATE ENDPOINT
+// ============================================================================
 
-@description('Name of the Key Vault')
-output keyVaultName string = keyVault.name
+// Private endpoint for Key Vault (FR-007)
+// Connects Key Vault to snet-private-endpoints in shared services VNet
+resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = {
+  name: privateEndpointName
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: privateLinkServiceConnectionName
+        properties: {
+          privateLinkServiceId: keyVault.id
+          groupIds: [
+            'vault'  // Key Vault subresource type
+          ]
+        }
+      }
+    ]
+  }
+}
 
-@description('Key Vault URI for secret references')
-output keyVaultUri string = keyVault.properties.vaultUri
+// ============================================================================
+// PRIVATE DNS ZONE GROUP
+// ============================================================================
 
-@description('Key Vault tenant ID')
-output keyVaultTenantId string = keyVault.properties.tenantId
+// DNS zone group for automatic A record registration (FR-008)
+// Creates: <vault-name>.privatelink.vaultcore.azure.net -> private IP
+resource dnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = {
+  parent: privateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'keyvault-dns-config'
+        properties: {
+          privateDnsZoneId: privateDnsZoneId
+        }
+      }
+    ]
+  }
+}
 
-@description('Is RBAC authorization enabled')
-output enableRbacAuthorization bool = keyVault.properties.enableRbacAuthorization
+// ============================================================================
+// OUTPUTS
+// ============================================================================
+
+@description('Key Vault name')
+output name string = keyVault.name
+
+@description('Key Vault resource ID')
+output id string = keyVault.id
+
+@description('Key Vault URI (https://...)')
+output uri string = keyVault.properties.vaultUri
+
+@description('Private endpoint resource ID')
+output privateEndpointId string = privateEndpoint.id
+
+@description('Private endpoint private IP address')
+output privateEndpointIp string = privateEndpoint.properties.customDnsConfigs[0].ipAddresses[0]

@@ -9,29 +9,29 @@ AI-Lab is a collection of modular Azure infrastructure projects, all connected t
 ### Core Concept: Hub-Spoke Architecture
 
 ```
-                    ┌─────────────────────────┐
-                    │   Remote VPN Clients    │
-                    │ (Entra ID Authentication)│
-                    └───────────┬─────────────┘
-                                │
-                    ┌───────────▼─────────────┐
-                    │   Virtual WAN Hub       │
-                    │   (rg-ai-core)          │
-                    │ • P2S VPN Gateway       │
-                    │ • Key Vault (shared)    │
-                    └────────┬────────────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-         ┌────▼────┐    ┌────▼────┐   ┌────▼────┐
-         │ Project │    │ Project │   │ Project │
-         │   #1    │    │   #2    │   │   #3    │
-         │ (Spoke) │    │ (Spoke) │   │ (Spoke) │
-         └─────────┘    └─────────┘   └─────────┘
+                    ┌───────────────────────┐
+                    │  Remote VPN Clients   │
+                    │   (Entra ID Auth)     │
+                    └─────────┬─────────────┘
+                              │
+                    ┌─────────▼─────────────┐
+                    │   Virtual WAN Hub     │
+                    │     (rg-ai-core)      │
+                    │  • P2S VPN Gateway    │
+                    │  • DNS Resolver       │
+                    └─────────┬─────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              │               │               │
+         ┌────▼────┐    ┌─────▼────┐    ┌────▼────┐
+         │ Project │    │ Project  │    │ Project │
+         │   #1    │    │   #2     │    │   #3    │
+         │ (Spoke) │    │ (Spoke)  │    │ (Spoke) │
+         └─────────┘    └──────────┘    └─────────┘
 ```
 
 **Benefits**:
-- 🔒 **Centralized Security**: Single VPN gateway and Key Vault for all projects
+- 🔒 **Centralized Security**: Single VPN gateway for all projects
 - 🔌 **Easy Connectivity**: New projects auto-connect to the hub
 - 🧩 **Modular Design**: Deploy/delete projects independently
 - 🎛️ **Simplified Management**: One hub to rule them all
@@ -46,8 +46,8 @@ AI-Lab is a collection of modular Azure infrastructure projects, all connected t
 The foundational Virtual WAN hub that all other projects connect to. Includes:
 - Virtual WAN hub with Point-to-Site VPN
 - Microsoft Entra ID authentication for remote access
-- Centralized Azure Key Vault for secrets management
 - Private DNS Resolver for cross-network name resolution
+- Private DNS Zones for private endpoint resolution
 - Network routing for spoke connectivity
 
 **[📖 Full Documentation →](docs/core-infrastructure/README.md)**
@@ -63,6 +63,12 @@ The foundational Virtual WAN hub that all other projects connect to. Includes:
 
 Infrastructure projects deploy foundational capabilities that other projects consume. Each deploys to its own dedicated resource group.
 
+- **[Private Azure Key Vault](docs/keyvault/README.md)**  
+  Deploy a private Key Vault with RBAC authorization, private endpoint, and DNS integration for secure centralized secrets management. Supports Bicep Key Vault references for consuming secrets in other deployments.
+
+- **[Private Storage Account](docs/storage-infra/README.md)**  
+  Deploy a private Azure Storage Account with RBAC-only authentication (shared keys disabled), private endpoint, and DNS integration. Enforces TLS 1.2 minimum and provides comprehensive validation scripts.
+
 - **[Private Azure Container Registry](docs/registry/README.md)**  
   Deploy a private ACR with private endpoint integration for secure container image storage and management. Follows core infrastructure patterns with parameterized Bicep, RBAC, and VPN access via the hub network.
 
@@ -75,8 +81,8 @@ Infrastructure projects deploy foundational capabilities that other projects con
 
 Solution projects consume deployed infrastructure to accomplish specific use cases. Each deploys to its own dedicated resource group.
 
-- **[Private Storage Account with Customer Managed Key](docs/storage/README.md)**  
-  Deploy an Azure Storage Account with customer-managed encryption key stored in Key Vault, integrated with private endpoint for secure data storage. Includes comprehensive RBAC and permission documentation.
+- **[Private Storage Account with Customer Managed Key](docs/storage-cmk/README.md)**  
+  Enable customer-managed encryption key (CMK) on an existing private Storage Account using a key stored in the private Key Vault. Includes managed identity, RBAC setup, and key rotation policy.
 
 - **[Storage API via APIM with OAuth](docs/storage-api/README.md)**  
   OAuth-protected REST API for Azure Blob Storage operations through API Management. Uses APIM managed identity to authenticate to storage, with JWT validation for client access. Supports upload, list, download, and delete operations.

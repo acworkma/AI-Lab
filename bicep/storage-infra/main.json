@@ -1,0 +1,453 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "13128745165063639679"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus2",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "test",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment tag value"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "metadata": {
+        "description": "Owner tag value"
+      }
+    },
+    "storageNameSuffix": {
+      "type": "string",
+      "defaultValue": "[utcNow('MMdd')]",
+      "metadata": {
+        "description": "Unique suffix for storage account name (default: MMDD format)"
+      }
+    },
+    "skuName": {
+      "type": "string",
+      "defaultValue": "Standard_LRS",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_GRS",
+        "Standard_ZRS"
+      ],
+      "metadata": {
+        "description": "Storage account SKU"
+      }
+    },
+    "enableBlobSoftDelete": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable blob soft-delete"
+      }
+    },
+    "softDeleteRetentionDays": {
+      "type": "int",
+      "defaultValue": 7,
+      "metadata": {
+        "description": "Soft-delete retention in days"
+      }
+    },
+    "coreResourceGroupName": {
+      "type": "string",
+      "defaultValue": "rg-ai-core",
+      "metadata": {
+        "description": "Core infrastructure resource group name"
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "vnet-ai-shared",
+      "metadata": {
+        "description": "Shared services VNet name"
+      }
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "PrivateEndpointSubnet",
+      "metadata": {
+        "description": "Private endpoint subnet name"
+      }
+    },
+    "adminPrincipalId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Principal ID to assign Storage Blob Data Contributor role (optional)"
+      }
+    }
+  },
+  "variables": {
+    "storageResourceGroupName": "rg-ai-storage",
+    "tags": {
+      "environment": "[parameters('environment')]",
+      "purpose": "Private Storage Account infrastructure",
+      "owner": "[parameters('owner')]",
+      "deployedBy": "bicep"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('storageResourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('storage-account-deployment-{0}', uniqueString(deployment().name))]",
+      "resourceGroup": "[variables('storageResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "owner": {
+            "value": "[parameters('owner')]"
+          },
+          "storageNameSuffix": {
+            "value": "[parameters('storageNameSuffix')]"
+          },
+          "skuName": {
+            "value": "[parameters('skuName')]"
+          },
+          "enableBlobSoftDelete": {
+            "value": "[parameters('enableBlobSoftDelete')]"
+          },
+          "softDeleteRetentionDays": {
+            "value": "[parameters('softDeleteRetentionDays')]"
+          },
+          "privateEndpointSubnetId": {
+            "value": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
+          },
+          "privateDnsZoneId": {
+            "value": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Network/privateDnsZones', 'privatelink.blob.core.windows.net')]"
+          },
+          "adminPrincipalId": {
+            "value": "[parameters('adminPrincipalId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "14734120880032962999"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "eastus2",
+              "metadata": {
+                "description": "Azure region for deployment"
+              }
+            },
+            "environment": {
+              "type": "string",
+              "defaultValue": "dev",
+              "allowedValues": [
+                "dev",
+                "test",
+                "prod"
+              ],
+              "metadata": {
+                "description": "Environment tag value"
+              }
+            },
+            "owner": {
+              "type": "string",
+              "metadata": {
+                "description": "Owner tag value - required"
+              }
+            },
+            "storageNameSuffix": {
+              "type": "string",
+              "metadata": {
+                "description": "Unique suffix for storage account name (default: MMDD)"
+              }
+            },
+            "skuName": {
+              "type": "string",
+              "defaultValue": "Standard_LRS",
+              "allowedValues": [
+                "Standard_LRS",
+                "Standard_GRS",
+                "Standard_ZRS"
+              ],
+              "metadata": {
+                "description": "Storage account SKU"
+              }
+            },
+            "enableBlobSoftDelete": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable blob soft-delete"
+              }
+            },
+            "softDeleteRetentionDays": {
+              "type": "int",
+              "defaultValue": 7,
+              "minValue": 1,
+              "maxValue": 365,
+              "metadata": {
+                "description": "Soft-delete retention in days"
+              }
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of subnet for private endpoint"
+              }
+            },
+            "privateDnsZoneId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of privatelink.blob.core.windows.net DNS zone"
+              }
+            },
+            "adminPrincipalId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Principal ID to assign Storage Blob Data Contributor role (optional)"
+              }
+            }
+          },
+          "variables": {
+            "storageAccountName": "[format('stailab{0}', parameters('storageNameSuffix'))]",
+            "privateEndpointName": "[format('{0}-pe', variables('storageAccountName'))]",
+            "tags": {
+              "environment": "[parameters('environment')]",
+              "purpose": "Private Storage Account infrastructure",
+              "owner": "[parameters('owner')]",
+              "deployedBy": "bicep"
+            },
+            "storageBlobDataContributorRoleId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[variables('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "sku": {
+                "name": "[parameters('skuName')]"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Hot",
+                "allowSharedKeyAccess": false,
+                "minimumTlsVersion": "TLS1_2",
+                "supportsHttpsTrafficOnly": true,
+                "publicNetworkAccess": "Disabled",
+                "networkAcls": {
+                  "defaultAction": "Deny",
+                  "bypass": "None"
+                },
+                "encryption": {
+                  "services": {
+                    "blob": {
+                      "enabled": true,
+                      "keyType": "Account"
+                    }
+                  },
+                  "keySource": "Microsoft.Storage"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', variables('storageAccountName'), 'default')]",
+              "properties": {
+                "deleteRetentionPolicy": {
+                  "enabled": "[parameters('enableBlobSoftDelete')]",
+                  "days": "[parameters('softDeleteRetentionDays')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2023-11-01",
+              "name": "[variables('privateEndpointName')]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[parameters('privateEndpointSubnetId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('{0}-plsc', variables('storageAccountName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                      "groupIds": [
+                        "blob"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/{1}', variables('privateEndpointName'), 'default')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "blob-dns",
+                    "properties": {
+                      "privateDnsZoneId": "[parameters('privateDnsZoneId')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName'))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('adminPrincipalId')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), parameters('adminPrincipalId'), variables('storageBlobDataContributorRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleId'))]",
+                "principalId": "[parameters('adminPrincipalId')]",
+                "principalType": "User"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the storage account"
+              },
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the storage account"
+              },
+              "value": "[variables('storageAccountName')]"
+            },
+            "blobEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Blob service endpoint URL"
+              },
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-01-01').primaryEndpoints.blob]"
+            },
+            "privateEndpointId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the private endpoint"
+              },
+              "value": "[resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName'))]"
+            },
+            "privateEndpointName": {
+              "type": "string",
+              "metadata": {
+                "description": "Private endpoint name (use az cli to get IP: az network nic show --ids $(az network private-endpoint show -n <pe-name> -g <rg> --query networkInterfaces[0].id -o tsv) --query ipConfigurations[0].privateIPAddress)"
+              },
+              "value": "[variables('privateEndpointName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('storageResourceGroupName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group name"
+      },
+      "value": "[variables('storageResourceGroupName')]"
+    },
+    "storageAccountId": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account resource ID"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('storageResourceGroupName')), 'Microsoft.Resources/deployments', format('storage-account-deployment-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.storageAccountId.value]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account name"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('storageResourceGroupName')), 'Microsoft.Resources/deployments', format('storage-account-deployment-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.storageAccountName.value]"
+    },
+    "blobEndpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "Blob service endpoint URL"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('storageResourceGroupName')), 'Microsoft.Resources/deployments', format('storage-account-deployment-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.blobEndpoint.value]"
+    },
+    "privateEndpointId": {
+      "type": "string",
+      "metadata": {
+        "description": "Private endpoint resource ID"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('storageResourceGroupName')), 'Microsoft.Resources/deployments', format('storage-account-deployment-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.privateEndpointId.value]"
+    },
+    "privateEndpointName": {
+      "type": "string",
+      "metadata": {
+        "description": "Private endpoint name"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('storageResourceGroupName')), 'Microsoft.Resources/deployments', format('storage-account-deployment-{0}', uniqueString(deployment().name))), '2025-04-01').outputs.privateEndpointName.value]"
+    }
+  }
+}
