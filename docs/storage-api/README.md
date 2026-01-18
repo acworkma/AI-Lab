@@ -242,4 +242,4 @@ Ensure you include the `Authorization: Bearer <token>` header.
 
 - [OAuth/Entra ID Setup](oauth-setup.md) - Configure app registrations and JWT validation
 - [API Import Guide](import-api.md) - Import OpenAPI specs, Function Apps, and manual APIs
-- [APIM Infrastructure](README.md) - Deploy the underlying API Management instance
+- [APIM Infrastructure](../apim/README.md) - Deploy the underlying API Management instance

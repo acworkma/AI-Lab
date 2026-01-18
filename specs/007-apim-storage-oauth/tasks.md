@@ -118,7 +118,7 @@ Based on plan.md structure:
 **Purpose**: Documentation, testing script, and validation
 
 - [X] T026 [P] Create end-to-end test script `scripts/test-storage-api.sh` covering all operations
-- [X] T027 [P] Create usage documentation in `docs/apim/storage-api-guide.md`
+- [X] T027 [P] Create usage documentation in `docs/storage-api/README.md`
 - [X] T028 [P] Update `bicep/apim/main.bicep` to include storage-api module reference
 - [X] T029 Run quickstart.md validation to verify all steps work
 - [X] T030 Update README.md with storage API information
