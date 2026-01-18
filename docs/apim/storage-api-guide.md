@@ -237,3 +237,9 @@ Ensure you include the `Authorization: Bearer <token>` header.
 
 - Verify container "data" exists in storage account stailab0117
 - Check storage account firewall settings allow APIM access
+
+## Related Documentation
+
+- [OAuth/Entra ID Setup](oauth-setup.md) - Configure app registrations and JWT validation
+- [API Import Guide](import-api.md) - Import OpenAPI specs, Function Apps, and manual APIs
+- [APIM Infrastructure](README.md) - Deploy the underlying API Management instance
