@@ -75,6 +75,9 @@ Infrastructure projects deploy foundational capabilities that other projects con
 - **[Azure API Management Standard v2](docs/apim/README.md)**  
   Deploy Azure API Management Standard v2 as a centralized API gateway with public frontend and VNet-integrated backend for exposing internal APIs externally. Includes developer portal and VNet integration.
 
+- **[Private Azure Kubernetes Service](docs/aks/README.md)**  
+  Deploy a private AKS cluster with 3 nodes across availability zones, Azure Linux (CBL-Mariner) OS, Azure CNI Overlay networking, and ACR integration via managed identity. Accessible only via VPN.
+
 ---
 
 ### 🧩 Solution Projects

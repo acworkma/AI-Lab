@@ -1,0 +1,42 @@
+# Sample Pod for ACR Integration Testing
+#
+# This pod demonstrates pulling an image from the private ACR.
+# The AKS kubelet identity should have AcrPull role on the ACR.
+#
+# Usage:
+#   1. Import nginx to ACR: az acr import --name <acr> --source docker.io/library/nginx:latest --image nginx:latest
+#   2. Update the image reference below with your ACR name
+#   3. Apply: kubectl apply -f sample-pod.yaml
+#   4. Check status: kubectl get pod sample-nginx
+#   5. Cleanup: kubectl delete -f sample-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sample-nginx
+  namespace: default
+  labels:
+    app: sample-nginx
+    purpose: acr-integration-test
+spec:
+  containers:
+  - name: nginx
+    # Replace <acr-name> with your ACR name (e.g., acraihub1234.azurecr.io)
+    image: <acr-name>.azurecr.io/nginx:latest
+    ports:
+    - containerPort: 80
+      name: http
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 10
+  restartPolicy: Always
