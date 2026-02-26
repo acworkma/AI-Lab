@@ -1,0 +1,255 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "16617286589578577560"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus2",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "test",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment tag (dev, test, prod)"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "defaultValue": "AI-Lab Team",
+      "metadata": {
+        "description": "Owner tag value"
+      }
+    },
+    "foundryResourceGroupName": {
+      "type": "string",
+      "defaultValue": "rg-ai-foundry",
+      "metadata": {
+        "description": "Resource group name for Private Foundry resources"
+      }
+    },
+    "coreResourceGroupName": {
+      "type": "string",
+      "defaultValue": "rg-ai-core",
+      "metadata": {
+        "description": "Core resource group containing shared VNet and centralized private DNS zones"
+      }
+    },
+    "sharedVnetName": {
+      "type": "string",
+      "defaultValue": "vnet-ai-shared",
+      "metadata": {
+        "description": "Shared services VNet name"
+      }
+    },
+    "agentSubnetName": {
+      "type": "string",
+      "defaultValue": "snet-foundry-agent",
+      "metadata": {
+        "description": "Delegated Agent subnet name (must be exclusive per Foundry account)"
+      }
+    },
+    "agentSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.128/25",
+      "metadata": {
+        "description": "Delegated Agent subnet address prefix"
+      }
+    },
+    "privateEndpointSubnetName": {
+      "type": "string",
+      "defaultValue": "snet-foundry-pe",
+      "metadata": {
+        "description": "Private Endpoint subnet name for Foundry resources"
+      }
+    },
+    "privateEndpointSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.96/27",
+      "metadata": {
+        "description": "Private Endpoint subnet address prefix"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Additional custom tags"
+      }
+    }
+  },
+  "variables": {
+    "allTags": "[union(createObject('environment', parameters('environment'), 'purpose', 'private-foundry-infrastructure', 'owner', parameters('owner'), 'deployedBy', 'bicep', 'project', '012-private-foundry'), parameters('tags'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2023-07-01",
+      "name": "[parameters('foundryResourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-foundry-subnets",
+      "resourceGroup": "[parameters('coreResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "sharedVnetName": {
+            "value": "[parameters('sharedVnetName')]"
+          },
+          "agentSubnetName": {
+            "value": "[parameters('agentSubnetName')]"
+          },
+          "agentSubnetPrefix": {
+            "value": "[parameters('agentSubnetPrefix')]"
+          },
+          "privateEndpointSubnetName": {
+            "value": "[parameters('privateEndpointSubnetName')]"
+          },
+          "privateEndpointSubnetPrefix": {
+            "value": "[parameters('privateEndpointSubnetPrefix')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "9299188374446664487"
+            }
+          },
+          "parameters": {
+            "sharedVnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Shared VNet name"
+              }
+            },
+            "agentSubnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Delegated Agent subnet name"
+              }
+            },
+            "agentSubnetPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Delegated Agent subnet address prefix"
+              }
+            },
+            "privateEndpointSubnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Private Endpoint subnet name"
+              }
+            },
+            "privateEndpointSubnetPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Private Endpoint subnet address prefix"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}/{1}', parameters('sharedVnetName'), parameters('agentSubnetName'))]",
+              "properties": {
+                "addressPrefix": "[parameters('agentSubnetPrefix')]",
+                "delegations": [
+                  {
+                    "name": "delegate-app-environments",
+                    "properties": {
+                      "serviceName": "Microsoft.App/environments"
+                    }
+                  }
+                ],
+                "privateEndpointNetworkPolicies": "Enabled",
+                "privateLinkServiceNetworkPolicies": "Enabled"
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}/{1}', parameters('sharedVnetName'), parameters('privateEndpointSubnetName'))]",
+              "properties": {
+                "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]",
+                "privateEndpointNetworkPolicies": "Disabled",
+                "privateLinkServiceNetworkPolicies": "Enabled"
+              }
+            }
+          ],
+          "outputs": {
+            "agentSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Delegated Agent subnet resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('sharedVnetName'), parameters('agentSubnetName'))]"
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Private Endpoint subnet resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('sharedVnetName'), parameters('privateEndpointSubnetName'))]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Foundry resource group name"
+      },
+      "value": "[parameters('foundryResourceGroupName')]"
+    },
+    "sharedVnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Shared VNet resource ID"
+      },
+      "value": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('sharedVnetName'))]"
+    },
+    "agentSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Delegated Agent subnet resource ID"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-subnets'), '2025-04-01').outputs.agentSubnetId.value]"
+    },
+    "privateEndpointSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Private Endpoint subnet resource ID"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-subnets'), '2025-04-01').outputs.privateEndpointSubnetId.value]"
+    }
+  }
+}

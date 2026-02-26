@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2"
+    },
+    "environment": {
+      "value": "dev"
+    },
+    "owner": {
+      "value": "AI-Lab Team"
+    },
+    "foundryResourceGroupName": {
+      "value": "rg-ai-foundry"
+    },
+    "coreResourceGroupName": {
+      "value": "rg-ai-core"
+    },
+    "sharedVnetName": {
+      "value": "vnet-ai-shared"
+    },
+    "agentSubnetName": {
+      "value": "snet-foundry-agent"
+    },
+    "agentSubnetPrefix": {
+      "value": "10.1.0.128/25"
+    },
+    "privateEndpointSubnetName": {
+      "value": "snet-foundry-pe"
+    },
+    "privateEndpointSubnetPrefix": {
+      "value": "10.1.0.96/27"
+    },
+    "tags": {
+      "value": {
+        "deployedBy": "manual"
+      }
+    }
+  }
+}
