@@ -58,6 +58,7 @@ CORE_RG=$(jq -r '.parameters.coreResourceGroupName.value' "$PARAMETER_FILE")
 VNET_NAME=$(jq -r '.parameters.sharedVnetName.value' "$PARAMETER_FILE")
 AGENT_SUBNET=$(jq -r '.parameters.agentSubnetName.value' "$PARAMETER_FILE")
 PE_SUBNET=$(jq -r '.parameters.privateEndpointSubnetName.value' "$PARAMETER_FILE")
+PROJECT_CAPHOST_NAME=$(jq -r '.parameters.projectCapHostName.value // "caphostproj"' "$PARAMETER_FILE")
 
 log_info "Validating Foundry Phase 2 resources"
 
@@ -121,6 +122,16 @@ if [ -z "$FOUNDRY_PROJECT" ] || [ "$FOUNDRY_PROJECT" = "null" ]; then
   log_warning "No Foundry project resource found yet (this can occur if project creation is still propagating)"
 else
   log_success "Foundry project found: $FOUNDRY_PROJECT"
+
+  CAPHOST_EXISTS=$(az resource show \
+    --ids "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/${FOUNDRY_RG}/providers/Microsoft.CognitiveServices/accounts/${FOUNDRY_ACCOUNT}/projects/${FOUNDRY_PROJECT}/capabilityHosts/${PROJECT_CAPHOST_NAME}" \
+    --api-version 2025-04-01-preview \
+    --query name -o tsv 2>/dev/null || true)
+  if [ -n "$CAPHOST_EXISTS" ]; then
+    log_success "Project capability host found: $PROJECT_CAPHOST_NAME"
+  else
+    log_warning "Project capability host not found yet: $PROJECT_CAPHOST_NAME"
+  fi
 fi
 
 SEARCH_NAME=$(az search service list -g "$FOUNDRY_RG" --query "[0].name" -o tsv)

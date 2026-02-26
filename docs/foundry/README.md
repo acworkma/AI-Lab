@@ -12,6 +12,8 @@ Current implementation status:
   - Dedicated private endpoints for Foundry, Search, Storage, Cosmos
   - Centralized private DNS zone-group integration in core DNS resource group
   - Pre-capability-host RBAC assignments for Search, Storage, Cosmos account scope
+  - Project capability host deployment with sample-aligned dependency ordering
+  - Post-capability-host RBAC for storage container scope and Cosmos SQL data scope
 - Strict cleanup/caphost helper scripts added
 
 ## Prerequisites
@@ -61,6 +63,4 @@ Current implementation status:
 
 ## Next Implementation Steps
 
-- Add capability host deployment sequencing in Bicep for project-level host
-- Add post-capability-host RBAC for storage containers and Cosmos SQL containers
 - Add richer operational validation (agent create/run workflow checks)

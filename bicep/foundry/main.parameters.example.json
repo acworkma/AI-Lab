@@ -59,6 +59,9 @@
     "modelCapacity": {
       "value": 30
     },
+    "projectCapHostName": {
+      "value": "caphostproj"
+    },
     "tags": {
       "value": {
         "deployedBy": "manual"

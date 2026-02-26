@@ -73,6 +73,9 @@ param modelSkuName string = 'GlobalStandard'
 @description('Model capacity')
 param modelCapacity int = 30
 
+@description('Project capability host name')
+param projectCapHostName string = 'caphostproj'
+
 var allTags = union({
   environment: environment
   purpose: 'private-foundry-infrastructure'
@@ -209,6 +212,59 @@ module cosmosRoleAssignment '../modules/foundry-cosmosdb-account-role-assignment
   ]
 }
 
+module formatProjectWorkspaceId '../modules/foundry-format-project-workspace-id.bicep' = {
+  name: 'foundry-format-project-workspace-id'
+  scope: foundryResourceGroup
+  params: {
+    projectWorkspaceId: foundryProject.outputs.projectWorkspaceId
+  }
+}
+
+module addProjectCapabilityHost '../modules/foundry-add-project-capability-host.bicep' = {
+  name: 'foundry-project-capability-host'
+  scope: foundryResourceGroup
+  params: {
+    accountName: foundryAccount.outputs.accountName
+    projectName: foundryProject.outputs.projectName
+    projectCapHost: projectCapHostName
+    cosmosDbConnection: foundryProject.outputs.cosmosDbConnection
+    storageConnection: foundryProject.outputs.storageConnection
+    aiSearchConnection: foundryProject.outputs.aiSearchConnection
+  }
+  dependsOn: [
+    storageRoleAssignment
+    searchRoleAssignment
+    cosmosRoleAssignment
+  ]
+}
+
+module storageContainerRoleAssignments '../modules/foundry-blob-storage-container-role-assignments.bicep' = {
+  name: 'foundry-storage-container-rbac'
+  scope: foundryResourceGroup
+  params: {
+    storageName: foundryDependencies.outputs.storageName
+    aiProjectPrincipalId: foundryProject.outputs.projectPrincipalId
+    workspaceId: formatProjectWorkspaceId.outputs.projectWorkspaceIdGuid
+  }
+  dependsOn: [
+    addProjectCapabilityHost
+  ]
+}
+
+module cosmosContainerRoleAssignments '../modules/foundry-cosmos-container-role-assignments.bicep' = {
+  name: 'foundry-cosmos-container-rbac'
+  scope: foundryResourceGroup
+  params: {
+    cosmosAccountName: foundryDependencies.outputs.cosmosDbName
+    projectPrincipalId: foundryProject.outputs.projectPrincipalId
+    projectWorkspaceId: formatProjectWorkspaceId.outputs.projectWorkspaceIdGuid
+  }
+  dependsOn: [
+    addProjectCapabilityHost
+    storageContainerRoleAssignments
+  ]
+}
+
 @description('Foundry resource group name')
 output resourceGroupName string = foundryResourceGroup.name
 
@@ -235,6 +291,12 @@ output foundryProjectId string = foundryProject.outputs.projectId
 
 @description('Foundry project principal ID for RBAC')
 output foundryProjectPrincipalId string = foundryProject.outputs.projectPrincipalId
+
+@description('Foundry project capability host name')
+output foundryProjectCapabilityHostName string = addProjectCapabilityHost.outputs.projectCapHostName
+
+@description('Foundry formatted workspace GUID')
+output foundryProjectWorkspaceGuid string = formatProjectWorkspaceId.outputs.projectWorkspaceIdGuid
 
 @description('AI Search resource ID')
 output aiSearchId string = foundryDependencies.outputs.aiSearchId
