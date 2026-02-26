@@ -38,7 +38,7 @@ usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-Deploy Private Foundry networking baseline and prerequisites
+Deploy Private Foundry Phase 2 infrastructure (account, project, dependencies, private endpoints)
 
 OPTIONS:
     -p, --parameter-file PATH   Path to parameter file (default: bicep/foundry/main.parameters.json)
@@ -136,7 +136,7 @@ confirm_deployment() {
 }
 
 deploy() {
-    log_info "Deploying Private Foundry baseline..."
+    log_info "Deploying Private Foundry Phase 2 stack..."
 
     az deployment sub create \
       --name "$DEPLOYMENT_NAME" \
@@ -152,12 +152,24 @@ post_steps() {
     local rg_name
     rg_name=$(jq -r '.parameters.foundryResourceGroupName.value' "$PARAMETER_FILE")
 
+    local outputs
+    outputs=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs -o json)
+    local account_name
+    account_name=$(echo "$outputs" | jq -r '.foundryAccountName.value // empty')
+    local project_name
+    project_name=$(echo "$outputs" | jq -r '.foundryProjectName.value // empty')
+
+    echo ""
+    log_info "Deployment summary"
+    echo "  Resource group: ${rg_name}"
+    [ -n "$account_name" ] && echo "  Foundry account: ${account_name}"
+    [ -n "$project_name" ] && echo "  Foundry project: ${project_name}"
+
     echo ""
     log_info "Next steps"
     echo "  1. Run validation: ./scripts/validate-foundry.sh"
-    echo "  2. Run DNS validation from VPN-connected host: ./scripts/validate-foundry-dns.sh"
-    echo "  3. Continue with Foundry account/project + private endpoints implementation"
-    echo "  4. Resource group prepared: ${rg_name}"
+    echo "  2. Run DNS validation from VPN-connected host: ./scripts/validate-foundry-dns.sh <fqdn...>"
+    echo "  3. Use cleanup flow when needed: ./scripts/cleanup-foundry.sh ..."
 }
 
 main() {

@@ -1,14 +1,18 @@
-# Private Foundry (In Progress)
+# Private Foundry (Phase 2 In Progress)
 
 ## Overview
 
 This project introduces Private Foundry infrastructure aligned with Azure AI Foundry Agent Service network-secured deployment guidance. The design follows AI-Lab patterns while preserving strict Learn/sample cleanup behavior.
 
 Current implementation status:
-- Phase 1 baseline complete: dedicated Foundry networking primitives in shared VNet
-- Delegated subnet for agent infrastructure (`Microsoft.App/environments`)
-- Dedicated private endpoint subnet for Foundry dependencies
-- Validation scripts and strict cleanup/caphost helper scripts added
+- Phase 1 complete: dedicated Foundry networking primitives in shared VNet
+- Phase 2 baseline complete:
+  - Foundry account (AIServices) with model deployment
+  - Foundry project and AAD connections to dedicated Search/Storage/Cosmos
+  - Dedicated private endpoints for Foundry, Search, Storage, Cosmos
+  - Centralized private DNS zone-group integration in core DNS resource group
+  - Pre-capability-host RBAC assignments for Search, Storage, Cosmos account scope
+- Strict cleanup/caphost helper scripts added
 
 ## Prerequisites
 
@@ -57,7 +61,6 @@ Current implementation status:
 
 ## Next Implementation Steps
 
-- Add Foundry account/project resources (AIServices + project)
-- Add dedicated Search/Storage/Cosmos deployments for Foundry
-- Add private endpoints and DNS group associations
-- Add RBAC sequencing (pre/post capability host) from sample module flow
+- Add capability host deployment sequencing in Bicep for project-level host
+- Add post-capability-host RBAC for storage containers and Cosmos SQL containers
+- Add richer operational validation (agent create/run workflow checks)

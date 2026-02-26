@@ -32,6 +32,33 @@
     "privateEndpointSubnetPrefix": {
       "value": "10.1.0.96/27"
     },
+    "foundryAccountPrefix": {
+      "value": "fdryailab"
+    },
+    "foundryProjectPrefix": {
+      "value": "proj"
+    },
+    "foundryProjectDisplayName": {
+      "value": "AI-Lab Private Foundry Project"
+    },
+    "foundryProjectDescription": {
+      "value": "Private network secured Foundry project"
+    },
+    "modelName": {
+      "value": "gpt-4.1"
+    },
+    "modelFormat": {
+      "value": "OpenAI"
+    },
+    "modelVersion": {
+      "value": "2025-04-14"
+    },
+    "modelSkuName": {
+      "value": "GlobalStandard"
+    },
+    "modelCapacity": {
+      "value": 30
+    },
     "tags": {
       "value": {
         "deployedBy": "manual"

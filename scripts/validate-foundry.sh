@@ -59,7 +59,7 @@ VNET_NAME=$(jq -r '.parameters.sharedVnetName.value' "$PARAMETER_FILE")
 AGENT_SUBNET=$(jq -r '.parameters.agentSubnetName.value' "$PARAMETER_FILE")
 PE_SUBNET=$(jq -r '.parameters.privateEndpointSubnetName.value' "$PARAMETER_FILE")
 
-log_info "Validating Foundry baseline resources"
+log_info "Validating Foundry Phase 2 resources"
 
 az group show --name "$FOUNDRY_RG" >/dev/null
 log_success "Resource group exists: $FOUNDRY_RG"
@@ -109,4 +109,49 @@ for zone in "${zones[@]}"; do
   fi
 done
 
-log_success "Foundry baseline validation completed"
+FOUNDRY_ACCOUNT=$(az cognitiveservices account list -g "$FOUNDRY_RG" --query "[?kind=='AIServices'] | [0].name" -o tsv)
+if [ -z "$FOUNDRY_ACCOUNT" ] || [ "$FOUNDRY_ACCOUNT" = "null" ]; then
+  log_error "No Foundry AIServices account found in $FOUNDRY_RG"
+  exit 1
+fi
+log_success "Foundry account found: $FOUNDRY_ACCOUNT"
+
+FOUNDRY_PROJECT=$(az resource list -g "$FOUNDRY_RG" --resource-type "Microsoft.CognitiveServices/accounts/projects" --query "[0].name" -o tsv)
+if [ -z "$FOUNDRY_PROJECT" ] || [ "$FOUNDRY_PROJECT" = "null" ]; then
+  log_warning "No Foundry project resource found yet (this can occur if project creation is still propagating)"
+else
+  log_success "Foundry project found: $FOUNDRY_PROJECT"
+fi
+
+SEARCH_NAME=$(az search service list -g "$FOUNDRY_RG" --query "[0].name" -o tsv)
+STORAGE_NAME=$(az storage account list -g "$FOUNDRY_RG" --query "[0].name" -o tsv)
+COSMOS_NAME=$(az cosmosdb list -g "$FOUNDRY_RG" --query "[0].name" -o tsv)
+
+[ -n "$SEARCH_NAME" ] || { log_error "AI Search not found in $FOUNDRY_RG"; exit 1; }
+[ -n "$STORAGE_NAME" ] || { log_error "Storage account not found in $FOUNDRY_RG"; exit 1; }
+[ -n "$COSMOS_NAME" ] || { log_error "Cosmos DB account not found in $FOUNDRY_RG"; exit 1; }
+
+log_success "AI Search found: $SEARCH_NAME"
+log_success "Storage account found: $STORAGE_NAME"
+log_success "Cosmos DB account found: $COSMOS_NAME"
+
+ACCOUNT_PNA=$(az cognitiveservices account show -g "$FOUNDRY_RG" -n "$FOUNDRY_ACCOUNT" --query "properties.publicNetworkAccess" -o tsv)
+SEARCH_PNA=$(az search service show -g "$FOUNDRY_RG" -n "$SEARCH_NAME" --query "publicNetworkAccess" -o tsv)
+STORAGE_PNA=$(az storage account show -g "$FOUNDRY_RG" -n "$STORAGE_NAME" --query "publicNetworkAccess" -o tsv)
+COSMOS_PNA=$(az cosmosdb show -g "$FOUNDRY_RG" -n "$COSMOS_NAME" --query "publicNetworkAccess" -o tsv)
+
+[[ "$ACCOUNT_PNA" =~ [Dd]isabled ]] || { log_error "Foundry account public network access is not Disabled"; exit 1; }
+[[ "$SEARCH_PNA" =~ [Dd]isabled ]] || { log_error "AI Search public network access is not Disabled"; exit 1; }
+[[ "$STORAGE_PNA" =~ [Dd]isabled ]] || { log_error "Storage public network access is not Disabled"; exit 1; }
+[[ "$COSMOS_PNA" =~ [Dd]isabled ]] || { log_error "Cosmos DB public network access is not Disabled"; exit 1; }
+
+log_success "Public network access disabled across Foundry, Search, Storage, and Cosmos"
+
+PE_COUNT=$(az network private-endpoint list -g "$FOUNDRY_RG" --query "length([])" -o tsv)
+if [ "$PE_COUNT" -lt 4 ]; then
+  log_error "Expected at least 4 private endpoints, found $PE_COUNT"
+  exit 1
+fi
+log_success "Private endpoints found: $PE_COUNT"
+
+log_success "Foundry Phase 2 validation completed"
