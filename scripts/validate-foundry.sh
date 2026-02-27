@@ -2,7 +2,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 PARAMETER_FILE="bicep/foundry/main.parameters.json"
+RUN_OPS=false
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -28,7 +31,11 @@ log_error() {
 
 usage() {
     cat << EOF
-Usage: $0 [--parameter-file <path>]
+Usage: $0 [--parameter-file <path>] [--ops]
+
+Options:
+  -p, --parameter-file PATH   Path to parameter file
+  --ops                       Run deep operational checks after baseline validation
 EOF
     exit 1
 }
@@ -38,6 +45,10 @@ while [[ $# -gt 0 ]]; do
       -p|--parameter-file)
         PARAMETER_FILE="$2"
         shift 2
+        ;;
+      --ops)
+        RUN_OPS=true
+        shift
         ;;
       -h|--help)
         usage
@@ -177,3 +188,8 @@ fi
 log_success "Private endpoints found: $PE_COUNT"
 
 log_success "Foundry Phase 2 validation completed"
+
+if [ "$RUN_OPS" = true ]; then
+  log_info "Running operational validation (--ops)..."
+  "${SCRIPT_DIR}/validate-foundry-ops.sh" --parameter-file "$PARAMETER_FILE"
+fi

@@ -41,6 +41,7 @@ Current implementation status:
 
 ```bash
 ./scripts/validate-foundry.sh
+./scripts/validate-foundry.sh --ops
 ./scripts/validate-foundry-dns.sh <fqdn1> <fqdn2> ...
 ```
 
@@ -52,6 +53,12 @@ Validation script checks include:
 - Dedicated Search/Storage/Cosmos resources
 - Public network access disabled on all key resources
 - Minimum private endpoint count
+
+Operational (`--ops`) checks include:
+- Account/project capability host API state and configured connection bindings
+- RBAC assignments on Search/Storage/Cosmos account scope
+- Post-capability-host RBAC signals (Storage Data Owner, Cosmos SQL role assignment)
+- Private endpoint provisioning state consistency
 
 ## Cleanup (Strict Learn/Sample Order)
 

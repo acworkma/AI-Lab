@@ -176,9 +176,10 @@ post_steps() {
 
     echo ""
     log_info "Next steps"
-    echo "  1. Run validation: ./scripts/validate-foundry.sh"
-    echo "  2. Run DNS validation from VPN-connected host: ./scripts/validate-foundry-dns.sh <fqdn...>"
-    echo "  3. Use cleanup flow when needed: ./scripts/cleanup-foundry.sh ..."
+    echo "  1. Run baseline validation: ./scripts/validate-foundry.sh"
+    echo "  2. Run operational validation: ./scripts/validate-foundry.sh --ops"
+    echo "  3. Run DNS validation from VPN-connected host: ./scripts/validate-foundry-dns.sh <fqdn...>"
+    echo "  4. Use cleanup flow when needed: ./scripts/cleanup-foundry.sh ..."
 }
 
 main() {
