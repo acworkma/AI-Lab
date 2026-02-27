@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.40.2.10011",
-      "templateHash": "4257114999957863530"
+      "templateHash": "143026478432952259"
     }
   },
   "parameters": {
@@ -166,6 +166,13 @@
       "defaultValue": "caphostaccount",
       "metadata": {
         "description": "Account capability host name"
+      }
+    },
+    "createAccountCapabilityHost": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Create account capability host resource. Set false when service auto-creates one for the same client identity."
       }
     }
   },
@@ -1421,9 +1428,10 @@
       ]
     },
     {
+      "condition": "[parameters('createAccountCapabilityHost')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "foundry-account-capability-host",
+      "name": "[format('foundry-account-capability-host-{0}', substring(uniqueString(deployment().name), 0, 6))]",
       "resourceGroup": "[parameters('foundryResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
@@ -1609,7 +1617,7 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'foundry-account-capability-host')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', format('foundry-account-capability-host-{0}', substring(uniqueString(deployment().name), 0, 6)))]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'foundry-cosmos-rbac')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-account')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-project')]",
@@ -1852,7 +1860,7 @@
       "metadata": {
         "description": "Foundry account capability host name"
       },
-      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'foundry-account-capability-host'), '2025-04-01').outputs.accountCapHostName.value]"
+      "value": "[if(parameters('createAccountCapabilityHost'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', format('foundry-account-capability-host-{0}', substring(uniqueString(deployment().name), 0, 6))), '2025-04-01').outputs.accountCapHostName.value, 'service-managed-existing')]"
     },
     "foundryProjectWorkspaceGuid": {
       "type": "string",

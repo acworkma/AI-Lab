@@ -314,7 +314,7 @@ output foundryProjectPrincipalId string = foundryProject.outputs.projectPrincipa
 output foundryProjectCapabilityHostName string = addProjectCapabilityHost.outputs.projectCapHostName
 
 @description('Foundry account capability host name')
-output foundryAccountCapabilityHostName string = createAccountCapabilityHost ? addAccountCapabilityHost.outputs.accountCapHostName : 'service-managed-existing'
+output foundryAccountCapabilityHostName string = createAccountCapabilityHost ? addAccountCapabilityHost!.outputs.accountCapHostName : 'service-managed-existing'
 
 @description('Foundry formatted workspace GUID')
 output foundryProjectWorkspaceGuid string = formatProjectWorkspaceId.outputs.projectWorkspaceIdGuid
