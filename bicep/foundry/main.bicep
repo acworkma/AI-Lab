@@ -91,7 +91,8 @@ var uniqueSuffix = substring(uniqueString(subscription().subscriptionId, foundry
 var foundryAccountName = toLower('${foundryAccountPrefix}${uniqueSuffix}')
 var foundryProjectName = toLower('${foundryProjectPrefix}${uniqueSuffix}')
 var aiSearchName = toLower('${foundryAccountName}search')
-var storageAccountName = toLower(substring(replace('${foundryAccountName}storage', '-', ''), 0, 24))
+var storageAccountNameBase = replace('${foundryAccountName}storage', '-', '')
+var storageAccountName = toLower(length(storageAccountNameBase) > 24 ? substring(storageAccountNameBase, 0, 24) : storageAccountNameBase)
 var cosmosDbName = toLower('${foundryAccountName}cosmosdb')
 
 resource foundryResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {

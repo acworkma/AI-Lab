@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.40.2.10011",
-      "templateHash": "13318210924664646325"
+      "templateHash": "5636222421005594538"
     }
   },
   "parameters": {
@@ -175,7 +175,8 @@
     "foundryAccountName": "[toLower(format('{0}{1}', parameters('foundryAccountPrefix'), variables('uniqueSuffix')))]",
     "foundryProjectName": "[toLower(format('{0}{1}', parameters('foundryProjectPrefix'), variables('uniqueSuffix')))]",
     "aiSearchName": "[toLower(format('{0}search', variables('foundryAccountName')))]",
-    "storageAccountName": "[toLower(substring(replace(format('{0}storage', variables('foundryAccountName')), '-', ''), 0, 24))]",
+    "storageAccountNameBase": "[replace(format('{0}storage', variables('foundryAccountName')), '-', '')]",
+    "storageAccountName": "[toLower(if(greater(length(variables('storageAccountNameBase')), 24), substring(variables('storageAccountNameBase'), 0, 24), variables('storageAccountNameBase')))]",
     "cosmosDbName": "[toLower(format('{0}cosmosdb', variables('foundryAccountName')))]"
   },
   "resources": [
