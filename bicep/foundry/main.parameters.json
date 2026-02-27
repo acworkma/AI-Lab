@@ -62,6 +62,9 @@
     "projectCapHostName": {
       "value": "caphostproj"
     },
+    "accountCapHostName": {
+      "value": "caphostaccount"
+    },
     "tags": {
       "value": {
         "deployedBy": "manual"

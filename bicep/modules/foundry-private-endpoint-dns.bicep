@@ -66,7 +66,7 @@ resource zoneSearch 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
   scope: resourceGroup(coreResourceGroupName)
 }
 resource zoneBlob 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
-  name: 'privatelink.blob.core.windows.net'
+  name: 'privatelink.blob.${environment().suffixes.storage}'
   scope: resourceGroup(coreResourceGroupName)
 }
 resource zoneCosmos 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {

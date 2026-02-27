@@ -12,6 +12,7 @@ Current implementation status:
   - Dedicated private endpoints for Foundry, Search, Storage, Cosmos
   - Centralized private DNS zone-group integration in core DNS resource group
   - Pre-capability-host RBAC assignments for Search, Storage, Cosmos account scope
+  - Account capability host deployment (Agents)
   - Project capability host deployment with sample-aligned dependency ordering
   - Post-capability-host RBAC for storage container scope and Cosmos SQL data scope
 - Strict cleanup/caphost helper scripts added
@@ -42,6 +43,15 @@ Current implementation status:
 ./scripts/validate-foundry.sh
 ./scripts/validate-foundry-dns.sh <fqdn1> <fqdn2> ...
 ```
+
+Validation script checks include:
+- Delegated subnet + PE subnet configuration
+- Required private DNS zones in core resource group
+- Foundry account + project resources
+- Account and project capability hosts
+- Dedicated Search/Storage/Cosmos resources
+- Public network access disabled on all key resources
+- Minimum private endpoint count
 
 ## Cleanup (Strict Learn/Sample Order)
 

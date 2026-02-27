@@ -76,6 +76,9 @@ param modelCapacity int = 30
 @description('Project capability host name')
 param projectCapHostName string = 'caphostproj'
 
+@description('Account capability host name')
+param accountCapHostName string = 'caphostaccount'
+
 var allTags = union({
   environment: environment
   purpose: 'private-foundry-infrastructure'
@@ -220,6 +223,16 @@ module formatProjectWorkspaceId '../modules/foundry-format-project-workspace-id.
   }
 }
 
+module addAccountCapabilityHost '../modules/foundry-add-account-capability-host.bicep' = {
+  name: 'foundry-account-capability-host'
+  scope: foundryResourceGroup
+  params: {
+    accountName: foundryAccount.outputs.accountName
+    accountCapHost: accountCapHostName
+    customerSubnetId: foundrySubnets.outputs.agentSubnetId
+  }
+}
+
 module addProjectCapabilityHost '../modules/foundry-add-project-capability-host.bicep' = {
   name: 'foundry-project-capability-host'
   scope: foundryResourceGroup
@@ -232,6 +245,7 @@ module addProjectCapabilityHost '../modules/foundry-add-project-capability-host.
     aiSearchConnection: foundryProject.outputs.aiSearchConnection
   }
   dependsOn: [
+    addAccountCapabilityHost
     storageRoleAssignment
     searchRoleAssignment
     cosmosRoleAssignment
@@ -294,6 +308,9 @@ output foundryProjectPrincipalId string = foundryProject.outputs.projectPrincipa
 
 @description('Foundry project capability host name')
 output foundryProjectCapabilityHostName string = addProjectCapabilityHost.outputs.projectCapHostName
+
+@description('Foundry account capability host name')
+output foundryAccountCapabilityHostName string = addAccountCapabilityHost.outputs.accountCapHostName
 
 @description('Foundry formatted workspace GUID')
 output foundryProjectWorkspaceGuid string = formatProjectWorkspaceId.outputs.projectWorkspaceIdGuid

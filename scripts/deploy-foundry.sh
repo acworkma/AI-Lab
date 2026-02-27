@@ -158,12 +158,21 @@ post_steps() {
     account_name=$(echo "$outputs" | jq -r '.foundryAccountName.value // empty')
     local project_name
     project_name=$(echo "$outputs" | jq -r '.foundryProjectName.value // empty')
+    local caphost_name
+    caphost_name=$(echo "$outputs" | jq -r '.foundryProjectCapabilityHostName.value // empty')
+    local account_caphost_name
+    account_caphost_name=$(echo "$outputs" | jq -r '.foundryAccountCapabilityHostName.value // empty')
+    local workspace_guid
+    workspace_guid=$(echo "$outputs" | jq -r '.foundryProjectWorkspaceGuid.value // empty')
 
     echo ""
     log_info "Deployment summary"
     echo "  Resource group: ${rg_name}"
     [ -n "$account_name" ] && echo "  Foundry account: ${account_name}"
     [ -n "$project_name" ] && echo "  Foundry project: ${project_name}"
+    [ -n "$account_caphost_name" ] && echo "  Account capability host: ${account_caphost_name}"
+    [ -n "$caphost_name" ] && echo "  Project capability host: ${caphost_name}"
+    [ -n "$workspace_guid" ] && echo "  Project workspace GUID: ${workspace_guid}"
 
     echo ""
     log_info "Next steps"

@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.39.26.7824",
-      "templateHash": "17923041861869697113"
+      "version": "0.40.2.10011",
+      "templateHash": "13318210924664646325"
     }
   },
   "parameters": {
@@ -160,6 +160,13 @@
       "metadata": {
         "description": "Project capability host name"
       }
+    },
+    "accountCapHostName": {
+      "type": "string",
+      "defaultValue": "caphostaccount",
+      "metadata": {
+        "description": "Account capability host name"
+      }
     }
   },
   "variables": {
@@ -212,8 +219,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "9299188374446664487"
+              "version": "0.40.2.10011",
+              "templateHash": "2076111525248439472"
             }
           },
           "parameters": {
@@ -345,8 +352,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "14032149953017557577"
+              "version": "0.40.2.10011",
+              "templateHash": "5819476968841053308"
             }
           },
           "parameters": {
@@ -524,8 +531,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "13832487117072008567"
+              "version": "0.40.2.10011",
+              "templateHash": "14268616112247541339"
             }
           },
           "parameters": {
@@ -730,8 +737,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "16273803800335039520"
+              "version": "0.40.2.10011",
+              "templateHash": "2407973795258247795"
             }
           },
           "parameters": {
@@ -932,7 +939,7 @@
                   {
                     "name": "blob-config",
                     "properties": {
-                      "privateDnsZoneId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Network/privateDnsZones', 'privatelink.blob.core.windows.net')]"
+                      "privateDnsZoneId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
                     }
                   }
                 ]
@@ -1028,8 +1035,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "12710349071999129935"
+              "version": "0.40.2.10011",
+              "templateHash": "5368398904346554004"
             }
           },
           "parameters": {
@@ -1190,8 +1197,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "17741739849560680738"
+              "version": "0.40.2.10011",
+              "templateHash": "15297150699160454696"
             }
           },
           "parameters": {
@@ -1206,7 +1213,7 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
-              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
               "name": "[guid(parameters('projectPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'), resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')))]",
               "properties": {
                 "principalId": "[parameters('projectPrincipalId')]",
@@ -1248,8 +1255,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "4299470774171995635"
+              "version": "0.40.2.10011",
+              "templateHash": "11710896588597432595"
             }
           },
           "parameters": {
@@ -1270,7 +1277,7 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
-              "scope": "[format('Microsoft.Search/searchServices/{0}', parameters('aiSearchName'))]",
+              "scope": "[resourceId('Microsoft.Search/searchServices', parameters('aiSearchName'))]",
               "name": "[guid(parameters('projectPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7'), resourceId('Microsoft.Search/searchServices', parameters('aiSearchName')))]",
               "properties": {
                 "principalId": "[parameters('projectPrincipalId')]",
@@ -1281,7 +1288,7 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
-              "scope": "[format('Microsoft.Search/searchServices/{0}', parameters('aiSearchName'))]",
+              "scope": "[resourceId('Microsoft.Search/searchServices', parameters('aiSearchName'))]",
               "name": "[guid(parameters('projectPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0'), resourceId('Microsoft.Search/searchServices', parameters('aiSearchName')))]",
               "properties": {
                 "principalId": "[parameters('projectPrincipalId')]",
@@ -1323,8 +1330,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "458097766126872512"
+              "version": "0.40.2.10011",
+              "templateHash": "10128671913971804750"
             }
           },
           "parameters": {
@@ -1339,7 +1346,7 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
-              "scope": "[format('Microsoft.DocumentDB/databaseAccounts/{0}', parameters('cosmosDbName'))]",
+              "scope": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbName'))]",
               "name": "[guid(parameters('projectPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', '230815da-be43-4aae-9cb4-875f7bd000aa'), resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbName')))]",
               "properties": {
                 "principalId": "[parameters('projectPrincipalId')]",
@@ -1378,8 +1385,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "7448841892218070268"
+              "version": "0.40.2.10011",
+              "templateHash": "6580275205100526074"
             }
           },
           "parameters": {
@@ -1410,6 +1417,83 @@
       "dependsOn": [
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-project')]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('foundryResourceGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "foundry-account-capability-host",
+      "resourceGroup": "[parameters('foundryResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "accountName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-account'), '2025-04-01').outputs.accountName.value]"
+          },
+          "accountCapHost": {
+            "value": "[parameters('accountCapHostName')]"
+          },
+          "customerSubnetId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-subnets'), '2025-04-01').outputs.agentSubnetId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "7870189027893197924"
+            }
+          },
+          "parameters": {
+            "accountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Foundry account name"
+              }
+            },
+            "accountCapHost": {
+              "type": "string",
+              "defaultValue": "caphostaccount",
+              "metadata": {
+                "description": "Account capability host name"
+              }
+            },
+            "customerSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Customer subnet resource ID for account capability host"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts/capabilityHosts",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}', parameters('accountName'), parameters('accountCapHost'))]",
+              "properties": {
+                "capabilityHostKind": "Agents",
+                "customerSubnet": "[parameters('customerSubnetId')]"
+              }
+            }
+          ],
+          "outputs": {
+            "accountCapHostName": {
+              "type": "string",
+              "value": "[parameters('accountCapHost')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-account')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('foundryResourceGroupName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-subnets')]"
       ]
     },
     {
@@ -1448,8 +1532,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "3590111330335580051"
+              "version": "0.40.2.10011",
+              "templateHash": "7876137443178077753"
             }
           },
           "parameters": {
@@ -1524,6 +1608,7 @@
         }
       },
       "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'foundry-account-capability-host')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'foundry-cosmos-rbac')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-account')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-foundry-project')]",
@@ -1559,8 +1644,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "15771981592404259163"
+              "version": "0.40.2.10011",
+              "templateHash": "16308635990263247670"
             }
           },
           "parameters": {
@@ -1590,7 +1675,7 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
-              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageName'))]",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]",
               "name": "[guid(resourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'), resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')))]",
               "properties": {
                 "principalId": "[parameters('aiProjectPrincipalId')]",
@@ -1638,8 +1723,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "12410794382125479012"
+              "version": "0.40.2.10011",
+              "templateHash": "17815869329756387209"
             }
           },
           "parameters": {
@@ -1760,6 +1845,13 @@
         "description": "Foundry project capability host name"
       },
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'foundry-project-capability-host'), '2025-04-01').outputs.projectCapHostName.value]"
+    },
+    "foundryAccountCapabilityHostName": {
+      "type": "string",
+      "metadata": {
+        "description": "Foundry account capability host name"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('foundryResourceGroupName')), 'Microsoft.Resources/deployments', 'foundry-account-capability-host'), '2025-04-01').outputs.accountCapHostName.value]"
     },
     "foundryProjectWorkspaceGuid": {
       "type": "string",
