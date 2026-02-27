@@ -79,6 +79,9 @@ param projectCapHostName string = 'caphostproj'
 @description('Account capability host name')
 param accountCapHostName string = 'caphostaccount'
 
+@description('Create account capability host resource. Set false when service auto-creates one for the same client identity.')
+param createAccountCapabilityHost bool = false
+
 var allTags = union({
   environment: environment
   purpose: 'private-foundry-infrastructure'
@@ -224,7 +227,7 @@ module formatProjectWorkspaceId '../modules/foundry-format-project-workspace-id.
   }
 }
 
-module addAccountCapabilityHost '../modules/foundry-add-account-capability-host.bicep' = {
+module addAccountCapabilityHost '../modules/foundry-add-account-capability-host.bicep' = if (createAccountCapabilityHost) {
   name: 'foundry-account-capability-host-${substring(uniqueString(deployment().name), 0, 6)}'
   scope: foundryResourceGroup
   params: {
@@ -311,7 +314,7 @@ output foundryProjectPrincipalId string = foundryProject.outputs.projectPrincipa
 output foundryProjectCapabilityHostName string = addProjectCapabilityHost.outputs.projectCapHostName
 
 @description('Foundry account capability host name')
-output foundryAccountCapabilityHostName string = addAccountCapabilityHost.outputs.accountCapHostName
+output foundryAccountCapabilityHostName string = createAccountCapabilityHost ? addAccountCapabilityHost.outputs.accountCapHostName : 'service-managed-existing'
 
 @description('Foundry formatted workspace GUID')
 output foundryProjectWorkspaceGuid string = formatProjectWorkspaceId.outputs.projectWorkspaceIdGuid
