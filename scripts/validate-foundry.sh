@@ -82,7 +82,7 @@ PE_SUBNET=$(jq -r '.parameters.privateEndpointSubnetName.value' "$PARAMETER_FILE
 PROJECT_CAPHOST_NAME=$(jq -r '.parameters.projectCapHostName.value // "caphostproj"' "$PARAMETER_FILE")
 ACCOUNT_CAPHOST_NAME=$(jq -r '.parameters.accountCapHostName.value // "caphostaccount"' "$PARAMETER_FILE")
 
-log_info "Validating Foundry Phase 2 resources"
+log_info "Validating Foundry resources"
 
 az group show --name "$FOUNDRY_RG" >/dev/null
 log_success "Resource group exists: $FOUNDRY_RG"
@@ -139,24 +139,35 @@ if [ -z "$FOUNDRY_ACCOUNT" ] || [ "$FOUNDRY_ACCOUNT" = "null" ]; then
 fi
 log_success "Foundry account found: $FOUNDRY_ACCOUNT"
 
-ACCOUNT_CAPHOST_EXISTS=$(az resource show \
-  --ids "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/${FOUNDRY_RG}/providers/Microsoft.CognitiveServices/accounts/${FOUNDRY_ACCOUNT}/capabilityHosts/${ACCOUNT_CAPHOST_NAME}" \
-  --api-version 2025-04-01-preview \
-  --query name -o tsv 2>/dev/null || true)
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+ACCOUNT_CAPHOST_LIST_URI="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${FOUNDRY_RG}/providers/Microsoft.CognitiveServices/accounts/${FOUNDRY_ACCOUNT}/capabilityHosts?api-version=2025-09-01"
+ACCOUNT_CAPHOST_LIST_JSON=$(az rest --method get --url "$ACCOUNT_CAPHOST_LIST_URI" 2>/dev/null || echo "")
+ACCOUNT_CAPHOST_EXISTS=""
+if [ -n "$ACCOUNT_CAPHOST_LIST_JSON" ]; then
+  ACCOUNT_CAPHOST_EXISTS=$(echo "$ACCOUNT_CAPHOST_LIST_JSON" | jq -r --arg configured "$ACCOUNT_CAPHOST_NAME" '
+    ([.value[]? | select(.name == $configured)][0].name) //
+    ([.value[]? | select(.properties.provisioningState == "Succeeded")][0].name) //
+    ""')
+fi
 if [ -n "$ACCOUNT_CAPHOST_EXISTS" ]; then
-  log_success "Account capability host found: $ACCOUNT_CAPHOST_NAME"
+  log_success "Account capability host found: $ACCOUNT_CAPHOST_EXISTS"
 else
-  log_warning "Account capability host not found yet: $ACCOUNT_CAPHOST_NAME"
+  log_warning "Account capability host not found yet (configured: $ACCOUNT_CAPHOST_NAME)"
 fi
 
-FOUNDRY_PROJECT=$(az resource list -g "$FOUNDRY_RG" --resource-type "Microsoft.CognitiveServices/accounts/projects" --query "[0].name" -o tsv)
-if [ -z "$FOUNDRY_PROJECT" ] || [ "$FOUNDRY_PROJECT" = "null" ]; then
+FOUNDRY_PROJECT_FULL=$(az resource list -g "$FOUNDRY_RG" --resource-type "Microsoft.CognitiveServices/accounts/projects" --query "[0].name" -o tsv)
+if [ -z "$FOUNDRY_PROJECT_FULL" ] || [ "$FOUNDRY_PROJECT_FULL" = "null" ]; then
   log_warning "No Foundry project resource found yet (this can occur if project creation is still propagating)"
 else
-  log_success "Foundry project found: $FOUNDRY_PROJECT"
+  if [[ "$FOUNDRY_PROJECT_FULL" == */* ]]; then
+    FOUNDRY_PROJECT="${FOUNDRY_PROJECT_FULL#*/}"
+  else
+    FOUNDRY_PROJECT="$FOUNDRY_PROJECT_FULL"
+  fi
+  log_success "Foundry project found: ${FOUNDRY_ACCOUNT}/${FOUNDRY_PROJECT}"
 
   CAPHOST_EXISTS=$(az resource show \
-    --ids "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/${FOUNDRY_RG}/providers/Microsoft.CognitiveServices/accounts/${FOUNDRY_ACCOUNT}/projects/${FOUNDRY_PROJECT}/capabilityHosts/${PROJECT_CAPHOST_NAME}" \
+    --ids "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${FOUNDRY_RG}/providers/Microsoft.CognitiveServices/accounts/${FOUNDRY_ACCOUNT}/projects/${FOUNDRY_PROJECT}/capabilityHosts/${PROJECT_CAPHOST_NAME}" \
     --api-version 2025-04-01-preview \
     --query name -o tsv 2>/dev/null || true)
   if [ -n "$CAPHOST_EXISTS" ]; then
@@ -197,7 +208,7 @@ if [ "$PE_COUNT" -lt 4 ]; then
 fi
 log_success "Private endpoints found: $PE_COUNT"
 
-log_success "Foundry Phase 2 validation completed"
+log_success "Foundry validation completed"
 
 if [ "$RUN_OPS" = true ]; then
   log_info "Running operational validation (--ops)..."

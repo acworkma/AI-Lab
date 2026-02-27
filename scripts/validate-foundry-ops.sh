@@ -36,7 +36,7 @@ usage() {
   cat << EOF
 Usage: $0 [OPTIONS]
 
-Operational validation for Private Foundry Phase 2.
+Operational validation for Private Foundry.
 
 OPTIONS:
   -p, --parameter-file PATH   Path to parameter file (default: bicep/foundry/main.parameters.json)
@@ -123,18 +123,29 @@ SEARCH_ID=$(az search service show -g "$FOUNDRY_RG" -n "$SEARCH_NAME" --query id
 STORAGE_ID=$(az storage account show -g "$FOUNDRY_RG" -n "$STORAGE_NAME" --query id -o tsv)
 COSMOS_ID=$(az cosmosdb show -g "$FOUNDRY_RG" -n "$COSMOS_NAME" --query id -o tsv)
 
-ACCOUNT_CAPHOST_URI="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${FOUNDRY_RG}/providers/Microsoft.CognitiveServices/accounts/${FOUNDRY_ACCOUNT}/capabilityHosts/${ACCOUNT_CAPHOST_NAME}?api-version=2025-04-01-preview"
 PROJECT_CAPHOST_URI="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${FOUNDRY_RG}/providers/Microsoft.CognitiveServices/accounts/${FOUNDRY_ACCOUNT}/projects/${FOUNDRY_PROJECT}/capabilityHosts/${PROJECT_CAPHOST_NAME}?api-version=2025-04-01-preview"
 
-ACCOUNT_CAPHOST_JSON=$(az rest --method get --url "$ACCOUNT_CAPHOST_URI" 2>/dev/null || echo "")
+ACCOUNT_CAPHOST_LIST_URI="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${FOUNDRY_RG}/providers/Microsoft.CognitiveServices/accounts/${FOUNDRY_ACCOUNT}/capabilityHosts?api-version=2025-09-01"
+ACCOUNT_CAPHOST_LIST_JSON=$(az rest --method get --url "$ACCOUNT_CAPHOST_LIST_URI" 2>/dev/null || echo "")
+ACCOUNT_CAPHOST_JSON=""
+ACCOUNT_CAPHOST_RESOLVED_NAME=""
+
+if [ -n "$ACCOUNT_CAPHOST_LIST_JSON" ]; then
+  ACCOUNT_CAPHOST_JSON=$(echo "$ACCOUNT_CAPHOST_LIST_JSON" | jq -c --arg name "$ACCOUNT_CAPHOST_NAME" '.value[]? | select(.name == $name)' | head -n1)
+  if [ -z "$ACCOUNT_CAPHOST_JSON" ]; then
+    ACCOUNT_CAPHOST_JSON=$(echo "$ACCOUNT_CAPHOST_LIST_JSON" | jq -c '.value[]? | select(.properties.provisioningState == "Succeeded")' | head -n1)
+  fi
+fi
+
 if [ -z "$ACCOUNT_CAPHOST_JSON" ]; then
-  log_error "Account capability host missing: $ACCOUNT_CAPHOST_NAME"
+  log_error "Account capability host missing (configured: $ACCOUNT_CAPHOST_NAME)"
 else
+  ACCOUNT_CAPHOST_RESOLVED_NAME=$(echo "$ACCOUNT_CAPHOST_JSON" | jq -r '.name')
   ACCOUNT_STATE=$(echo "$ACCOUNT_CAPHOST_JSON" | jq -r '.properties.provisioningState // "Unknown"')
   if [ "$ACCOUNT_STATE" = "Succeeded" ]; then
-    log_success "Account capability host state: Succeeded"
+    log_success "Account capability host state: Succeeded ($ACCOUNT_CAPHOST_RESOLVED_NAME)"
   else
-    log_warning "Account capability host state: $ACCOUNT_STATE"
+    log_warning "Account capability host state: $ACCOUNT_STATE ($ACCOUNT_CAPHOST_RESOLVED_NAME)"
   fi
 fi
 

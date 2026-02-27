@@ -38,7 +38,7 @@ usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-Deploy Private Foundry Phase 2 infrastructure (account, project, dependencies, private endpoints)
+Deploy Private Foundry infrastructure (account, project, dependencies, private endpoints)
 
 OPTIONS:
     -p, --parameter-file PATH   Path to parameter file (default: bicep/foundry/main.parameters.json)
@@ -124,6 +124,8 @@ ensure_foundry_dns_zones() {
       "privatelink.cognitiveservices.azure.com"
       "privatelink.search.windows.net"
       "privatelink.documents.azure.com"
+            "privatelink.blob.core.windows.net"
+            "privatelink.file.core.windows.net"
     )
 
     for zone in "${zones[@]}"; do
@@ -176,7 +178,7 @@ confirm_deployment() {
 }
 
 deploy() {
-    log_info "Deploying Private Foundry Phase 2 stack..."
+    log_info "Deploying Private Foundry stack..."
 
     az deployment sub create \
       --name "$DEPLOYMENT_NAME" \

@@ -35,6 +35,8 @@ if [ $# -eq 0 ]; then
   exit 0
 fi
 
+VALIDATION_FAILED=false
+
 for fqdn in "$@"; do
   log_info "Resolving $fqdn"
   if nslookup "$fqdn" >/tmp/foundry-nslookup.txt 2>&1; then
@@ -42,14 +44,21 @@ for fqdn in "$@"; do
     if [[ "$ip" =~ ^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\. ]]; then
       log_success "$fqdn resolved to private IP: $ip"
     else
-      log_warning "$fqdn resolved to non-private IP: $ip"
+      log_error "$fqdn resolved to non-private IP: $ip"
+      VALIDATION_FAILED=true
     fi
   else
     log_error "Failed to resolve $fqdn"
     cat /tmp/foundry-nslookup.txt
-    exit 1
+    VALIDATION_FAILED=true
   fi
 done
 
 rm -f /tmp/foundry-nslookup.txt
+
+if [ "$VALIDATION_FAILED" = true ]; then
+  log_error "DNS validation failed"
+  exit 1
+fi
+
 log_success "DNS validation completed"

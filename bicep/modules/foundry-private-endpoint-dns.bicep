@@ -69,6 +69,10 @@ resource zoneBlob 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
   name: 'privatelink.blob.${environment().suffixes.storage}'
   scope: resourceGroup(coreResourceGroupName)
 }
+resource zoneFile 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
+  name: 'privatelink.file.${environment().suffixes.storage}'
+  scope: resourceGroup(coreResourceGroupName)
+}
 resource zoneCosmos 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
   name: 'privatelink.documents.azure.com'
   scope: resourceGroup(coreResourceGroupName)
@@ -133,6 +137,28 @@ resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' 
           privateLinkServiceId: storageAccount.id
           groupIds: [
             'blob'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource storageFilePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
+  name: '${storageName}-file-private-endpoint'
+  location: resourceGroup().location
+  tags: tags
+  properties: {
+    subnet: {
+      id: peSubnet.id
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${storageName}-file-private-link-service-connection'
+        properties: {
+          privateLinkServiceId: storageAccount.id
+          groupIds: [
+            'file'
           ]
         }
       }
@@ -219,6 +245,21 @@ resource storageDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroup
   }
 }
 
+resource storageFileDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
+  parent: storageFilePrivateEndpoint
+  name: '${storageName}-file-dns-group'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'file-config'
+        properties: {
+          privateDnsZoneId: zoneFile.id
+        }
+      }
+    ]
+  }
+}
+
 resource cosmosDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
   parent: cosmosPrivateEndpoint
   name: '${cosmosDbName}-dns-group'
@@ -237,4 +278,5 @@ resource cosmosDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups
 output aiAccountPrivateEndpointId string = aiAccountPrivateEndpoint.id
 output aiSearchPrivateEndpointId string = aiSearchPrivateEndpoint.id
 output storagePrivateEndpointId string = storagePrivateEndpoint.id
+output storageFilePrivateEndpointId string = storageFilePrivateEndpoint.id
 output cosmosPrivateEndpointId string = cosmosPrivateEndpoint.id

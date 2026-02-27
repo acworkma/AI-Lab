@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.40.2.10011",
-      "templateHash": "143026478432952259"
+      "templateHash": "17004344025540305254"
     }
   },
   "parameters": {
@@ -746,7 +746,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.40.2.10011",
-              "templateHash": "2407973795258247795"
+              "templateHash": "9090401851644290932"
             }
           },
           "parameters": {
@@ -870,6 +870,29 @@
             {
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
+              "name": "[format('{0}-file-private-endpoint', parameters('storageName'))]",
+              "location": "[resourceGroup().location]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('peSubnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('{0}-file-private-link-service-connection', parameters('storageName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]",
+                      "groupIds": [
+                        "file"
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2024-05-01",
               "name": "[format('{0}-private-endpoint', parameters('cosmosDbName'))]",
               "location": "[resourceGroup().location]",
               "tags": "[parameters('tags')]",
@@ -959,6 +982,24 @@
             {
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
+              "name": "[format('{0}/{1}', format('{0}-file-private-endpoint', parameters('storageName')), format('{0}-file-dns-group', parameters('storageName')))]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "file-config",
+                    "properties": {
+                      "privateDnsZoneId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('coreResourceGroupName')), 'Microsoft.Network/privateDnsZones', format('privatelink.file.{0}', environment().suffixes.storage))]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-file-private-endpoint', parameters('storageName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-private-endpoint', parameters('cosmosDbName')), format('{0}-dns-group', parameters('cosmosDbName')))]",
               "properties": {
                 "privateDnsZoneConfigs": [
@@ -987,6 +1028,10 @@
             "storagePrivateEndpointId": {
               "type": "string",
               "value": "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-private-endpoint', parameters('storageName')))]"
+            },
+            "storageFilePrivateEndpointId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-file-private-endpoint', parameters('storageName')))]"
             },
             "cosmosPrivateEndpointId": {
               "type": "string",
