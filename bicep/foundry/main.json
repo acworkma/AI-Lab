@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.40.2.10011",
-      "templateHash": "5636222421005594538"
+      "templateHash": "4257114999957863530"
     }
   },
   "parameters": {
@@ -72,14 +72,14 @@
     },
     "privateEndpointSubnetName": {
       "type": "string",
-      "defaultValue": "snet-foundry-pe",
+      "defaultValue": "PrivateEndpointSubnet",
       "metadata": {
         "description": "Private Endpoint subnet name for Foundry resources"
       }
     },
     "privateEndpointSubnetPrefix": {
       "type": "string",
-      "defaultValue": "10.1.0.96/27",
+      "defaultValue": "10.1.0.0/26",
       "metadata": {
         "description": "Private Endpoint subnet address prefix"
       }

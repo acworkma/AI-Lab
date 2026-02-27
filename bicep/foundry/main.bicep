@@ -38,10 +38,10 @@ param agentSubnetName string = 'snet-foundry-agent'
 param agentSubnetPrefix string = '10.1.0.128/25'
 
 @description('Private Endpoint subnet name for Foundry resources')
-param privateEndpointSubnetName string = 'snet-foundry-pe'
+param privateEndpointSubnetName string = 'PrivateEndpointSubnet'
 
 @description('Private Endpoint subnet address prefix')
-param privateEndpointSubnetPrefix string = '10.1.0.96/27'
+param privateEndpointSubnetPrefix string = '10.1.0.0/26'
 
 @description('Additional custom tags')
 param tags object = {}
@@ -225,7 +225,7 @@ module formatProjectWorkspaceId '../modules/foundry-format-project-workspace-id.
 }
 
 module addAccountCapabilityHost '../modules/foundry-add-account-capability-host.bicep' = {
-  name: 'foundry-account-capability-host'
+  name: 'foundry-account-capability-host-${substring(uniqueString(deployment().name), 0, 6)}'
   scope: foundryResourceGroup
   params: {
     accountName: foundryAccount.outputs.accountName

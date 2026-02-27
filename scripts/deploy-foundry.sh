@@ -107,6 +107,46 @@ check_prerequisites() {
     done
 }
 
+ensure_foundry_dns_zones() {
+    log_info "Ensuring Foundry private DNS zones exist in core resource group..."
+
+    local core_rg
+    core_rg=$(jq -r '.parameters.coreResourceGroupName.value // "rg-ai-core"' "$PARAMETER_FILE")
+    local shared_vnet
+    shared_vnet=$(jq -r '.parameters.sharedVnetName.value // "vnet-ai-shared"' "$PARAMETER_FILE")
+
+    local vnet_id
+    vnet_id=$(az network vnet show -g "$core_rg" -n "$shared_vnet" --query id -o tsv)
+
+    local zones=(
+      "privatelink.services.ai.azure.com"
+      "privatelink.openai.azure.com"
+      "privatelink.cognitiveservices.azure.com"
+      "privatelink.search.windows.net"
+      "privatelink.documents.azure.com"
+    )
+
+    for zone in "${zones[@]}"; do
+        if ! az network private-dns zone show -g "$core_rg" -n "$zone" >/dev/null 2>&1; then
+            log_warning "Creating missing DNS zone: $zone"
+            az network private-dns zone create -g "$core_rg" -n "$zone" >/dev/null
+        fi
+
+        local link_name="${shared_vnet}-link"
+        if ! az network private-dns link vnet show -g "$core_rg" -z "$zone" -n "$link_name" >/dev/null 2>&1; then
+            log_warning "Creating missing DNS zone link for $zone"
+            az network private-dns link vnet create \
+              -g "$core_rg" \
+              -z "$zone" \
+              -n "$link_name" \
+              -v "$vnet_id" \
+              --registration-enabled false >/dev/null
+        fi
+
+        log_success "DNS zone ready: $zone"
+    done
+}
+
 run_whatif() {
     if [ "$SKIP_WHATIF" = true ]; then
         log_warning "Skipping what-if analysis"
@@ -185,6 +225,7 @@ post_steps() {
 
 main() {
     check_prerequisites
+    ensure_foundry_dns_zones
     run_whatif
     confirm_deployment
     deploy

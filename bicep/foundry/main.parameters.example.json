@@ -27,10 +27,10 @@
       "value": "10.1.0.128/25"
     },
     "privateEndpointSubnetName": {
-      "value": "snet-foundry-pe"
+      "value": "PrivateEndpointSubnet"
     },
     "privateEndpointSubnetPrefix": {
-      "value": "10.1.0.96/27"
+      "value": "10.1.0.0/26"
     },
     "foundryAccountPrefix": {
       "value": "fdryailab"
