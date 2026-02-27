@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PARAMETER_FILE="bicep/foundry/main.parameters.json"
 RUN_OPS=false
+STRICT=false
+VALIDATION_PASSED=true
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -23,6 +25,9 @@ log_success() {
 
 log_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
+    if [ "$STRICT" = true ]; then
+      VALIDATION_PASSED=false
+    fi
 }
 
 log_error() {
@@ -31,11 +36,12 @@ log_error() {
 
 usage() {
     cat << EOF
-Usage: $0 [--parameter-file <path>] [--ops]
+Usage: $0 [--parameter-file <path>] [--ops] [--strict]
 
 Options:
   -p, --parameter-file PATH   Path to parameter file
   --ops                       Run deep operational checks after baseline validation
+  --strict                    Treat warnings as failures
 EOF
     exit 1
 }
@@ -48,6 +54,10 @@ while [[ $# -gt 0 ]]; do
         ;;
       --ops)
         RUN_OPS=true
+        shift
+        ;;
+      --strict)
+        STRICT=true
         shift
         ;;
       -h|--help)
@@ -191,5 +201,14 @@ log_success "Foundry Phase 2 validation completed"
 
 if [ "$RUN_OPS" = true ]; then
   log_info "Running operational validation (--ops)..."
-  "${SCRIPT_DIR}/validate-foundry-ops.sh" --parameter-file "$PARAMETER_FILE"
+  OPS_ARGS=(--parameter-file "$PARAMETER_FILE")
+  if [ "$STRICT" = true ]; then
+    OPS_ARGS+=(--strict)
+  fi
+  "${SCRIPT_DIR}/validate-foundry-ops.sh" "${OPS_ARGS[@]}"
+fi
+
+if [ "$VALIDATION_PASSED" = false ]; then
+  log_error "Foundry baseline validation failed in strict mode due to warnings"
+  exit 1
 fi

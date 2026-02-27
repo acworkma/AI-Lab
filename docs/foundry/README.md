@@ -42,6 +42,7 @@ Current implementation status:
 ```bash
 ./scripts/validate-foundry.sh
 ./scripts/validate-foundry.sh --ops
+./scripts/validate-foundry.sh --ops --strict
 ./scripts/validate-foundry-dns.sh <fqdn1> <fqdn2> ...
 ```
 
@@ -59,6 +60,10 @@ Operational (`--ops`) checks include:
 - RBAC assignments on Search/Storage/Cosmos account scope
 - Post-capability-host RBAC signals (Storage Data Owner, Cosmos SQL role assignment)
 - Private endpoint provisioning state consistency
+
+Strict mode (`--strict`):
+- Treats warnings as failures for CI/pipeline enforcement
+- Passes strict behavior through to operational checks when `--ops` is used
 
 ## Cleanup (Strict Learn/Sample Order)
 
