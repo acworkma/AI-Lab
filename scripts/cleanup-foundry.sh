@@ -40,9 +40,28 @@ log_error() {
   echo -e "${RED}[ERROR]${NC} $1"
 }
 
+format_duration() {
+  local total_seconds="$1"
+  local hours=$((total_seconds / 3600))
+  local minutes=$(((total_seconds % 3600) / 60))
+  local seconds=$((total_seconds % 60))
+  printf "%02dh:%02dm:%02ds" "$hours" "$minutes" "$seconds"
+}
+
+step_timer_start() {
+  date +%s
+}
+
+step_timer_end() {
+  local started_at="$1"
+  local ended_at
+  ended_at=$(date +%s)
+  echo $((ended_at - started_at))
+}
+
 usage() {
   cat << EOF
-Usage: $0 --subscription-id <id> --account-name <name> --project-caphost-name <name> --account-caphost-name <name> [options]
+Usage: $0 --subscription-id <id> --account-name <name> [options]
 
 Options:
   --foundry-rg <name>        Foundry resource group (default: rg-ai-foundry)
@@ -115,8 +134,6 @@ done
 
 [ -n "$SUBSCRIPTION_ID" ] || usage
 [ -n "$ACCOUNT_NAME" ] || usage
-[ -n "$PROJECT_CAPHOST_NAME" ] || usage
-[ -n "$ACCOUNT_CAPHOST_NAME" ] || usage
 
 command -v az >/dev/null 2>&1 || { log_error "Azure CLI not found"; exit 1; }
 
@@ -143,34 +160,87 @@ if [ "$FORCE" != true ]; then
   fi
 fi
 
+CLEANUP_STARTED_AT=$(date +%s)
+
 log_info "Step 1/6: Delete project capability host first"
-"${SCRIPT_DIR}/delete-foundry-caphost.sh" \
-  --subscription-id "$SUBSCRIPTION_ID" \
-  --resource-group "$FOUNDRY_RG" \
-  --account-name "$ACCOUNT_NAME" \
-  --project-name "$PROJECT_NAME" \
-  --caphost-name "$PROJECT_CAPHOST_NAME"
+if [ -n "$PROJECT_CAPHOST_NAME" ]; then
+  STEP_STARTED_AT=$(step_timer_start)
+  "${SCRIPT_DIR}/delete-foundry-caphost.sh" \
+    --subscription-id "$SUBSCRIPTION_ID" \
+    --resource-group "$FOUNDRY_RG" \
+    --account-name "$ACCOUNT_NAME" \
+    --project-name "$PROJECT_NAME" \
+    --caphost-name "$PROJECT_CAPHOST_NAME"
+  log_success "Step 1/6 complete (elapsed=$(format_duration "$(step_timer_end "$STEP_STARTED_AT")"))"
+else
+  log_warning "Project capability host name not provided; skipping Step 1/6"
+fi
 
 log_info "Step 2/6: Delete account capability host"
-"${SCRIPT_DIR}/delete-foundry-caphost.sh" \
-  --subscription-id "$SUBSCRIPTION_ID" \
-  --resource-group "$FOUNDRY_RG" \
-  --account-name "$ACCOUNT_NAME" \
-  --caphost-name "$ACCOUNT_CAPHOST_NAME"
+if [ -n "$ACCOUNT_CAPHOST_NAME" ]; then
+  STEP_STARTED_AT=$(step_timer_start)
+  "${SCRIPT_DIR}/delete-foundry-caphost.sh" \
+    --subscription-id "$SUBSCRIPTION_ID" \
+    --resource-group "$FOUNDRY_RG" \
+    --account-name "$ACCOUNT_NAME" \
+    --caphost-name "$ACCOUNT_CAPHOST_NAME"
+  log_success "Step 2/6 complete (elapsed=$(format_duration "$(step_timer_end "$STEP_STARTED_AT")"))"
+else
+  log_warning "Account capability host name not provided; skipping Step 2/6"
+fi
 
-log_info "Step 3/6: Delete Foundry account"
-az cognitiveservices account delete \
+log_info "Step 3/7: Delete Foundry project"
+STEP_STARTED_AT=$(step_timer_start)
+PROJECT_RESOURCE_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${FOUNDRY_RG}/providers/Microsoft.CognitiveServices/accounts/${ACCOUNT_NAME}/projects/${PROJECT_NAME}"
+if az resource show --ids "$PROJECT_RESOURCE_ID" --api-version 2025-04-01-preview >/dev/null 2>&1; then
+  az resource delete --ids "$PROJECT_RESOURCE_ID" --api-version 2025-04-01-preview >/dev/null
+
+  max_project_wait=600
+  project_interval=10
+  project_elapsed=0
+  while [ "$project_elapsed" -lt "$max_project_wait" ]; do
+    if ! az resource show --ids "$PROJECT_RESOURCE_ID" --api-version 2025-04-01-preview >/dev/null 2>&1; then
+      log_success "Foundry project deleted"
+      break
+    fi
+    sleep "$project_interval"
+    project_elapsed=$((project_elapsed + project_interval))
+  done
+
+  if [ "$project_elapsed" -ge "$max_project_wait" ]; then
+    log_warning "Timed out waiting for project deletion; continuing"
+  fi
+else
+  log_warning "Foundry project not found; treating as already deleted"
+fi
+log_success "Step 3/7 complete (elapsed=$(format_duration "$(step_timer_end "$STEP_STARTED_AT")"))"
+
+log_info "Step 4/7: Delete Foundry account"
+STEP_STARTED_AT=$(step_timer_start)
+if az cognitiveservices account show --name "$ACCOUNT_NAME" --resource-group "$FOUNDRY_RG" >/dev/null 2>&1; then
+  az cognitiveservices account delete \
+    --name "$ACCOUNT_NAME" \
+    --resource-group "$FOUNDRY_RG" >/dev/null
+  log_success "Foundry account delete requested"
+else
+  log_warning "Foundry account not found; treating as already deleted"
+fi
+log_success "Step 4/7 complete (elapsed=$(format_duration "$(step_timer_end "$STEP_STARTED_AT")"))"
+
+log_info "Step 5/7: Purge Foundry account (required for complete unlink)"
+STEP_STARTED_AT=$(step_timer_start)
+if az cognitiveservices account purge \
   --name "$ACCOUNT_NAME" \
   --resource-group "$FOUNDRY_RG" \
-  --yes >/dev/null
+  --location "$LOCATION" >/dev/null 2>&1; then
+  log_success "Foundry account purge requested"
+else
+  log_warning "Foundry account purge returned non-success (possibly already purged/deleted); continuing"
+fi
+log_success "Step 5/7 complete (elapsed=$(format_duration "$(step_timer_end "$STEP_STARTED_AT")"))"
 
-log_info "Step 4/6: Purge Foundry account (required for complete unlink)"
-az cognitiveservices account purge \
-  --name "$ACCOUNT_NAME" \
-  --resource-group "$FOUNDRY_RG" \
-  --location "$LOCATION" >/dev/null
-
-log_info "Step 5/6: Wait for service unlink to complete (up to 20 minutes)"
+log_info "Step 6/7: Wait for service unlink to complete (up to 20 minutes)"
+STEP_STARTED_AT=$(step_timer_start)
 max_wait=1200
 interval=30
 elapsed=0
@@ -195,14 +265,18 @@ done
 if [ "$elapsed" -ge "$max_wait" ]; then
   log_warning "Timed out waiting for full unlink. Continue cautiously."
 fi
+log_success "Step 6/7 complete (elapsed=$(format_duration "$(step_timer_end "$STEP_STARTED_AT")"))"
 
-log_info "Step 6/6: Delete Foundry resource group"
+log_info "Step 7/7: Delete Foundry resource group"
+STEP_STARTED_AT=$(step_timer_start)
 if az group show --name "$FOUNDRY_RG" >/dev/null 2>&1; then
   az group delete --name "$FOUNDRY_RG" --yes --no-wait >/dev/null
-  log_success "Foundry resource group deletion started"
+  az group wait --deleted --name "$FOUNDRY_RG" --interval 20 --timeout 3600 >/dev/null
+  log_success "Foundry resource group deleted"
 else
   log_warning "Foundry resource group not found: $FOUNDRY_RG"
 fi
+log_success "Step 7/7 complete (elapsed=$(format_duration "$(step_timer_end "$STEP_STARTED_AT")"))"
 
 if [ "$DELETE_NETWORK" = true ]; then
   log_info "Deleting Foundry agent subnet from shared VNet"
@@ -213,3 +287,5 @@ else
 fi
 
 log_success "Foundry cleanup flow completed"
+TOTAL_ELAPSED=$(step_timer_end "$CLEANUP_STARTED_AT")
+log_success "Total cleanup elapsed=$(format_duration "$TOTAL_ELAPSED")"

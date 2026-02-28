@@ -16,8 +16,20 @@ log_success() {
   echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
+log_warning() {
+  echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
 log_error() {
   echo -e "${RED}[ERROR]${NC} $1"
+}
+
+format_duration() {
+  local total_seconds="$1"
+  local hours=$((total_seconds / 3600))
+  local minutes=$(((total_seconds % 3600) / 60))
+  local seconds=$((total_seconds % 60))
+  printf "%02dh:%02dm:%02ds" "$hours" "$minutes" "$seconds"
 }
 
 usage() {
@@ -86,26 +98,75 @@ else
   log_info "Scope: account capability host (${CAPHOST_NAME})"
 fi
 
+EXIST_STATUS=$(curl -s \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -o /tmp/foundry-caphost-get-response.json \
+  -w "%{http_code}" \
+  "${API_URL}")
+
+if [ "$EXIST_STATUS" = "404" ]; then
+  log_warning "Capability host not found; treating as already deleted"
+  rm -f /tmp/foundry-caphost-get-response.json
+  exit 0
+fi
+
+if [ "$EXIST_STATUS" != "200" ]; then
+  log_error "Could not verify capability host state (HTTP ${EXIST_STATUS})"
+  cat /tmp/foundry-caphost-get-response.json
+  rm -f /tmp/foundry-caphost-get-response.json
+  exit 1
+fi
+
+rm -f /tmp/foundry-caphost-get-response.json
+
 log_info "Deleting capability host: ${CAPHOST_NAME}"
 RESPONSE_HEADERS=$(mktemp)
 
-curl -X DELETE \
+HTTP_STATUS=$(curl -X DELETE \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H "Content-Type: application/json" \
   -D "${RESPONSE_HEADERS}" \
   -s \
-  "${API_URL}" >/dev/null
+  -o /tmp/foundry-caphost-delete-response.json \
+  -w "%{http_code}" \
+  "${API_URL}")
+
+if [ "$HTTP_STATUS" = "404" ]; then
+  log_warning "Capability host not found; treating as already deleted"
+  rm -f "${RESPONSE_HEADERS}" /tmp/foundry-caphost-delete-response.json
+  exit 0
+fi
+
+if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "204" ]; then
+  log_success "Capability host deletion completed"
+  rm -f "${RESPONSE_HEADERS}" /tmp/foundry-caphost-delete-response.json
+  exit 0
+fi
+
+if [ "$HTTP_STATUS" != "202" ]; then
+  log_error "Capability host deletion request failed (HTTP ${HTTP_STATUS})"
+  cat /tmp/foundry-caphost-delete-response.json
+  rm -f "${RESPONSE_HEADERS}" /tmp/foundry-caphost-delete-response.json
+  exit 1
+fi
 
 OPERATION_URL=$(grep -i "Azure-AsyncOperation" "${RESPONSE_HEADERS}" | cut -d' ' -f2 | tr -d '\r')
 rm -f "${RESPONSE_HEADERS}"
+rm -f /tmp/foundry-caphost-delete-response.json
 
 [ -n "$OPERATION_URL" ] || { log_error "Could not find async operation URL"; exit 1; }
 
 STATUS="Deleting"
-while [ "$STATUS" = "Deleting" ]; do
+POLL_START_TS=$(date +%s)
+while [ "$STATUS" = "Deleting" ] || [ "$STATUS" = "Creating" ] || [ "$STATUS" = "Running" ] || [ "$STATUS" = "InProgress" ]; do
   ACCESS_TOKEN=$(az account get-access-token --query accessToken -o tsv)
   OP_RESPONSE=$(curl -s -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json" "${OPERATION_URL}")
   ERROR_CODE=$(echo "$OP_RESPONSE" | jq -r '.error.code // empty')
+  if [ "$ERROR_CODE" = "ResourceNotFound" ] || [ "$ERROR_CODE" = "NotFound" ]; then
+    log_warning "Capability host already deleted"
+    exit 0
+  fi
   if [ "$ERROR_CODE" = "TransientError" ]; then
     sleep 10
     continue
@@ -113,9 +174,16 @@ while [ "$STATUS" = "Deleting" ]; do
 
   STATUS=$(echo "$OP_RESPONSE" | jq -r '.status // empty')
   [ -n "$STATUS" ] || { log_error "Could not determine operation status"; echo "$OP_RESPONSE"; exit 1; }
-  log_info "Current status: $STATUS"
 
-  if [ "$STATUS" = "Deleting" ]; then
+  NOW_TS=$(date +%s)
+  ELAPSED=$((NOW_TS - POLL_START_TS))
+  if [ "$STATUS" = "Creating" ] || [ "$STATUS" = "Running" ] || [ "$STATUS" = "InProgress" ] || [ "$STATUS" = "Deleting" ]; then
+    log_info "Delete operation in progress (service status='${STATUS}', elapsed=$(format_duration "$ELAPSED"))"
+  else
+    log_info "Delete operation status='${STATUS}' (elapsed=$(format_duration "$ELAPSED"))"
+  fi
+
+  if [ "$STATUS" = "Deleting" ] || [ "$STATUS" = "Creating" ] || [ "$STATUS" = "Running" ] || [ "$STATUS" = "InProgress" ]; then
     sleep 10
   fi
 done
