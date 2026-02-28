@@ -222,7 +222,8 @@ post_steps() {
     echo "  2. Run operational validation: ./scripts/validate-foundry.sh --ops"
     echo "  3. Run strict CI-style validation: ./scripts/validate-foundry.sh --ops --strict"
     echo "  4. Run DNS validation from VPN-connected host: ./scripts/validate-foundry-dns.sh <fqdn...>"
-    echo "  5. Use cleanup flow when needed: ./scripts/cleanup-foundry.sh ..."
+    echo "  5. Run model inference probe: ./scripts/test-foundry-inference.sh --prompt \"Hello from private Foundry\""
+    echo "  6. Use cleanup flow when needed: ./scripts/cleanup-foundry.sh ..."
 }
 
 main() {

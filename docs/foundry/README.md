@@ -40,6 +40,7 @@ This implementation includes:
 ./scripts/validate-foundry.sh --ops
 ./scripts/validate-foundry.sh --ops --strict
 ./scripts/validate-foundry-dns.sh <fqdn1> <fqdn2> ...
+./scripts/test-foundry-inference.sh --prompt "Say hello from private Foundry"
 ```
 
 Validation script checks include:
@@ -56,6 +57,12 @@ Operational (`--ops`) checks include:
 - RBAC assignments on Search/Storage/Cosmos account scope
 - Post-capability-host RBAC signals (Storage Data Owner, Cosmos SQL role assignment)
 - Private endpoint provisioning state consistency
+
+Inference probe checks (`test-foundry-inference.sh`):
+- Auto-discovers Foundry account + model deployment (or accepts explicit overrides)
+- Verifies endpoint DNS resolution (private IP by default)
+- Acquires Azure AD token and calls chat completions data-plane endpoint
+- Prints model response and exits non-zero on network/auth/inference errors
 
 Strict mode (`--strict`):
 - Treats warnings as failures for CI/pipeline enforcement
