@@ -8,11 +8,11 @@ FOUNDRY_RG="rg-ai-foundry"
 CORE_RG="rg-ai-core"
 VNET_NAME="vnet-ai-shared"
 AGENT_SUBNET="snet-foundry-agent"
-PE_SUBNET="snet-foundry-pe"
 
 SUBSCRIPTION_ID=""
 LOCATION="eastus2"
 ACCOUNT_NAME=""
+PROJECT_NAME=""
 PROJECT_CAPHOST_NAME=""
 ACCOUNT_CAPHOST_NAME=""
 DELETE_NETWORK=false
@@ -49,9 +49,8 @@ Options:
   --core-rg <name>           Core resource group (default: rg-ai-core)
   --vnet-name <name>         Shared VNet name (default: vnet-ai-shared)
   --agent-subnet <name>      Foundry agent subnet name (default: snet-foundry-agent)
-  --pe-subnet <name>         Foundry private endpoint subnet name (default: snet-foundry-pe)
   --location <azure-region>  Region for account purge (default: eastus2)
-  --delete-network           Delete Foundry subnets after account purge and unlink
+  --delete-network           Delete Foundry agent subnet after account purge and unlink
   --force                    Skip confirmation prompt
   -h, --help                 Show help
 EOF
@@ -92,10 +91,6 @@ while [[ $# -gt 0 ]]; do
       AGENT_SUBNET="$2"
       shift 2
       ;;
-    --pe-subnet)
-      PE_SUBNET="$2"
-      shift 2
-      ;;
     --location)
       LOCATION="$2"
       shift 2
@@ -125,6 +120,19 @@ done
 
 command -v az >/dev/null 2>&1 || { log_error "Azure CLI not found"; exit 1; }
 
+PROJECT_FULL_NAME=$(az resource list \
+  -g "$FOUNDRY_RG" \
+  --resource-type "Microsoft.CognitiveServices/accounts/projects" \
+  --query "[0].name" -o tsv 2>/dev/null || true)
+
+if [[ "$PROJECT_FULL_NAME" == */* ]]; then
+  PROJECT_NAME="${PROJECT_FULL_NAME#*/}"
+else
+  PROJECT_NAME="$PROJECT_FULL_NAME"
+fi
+
+[ -n "$PROJECT_NAME" ] || { log_error "Could not discover Foundry project name in $FOUNDRY_RG"; exit 1; }
+
 if [ "$FORCE" != true ]; then
   log_warning "This will delete and purge Foundry account resources."
   log_warning "Cleanup order is strict: project caphost -> account caphost -> account delete/purge -> optional subnet delete"
@@ -140,6 +148,7 @@ log_info "Step 1/6: Delete project capability host first"
   --subscription-id "$SUBSCRIPTION_ID" \
   --resource-group "$FOUNDRY_RG" \
   --account-name "$ACCOUNT_NAME" \
+  --project-name "$PROJECT_NAME" \
   --caphost-name "$PROJECT_CAPHOST_NAME"
 
 log_info "Step 2/6: Delete account capability host"
@@ -158,7 +167,7 @@ az cognitiveservices account delete \
 log_info "Step 4/6: Purge Foundry account (required for complete unlink)"
 az cognitiveservices account purge \
   --name "$ACCOUNT_NAME" \
-  --resource-group "$FOUNDARY_RG" \
+  --resource-group "$FOUNDRY_RG" \
   --location "$LOCATION" >/dev/null
 
 log_info "Step 5/6: Wait for service unlink to complete (up to 20 minutes)"
@@ -196,12 +205,11 @@ else
 fi
 
 if [ "$DELETE_NETWORK" = true ]; then
-  log_info "Deleting Foundry subnets from shared VNet"
+  log_info "Deleting Foundry agent subnet from shared VNet"
   az network vnet subnet delete -g "$CORE_RG" --vnet-name "$VNET_NAME" -n "$AGENT_SUBNET" >/dev/null || true
-  az network vnet subnet delete -g "$CORE_RG" --vnet-name "$VNET_NAME" -n "$PE_SUBNET" >/dev/null || true
-  log_success "Foundry subnets deletion requested"
+  log_success "Foundry agent subnet deletion requested"
 else
-  log_info "Subnet deletion skipped. Re-run with --delete-network to remove subnets."
+  log_info "Network deletion skipped. Re-run with --delete-network to remove agent subnet."
 fi
 
 log_success "Foundry cleanup flow completed"

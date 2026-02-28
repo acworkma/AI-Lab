@@ -75,7 +75,7 @@ Strict mode (`--strict`):
 3. Delete and purge account
 4. Wait for unlink completion (up to ~20 minutes)
 5. Delete Foundry resource group
-6. Delete Foundry subnets only after unlink (optional)
+6. Delete Foundry agent subnet only after unlink (optional)
 
 ```bash
 ./scripts/cleanup-foundry.sh \

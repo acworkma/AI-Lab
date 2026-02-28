@@ -22,7 +22,7 @@ log_error() {
 
 usage() {
   cat << EOF
-Usage: $0 --subscription-id <id> --resource-group <rg> --account-name <name> --caphost-name <name>
+Usage: $0 --subscription-id <id> --resource-group <rg> --account-name <name> --caphost-name <name> [--project-name <name>]
 EOF
   exit 1
 }
@@ -31,6 +31,7 @@ SUBSCRIPTION_ID=""
 RESOURCE_GROUP=""
 ACCOUNT_NAME=""
 CAPHOST_NAME=""
+PROJECT_NAME=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,6 +49,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --caphost-name)
       CAPHOST_NAME="$2"
+      shift 2
+      ;;
+    --project-name)
+      PROJECT_NAME="$2"
       shift 2
       ;;
     -h|--help)
@@ -73,7 +78,13 @@ log_info "Getting Azure access token..."
 ACCESS_TOKEN=$(az account get-access-token --query accessToken -o tsv)
 [ -n "$ACCESS_TOKEN" ] || { log_error "Failed to get access token"; exit 1; }
 
-API_URL="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.CognitiveServices/accounts/${ACCOUNT_NAME}/capabilityHosts/${CAPHOST_NAME}?api-version=2025-04-01-preview"
+if [ -n "$PROJECT_NAME" ]; then
+  API_URL="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.CognitiveServices/accounts/${ACCOUNT_NAME}/projects/${PROJECT_NAME}/capabilityHosts/${CAPHOST_NAME}?api-version=2025-04-01-preview"
+  log_info "Scope: project capability host (${PROJECT_NAME}/${CAPHOST_NAME})"
+else
+  API_URL="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.CognitiveServices/accounts/${ACCOUNT_NAME}/capabilityHosts/${CAPHOST_NAME}?api-version=2025-04-01-preview"
+  log_info "Scope: account capability host (${CAPHOST_NAME})"
+fi
 
 log_info "Deleting capability host: ${CAPHOST_NAME}"
 RESPONSE_HEADERS=$(mktemp)
