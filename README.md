@@ -78,6 +78,9 @@ Infrastructure projects deploy foundational capabilities that other projects con
 - **[Private Azure Kubernetes Service](docs/aks/README.md)**  
   Deploy a private AKS cluster with 3 nodes across availability zones, Azure Linux (CBL-Mariner) OS, Azure CNI Overlay networking, and ACR integration via managed identity. Accessible only via VPN.
 
+- **[Private Azure Container Apps](docs/aca/README.md)**  
+  Deploy a VNet-injected Container Apps environment with private endpoint, internal-only ingress, and Log Analytics integration for secure serverless container hosting. Consumption workload profile, accessible only via VPN.
+
 - **[Private Foundry](docs/foundry/README.md)**  
   Deploy Private Foundry network-secured infrastructure with delegated agent subnet, private endpoint subnet, centralized private DNS integration, and strict capability-host/account purge cleanup flow.
 

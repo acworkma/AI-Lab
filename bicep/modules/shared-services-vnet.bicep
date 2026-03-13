@@ -12,7 +12,7 @@ param vnetName string
 param location string
 
 @description('VNet address space (CIDR notation)')
-param vnetAddressPrefix string = '10.1.0.0/24'
+param vnetAddressPrefix string = '10.1.0.0/22'
 
 @description('Private endpoint subnet address prefix')
 param privateEndpointSubnetPrefix string = '10.1.0.0/26'
@@ -28,6 +28,12 @@ param enableApimSubnet bool = false
 
 @description('APIM integration subnet address prefix (minimum /27, recommended /26)')
 param apimSubnetPrefix string = '10.1.0.96/27'
+
+@description('Enable ACA environment subnet')
+param enableAcaSubnet bool = false
+
+@description('ACA environment subnet address prefix (minimum /23 for consumption workload)')
+param acaSubnetPrefix string = '10.1.2.0/23'
 
 @description('Tags to apply to resources')
 param tags object = {}
@@ -298,8 +304,28 @@ var apimSubnet = enableApimSubnet ? [
   }
 ] : []
 
+// ACA subnet configuration (conditionally added)
+var acaSubnet = enableAcaSubnet ? [
+  {
+    name: 'AcaEnvironmentSubnet'
+    properties: {
+      addressPrefix: acaSubnetPrefix
+      delegations: [
+        {
+          name: 'delegation-app-environments'
+          properties: {
+            serviceName: 'Microsoft.App/environments'
+          }
+        }
+      ]
+      privateEndpointNetworkPolicies: 'Enabled'
+      privateLinkServiceNetworkPolicies: 'Enabled'
+    }
+  }
+] : []
+
 // Combined subnets
-var allSubnets = concat(baseSubnets, apimSubnet)
+var allSubnets = concat(baseSubnets, apimSubnet, acaSubnet)
 
 // Shared Services VNet - First spoke for shared infrastructure
 // Address space: 10.1.0.0/24 provides 256 addresses
@@ -376,3 +402,12 @@ output apimSubnetName string = enableApimSubnet ? 'ApimIntegrationSubnet' : ''
 
 @description('APIM subnet address prefix (empty if not enabled)')
 output apimSubnetPrefix string = enableApimSubnet ? apimSubnetPrefix : ''
+
+@description('Resource ID of the ACA environment subnet (empty if not enabled)')
+output acaSubnetId string = enableAcaSubnet ? resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'AcaEnvironmentSubnet') : ''
+
+@description('Name of the ACA environment subnet (empty if not enabled)')
+output acaSubnetName string = enableAcaSubnet ? 'AcaEnvironmentSubnet' : ''
+
+@description('ACA subnet address prefix (empty if not enabled)')
+output acaSubnetPrefix string = enableAcaSubnet ? acaSubnetPrefix : ''

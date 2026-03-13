@@ -1,0 +1,78 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "owner": {
+      "value": "your-name-or-team",
+      "metadata": {
+        "description": "Owner identifier for resource tagging (required)"
+      }
+    },
+    "environment": {
+      "value": "dev",
+      "metadata": {
+        "description": "Environment tag: dev, test, or prod"
+      }
+    },
+    "location": {
+      "value": "eastus2",
+      "metadata": {
+        "description": "Azure region (should match core infrastructure)"
+      }
+    },
+    "environmentName": {
+      "value": "cae-ai-lab",
+      "metadata": {
+        "description": "Container Apps Environment name"
+      }
+    },
+    "resourceGroupName": {
+      "value": "rg-ai-aca",
+      "metadata": {
+        "description": "Resource group for ACA (will be created)"
+      }
+    },
+    "coreResourceGroupName": {
+      "value": "rg-ai-core",
+      "metadata": {
+        "description": "Existing core infrastructure resource group"
+      }
+    },
+    "vnetName": {
+      "value": "vnet-ai-shared",
+      "metadata": {
+        "description": "Existing shared services VNet in core RG"
+      }
+    },
+    "acaSubnetName": {
+      "value": "AcaEnvironmentSubnet",
+      "metadata": {
+        "description": "Existing subnet for ACA environment (minimum /23)"
+      }
+    },
+    "privateEndpointSubnetName": {
+      "value": "PrivateEndpointSubnet",
+      "metadata": {
+        "description": "Existing subnet for private endpoints"
+      }
+    },
+    "zoneRedundant": {
+      "value": false,
+      "metadata": {
+        "description": "Enable zone redundancy (set true for prod)"
+      }
+    },
+    "existingLogAnalyticsWorkspaceId": {
+      "value": "",
+      "metadata": {
+        "description": "Optional: Existing Log Analytics workspace resource ID. Leave empty to create a new workspace."
+      }
+    },
+    "deployedBy": {
+      "value": "manual",
+      "metadata": {
+        "description": "Deployment method: manual or automation"
+      }
+    }
+  }
+}

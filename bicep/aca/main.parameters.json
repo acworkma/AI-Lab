@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "owner": {
+      "value": "ai-lab-team"
+    },
+    "environment": {
+      "value": "dev"
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "environmentName": {
+      "value": "cae-ai-lab"
+    },
+    "resourceGroupName": {
+      "value": "rg-ai-aca"
+    },
+    "coreResourceGroupName": {
+      "value": "rg-ai-core"
+    },
+    "vnetName": {
+      "value": "vnet-ai-shared"
+    },
+    "acaSubnetName": {
+      "value": "AcaEnvironmentSubnet"
+    },
+    "privateEndpointSubnetName": {
+      "value": "PrivateEndpointSubnet"
+    },
+    "zoneRedundant": {
+      "value": false
+    },
+    "existingLogAnalyticsWorkspaceId": {
+      "value": ""
+    },
+    "deployedBy": {
+      "value": "manual"
+    }
+  }
+}

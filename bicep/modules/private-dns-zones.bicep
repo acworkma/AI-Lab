@@ -237,6 +237,28 @@ resource cosmosDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLink
   }
 }
 
+// Private DNS Zone for Azure Container Apps
+resource acaDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+  name: 'privatelink.azurecontainerapps.io'
+  location: 'global'
+  tags: tags
+  properties: {}
+}
+
+// Link ACA DNS zone to shared services VNet
+resource acaDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  parent: acaDnsZone
+  name: '${vnetName}-link'
+  location: 'global'
+  tags: tags
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: vnetId
+    }
+  }
+}
+
 // Outputs for use by downstream deployments
 @description('Resource ID of the ACR private DNS zone')
 output acrDnsZoneId string = acrDnsZone.id
@@ -297,3 +319,9 @@ output cosmosDnsZoneId string = cosmosDnsZone.id
 
 @description('Name of the Cosmos private DNS zone')
 output cosmosDnsZoneName string = cosmosDnsZone.name
+
+@description('Resource ID of the ACA private DNS zone')
+output acaDnsZoneId string = acaDnsZone.id
+
+@description('Name of the ACA private DNS zone')
+output acaDnsZoneName string = acaDnsZone.name
