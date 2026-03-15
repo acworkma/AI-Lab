@@ -62,8 +62,19 @@ echo ""
 SUB_ID=$(az account show --query id -o tsv)
 BASE_URL="https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${APIM_RG}/providers/Microsoft.ApiManagement/service/${APIM_NAME}"
 
-# ─── Step 1: Create/update Backend ───
-echo "[1/3] Creating APIM backend: $BACKEND_NAME..."
+# ─── Step 1: Ensure API app identifier URI ───
+echo "[1/4] Ensuring Application ID URI is set on audience app..."
+CURRENT_URIS=$(az ad app show --id "$AUDIENCE_ID" --query identifierUris -o tsv 2>/dev/null || true)
+if echo "$CURRENT_URIS" | grep -q "api://${AUDIENCE_ID}"; then
+    echo "  Already set: api://${AUDIENCE_ID}"
+else
+    az ad app update --id "$AUDIENCE_ID" --identifier-uris "api://${AUDIENCE_ID}"
+    echo "  Set: api://${AUDIENCE_ID}"
+fi
+echo ""
+
+# ─── Step 2: Create/update Backend ───
+echo "[2/4] Creating APIM backend: $BACKEND_NAME..."
 az rest --method PUT \
     --url "${BASE_URL}/backends/${BACKEND_NAME}?api-version=${API_VERSION}" \
     --body "{\"properties\":{\"url\":\"${BACKEND_URL}\",\"protocol\":\"http\",\"description\":\"ACA-hosted MCP server backend\"}}" \
@@ -71,8 +82,8 @@ az rest --method PUT \
 
 echo ""
 
-# ─── Step 2: Create/update native MCP API ───
-echo "[2/3] Creating native MCP API: $API_NAME..."
+# ─── Step 3: Create/update native MCP API ───
+echo "[3/4] Creating native MCP API: $API_NAME..."
 
 if [ "$AUTO_APPROVE" = false ]; then
     # Check if API already exists
@@ -107,8 +118,8 @@ print(f'  BackendId: {p[\"backendId\"]}')
 
 echo ""
 
-# ─── Step 3: Apply JWT validation policy ───
-echo "[3/3] Applying JWT validation policy..."
+# ─── Step 4: Apply JWT validation policy ───
+echo "[4/4] Applying JWT validation policy..."
 
 POLICY_XML="<policies><inbound><base /><validate-azure-ad-token tenant-id=\\\"${TENANT_ID}\\\" header-name=\\\"Authorization\\\" failed-validation-httpcode=\\\"401\\\" failed-validation-error-message=\\\"Unauthorized. Access token is missing or invalid.\\\"><client-application-ids><application-id>${CLIENT_APP_ID}</application-id></client-application-ids><audiences><audience>${AUDIENCE_ID}</audience><audience>api://${AUDIENCE_ID}</audience></audiences></validate-azure-ad-token></inbound><backend><forward-request timeout=\\\"120\\\" buffer-response=\\\"false\\\" /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>"
 

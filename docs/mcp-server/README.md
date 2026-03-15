@@ -323,6 +323,10 @@ Copilot Studio connects to the APIM-hosted MCP endpoint using OAuth 2.0 (Manual 
 
 3. **Grant delegated permission** (`user_impersonation` on the API resource):
    ```bash
+   # Ensure the Application ID URI is set (required for api:// scopes)
+   az ad app update --id 6cb63aba-6d0d-4f06-957e-c584fdeb23d7 \
+     --identifier-uris "api://6cb63aba-6d0d-4f06-957e-c584fdeb23d7"
+
    az ad app permission add --id <agent-app-id> \
      --api 6cb63aba-6d0d-4f06-957e-c584fdeb23d7 \
      --api-permissions faa0043a-3d8e-472b-bbc3-69aa95408184=Scope
