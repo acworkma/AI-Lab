@@ -1,35 +1,24 @@
-# MCP Server on Azure Container Apps
+# MCP Server — ACA + APIM + Copilot Studio
 
-Deploy a demo MCP (Model Context Protocol) server as a container app in the private Azure Container Apps environment. The server exposes tools over streamable HTTP (SSE) transport, accessible only via VPN.
+Deploy a demo MCP (Model Context Protocol) server as a container app in the private Azure Container Apps environment, expose it publicly through Azure API Management with Entra ID JWT authentication, and connect it to Copilot Studio as an AI agent tool.
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  rg-ai-aca                                                   │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │ ACA Environment (cae-ai-lab)                         │   │
-│  │  ┌──────────────────────────────────────────────┐   │   │
-│  │  │ Container App: mcp-server                     │   │   │
-│  │  │  • Image: <acr>.azurecr.io/mcp-server:v1    │   │   │
-│  │  │  • Port: 3333 (streamable HTTP/SSE)          │   │   │
-│  │  │  • Ingress: internal-only                    │   │   │
-│  │  │  • Identity: system-assigned (AcrPull)       │   │   │
-│  │  └──────────────────────────────────────────────┘   │   │
-│  │  VNet-injected (10.1.2.0/23) | Internal ingress    │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-│  Private Endpoint → privatelink.azurecontainerapps.io       │
-└──────────────────────────────────────────────────────────────┘
-         ▲                              ▲
-         │ VPN                          │ AcrPull (managed identity)
-         │                              │
-    ┌────┴────┐                   ┌─────┴─────┐
-    │ Client  │                   │ rg-ai-acr │
-    │ (VPN)   │                   │ Private   │
-    └─────────┘                   │ ACR       │
-                                  └───────────┘
+┌──────────────┐    OAuth 2.0     ┌──────────────────┐    VNet routing    ┌──────────────────┐
+│  Copilot     │   (Entra ID)    │   APIM Gateway   │                   │  ACA Environment │
+│  Studio      │ ───────────────►│   (public)       │ ─────────────────►│  (private VNet)  │
+│              │                 │                  │                   │                  │
+│  Agent ID:   │ ◄───────────────│  JWT validation  │ ◄─────────────────│  MCP Server      │
+│  b159da1b    │   SSE stream    │  SSE passthrough │   SSE stream      │  port 3333       │
+└──────────────┘                 └──────────────────┘                   └──────────────────┘
+       │                                │                                       ▲
+       │                                │                                       │ AcrPull
+       │                          rg-ai-apim                                    │
+       │                       apim-ai-lab-0115                          ┌──────┴───────┐
+       │                                                                 │  rg-ai-acr   │
+  Entra Agent Identity                                                   │  Private ACR │
+  (auto-provisioned)                                                     └──────────────┘
 ```
 
 ## MCP Tools
@@ -46,42 +35,55 @@ Deploy a demo MCP (Model Context Protocol) server as a container app in the priv
 | Core Infrastructure | `rg-ai-core` with VNet, DNS zones, VPN gateway |
 | ACA Environment | `rg-ai-aca` with `cae-ai-lab` (deploy via `scripts/deploy-aca.sh`) |
 | Private ACR | `rg-ai-acr` with container registry (deploy via `scripts/deploy-registry.sh`) |
-| VPN Connection | Required for ACR build, deployment, and validation |
+| APIM | `rg-ai-apim` with `apim-ai-lab-0115` (deploy via `scripts/deploy-apim.sh`) |
+| VPN Connection | Required for ACR image push and direct ACA validation |
+| Docker | Installed locally for building and pushing images over VPN |
 | Azure CLI | ≥2.50 with `containerapp` extension |
 | jq | For JSON parsing in scripts |
+| Copilot Studio | Microsoft 365 Copilot license with Frontier enabled |
 
 ## Quick Start
 
-### 1. Deploy
+### 1. Build and Deploy MCP Server to ACA
 
 ```bash
-# Build image and deploy container app (interactive)
-./scripts/deploy-mcp-server.sh
+# Build image locally and push to private ACR (requires Docker + VPN)
+sudo docker build -t mcp-server:v1 mcp-server/
+ACR_NAME=$(az acr list -g rg-ai-acr --query '[0].loginServer' -o tsv)
+TOKEN=$(az acr login --name $ACR_NAME --expose-token --query accessToken -o tsv)
+sudo docker login $ACR_NAME -u 00000000-0000-0000-0000-000000000000 -p $TOKEN
+sudo docker tag mcp-server:v1 $ACR_NAME/mcp-server:v1
+sudo docker push $ACR_NAME/mcp-server:v1
 
-# Automated deployment (CI/CD)
-./scripts/deploy-mcp-server.sh --auto-approve
-
-# Deploy with custom image tag
-./scripts/deploy-mcp-server.sh --tag v2
-
-# Redeploy existing image (skip build)
-./scripts/deploy-mcp-server.sh --skip-build
+# Deploy container app to ACA
+./scripts/deploy-mcp-server.sh --skip-build --auto-approve
 ```
 
-### 2. Validate
+### 2. Deploy MCP API to APIM
 
 ```bash
-# Infrastructure validation
+# Deploy API definition with JWT validation and SSE passthrough policies
+./scripts/deploy-mcp-api.sh
+```
+
+### 3. Validate
+
+```bash
+# Infrastructure validation (requires VPN)
 ./scripts/validate-mcp-server.sh
 
-# Functional test (MCP tool invocations)
+# Functional test — direct to ACA (requires VPN)
 python3 scripts/test-mcp-server.py
 
-# Functional test with explicit endpoint
-python3 scripts/test-mcp-server.py --endpoint https://mcp-server.<aca-domain>
+# End-to-end test — through APIM (public, requires Azure CLI login)
+bash scripts/test-mcp-api.sh
 ```
 
-### 3. Cleanup
+### 4. Connect Copilot Studio
+
+See [Copilot Studio Integration](#copilot-studio-integration) below.
+
+### 5. Cleanup
 
 ```bash
 # Delete container app only (preserves ACA environment)
@@ -113,12 +115,20 @@ AI-Lab/
 │   ├── requirements.txt                 # Python dependencies (mcp[cli])
 │   ├── Dockerfile                       # Container image definition
 │   └── .dockerignore                    # Build context exclusions
-├── bicep/modules/
-│   └── container-app.bicep              # Reusable container app module
+├── bicep/
+│   ├── modules/
+│   │   └── container-app.bicep          # Reusable container app module
+│   └── mcp-api/                         # APIM API definition
+│       ├── main.bicep                   # API + operations + policies
+│       └── policies/
+│           ├── jwt-validation.xml       # Entra ID JWT validation
+│           └── mcp-passthrough.xml      # SSE streaming passthrough
 ├── scripts/
-│   ├── deploy-mcp-server.sh             # Build + deploy orchestration
+│   ├── deploy-mcp-server.sh             # Build + deploy container app
+│   ├── deploy-mcp-api.sh               # Deploy API definition to APIM
 │   ├── validate-mcp-server.sh           # Infrastructure validation
-│   ├── test-mcp-server.py               # Functional validation (Python)
+│   ├── test-mcp-server.py               # Functional test (direct to ACA)
+│   ├── test-mcp-api.sh                  # End-to-end test (through APIM)
 │   └── cleanup-mcp-server.sh            # Container app cleanup
 ├── docs/mcp-server/
 │   └── README.md                        # This file
@@ -148,7 +158,7 @@ AI-Lab/
 | Min Replicas | 1 |
 | Max Replicas | 3 |
 | Target Port | 3333 |
-| Ingress | Internal only |
+| Ingress | External (VNet-injected environment, no public internet) |
 | Transport | HTTP (streamable HTTP/SSE) |
 | Identity | System-assigned managed identity |
 
@@ -168,19 +178,28 @@ The server uses **streamable HTTP** transport (MCP over HTTP with SSE):
 |-------|-------------|
 | App exists | Container app resource in Azure |
 | Provisioning state | Must be "Succeeded" |
-| Ingress config | Internal-only, port 3333 |
+| Ingress config | External, port 3333 |
 | Managed identity | System-assigned enabled |
 | AcrPull role | Role assigned on ACR |
 | DNS resolution | Resolves to private IP (VPN required) |
 | Active revision | Latest revision is running |
 
-### Functional (`test-mcp-server.py`)
+### Functional — Direct (`test-mcp-server.py`)
 
 | Test | Validates |
-|------|-----------|
+|------|----------|
 | MCP handshake | Initialize + initialized notification |
 | get_current_time | Returns valid ISO 8601 timestamp |
 | get_runtime_info | Returns hostname + version "1.0.0" |
+
+### Functional — Through APIM (`test-mcp-api.sh`)
+
+| Test | Validates |
+|------|----------|
+| Unauthenticated request | Returns 401 Unauthorized |
+| MCP initialize | Returns serverInfo with valid token |
+| tools/list | Returns get_current_time and get_runtime_info |
+| tools/call | Invokes get_current_time, returns timestamp |
 
 ## Troubleshooting
 
@@ -220,20 +239,9 @@ az containerapp show --name mcp-server --resource-group rg-ai-aca --query "ident
 az role assignment list --assignee <principal-id> --role AcrPull --all -o table
 ```
 
-## APIM Integration (Phase 2)
+## APIM Integration
 
-The MCP server is exposed publicly through Azure API Management with Entra ID JWT authentication.
-
-### Architecture
-
-```
-┌──────────────┐    HTTPS + JWT    ┌──────────────────┐    VNet routing    ┌──────────────────┐
-│   Client /   │ ───────────────► │   APIM Gateway   │ ────────────────► │   ACA (private)  │
-│ Copilot      │                  │   (public)       │                   │   MCP Server     │
-│ Studio       │ ◄─────────────── │   JWT validation │ ◄──────────────── │   port 3333      │
-└──────────────┘   SSE stream     │   SSE passthru   │   SSE stream      └──────────────────┘
-                                  └──────────────────┘
-```
+The MCP server is exposed publicly through Azure API Management with Entra ID JWT authentication using the `validate-azure-ad-token` policy.
 
 ### Public Endpoint
 
@@ -243,38 +251,84 @@ Authorization: Bearer <JWT from Entra ID>
 Content-Type: application/json
 ```
 
-### Deploy & Test
-
-```bash
-# Deploy MCP API to APIM
-./scripts/deploy-mcp-api.sh
-
-# End-to-end test through APIM
-bash scripts/test-mcp-api.sh
-```
-
 ### Authentication
 
-- **Provider**: Entra ID (Azure AD)
-- **App Registration**: `apim-ai-lab-0115-devportal` (`6cb63aba-6d0d-4f06-957e-c584fdeb23d7`)
-- **Token endpoint**: `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/token`
-- **Scope**: `6cb63aba-6d0d-4f06-957e-c584fdeb23d7/.default`
+| Setting | Value |
+|---------|-------|
+| Policy | `validate-azure-ad-token` |
+| Tenant | `38c1a7b0-f16b-45fd-a528-87d8720e868e` |
+| API Resource (audience) | `6cb63aba-6d0d-4f06-957e-c584fdeb23d7` (`apim-ai-lab-0115-devportal`) |
+| Authorized Client | `b159da1b-bbe5-461e-922a-ef22194461c3` (Demo Agent — Copilot Studio) |
+| Delegated Scope | `api://6cb63aba-6d0d-4f06-957e-c584fdeb23d7/user_impersonation` |
 
-### Files
+### SSE Streaming
 
-| File | Purpose |
-|------|--------|
-| `bicep/mcp-api/main.bicep` | API definition + operations + policies |
-| `bicep/mcp-api/policies/jwt-validation.xml` | Entra ID JWT validation |
-| `bicep/mcp-api/policies/mcp-passthrough.xml` | SSE streaming passthrough |
-| `scripts/deploy-mcp-api.sh` | Deploy API to APIM |
-| `scripts/test-mcp-api.sh` | End-to-end validation |
+The operation-level policy uses `<forward-request buffer-response="false" />` to ensure APIM does not buffer SSE responses. This is critical for MCP streamable HTTP transport.
 
-## Next Steps (Future Phases)
+## Copilot Studio Integration
 
-1. ~~**APIM Integration**~~ — ✅ Complete (Phase 2)
-2. **Copilot Studio** — Connect Copilot Studio to the APIM endpoint for AI agent tool use
-3. **Additional Tools** — Extend with Azure resource query tools, data lookup tools, etc.
+Copilot Studio connects to the APIM-hosted MCP endpoint using OAuth 2.0 (Manual mode). When you create an agent in Copilot Studio, it auto-provisions an **Entra Agent Identity** — a first-class identity type for AI agents (visible under Entra Admin Center → Agent ID → All agent identities).
+
+### Setup
+
+1. **Entra Agent Identity**: Copilot Studio auto-creates this when you build an agent. Record the Application (client) ID.
+
+2. **Add client secret** to the agent identity:
+   ```bash
+   az ad app credential reset --id <agent-app-id> --display-name "MCP APIM Access" --years 1
+   ```
+
+3. **Grant delegated permission** (`user_impersonation` on the API resource):
+   ```bash
+   az ad app permission add --id <agent-app-id> \
+     --api 6cb63aba-6d0d-4f06-957e-c584fdeb23d7 \
+     --api-permissions faa0043a-3d8e-472b-bbc3-69aa95408184=Scope
+   az ad app permission grant --id <agent-app-id> \
+     --api 6cb63aba-6d0d-4f06-957e-c584fdeb23d7 --scope user_impersonation
+   ```
+
+4. **Add redirect URI** (from Copilot Studio's MCP server config page):
+   ```bash
+   az ad app update --id <agent-app-id> --web-redirect-uris "<redirect-url-from-copilot-studio>"
+   ```
+
+5. **Update APIM JWT policy** to authorize the agent's client application ID in `bicep/mcp-api/policies/jwt-validation.xml`.
+
+6. **Deploy the updated policy**:
+   ```bash
+   ./scripts/deploy-mcp-api.sh
+   ```
+
+7. **Add MCP server in Copilot Studio** (Tools → Add tool → Model Context Protocol):
+
+   | Field | Value |
+   |-------|-------|
+   | Server name | `AI Lab MCP Server` |
+   | Server description | `Demo MCP server with time and runtime info tools` |
+   | Server URL | `https://apim-ai-lab-0115.azure-api.net/mcp/` |
+   | Authentication | OAuth 2.0 → **Manual** |
+   | Client ID | `<agent-app-id>` |
+   | Client secret | `<agent-client-secret>` |
+   | Authorization URL | `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/authorize` |
+   | Token URL template | `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/token` |
+   | Refresh URL | `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/token` |
+   | Scopes | `api://6cb63aba-6d0d-4f06-957e-c584fdeb23d7/user_impersonation` |
+
+8. **Connect** — sign in when prompted. Toggle tools on and save.
+
+9. **Test** — ask the agent "What time is it?" or "What is the container runtime info?"
+
+## Extending with New Tools
+
+To add tools to the MCP server:
+
+1. Edit `mcp-server/server.py` — add a new `@mcp.tool()` decorated function
+2. Rebuild the Docker image and push to ACR
+3. Create a new container app revision:
+   ```bash
+   ./scripts/deploy-mcp-server.sh --skip-build --tag v2
+   ```
+4. Copilot Studio auto-discovers new tools — refresh the MCP server connection
 
 ## Related Documentation
 
@@ -282,3 +336,6 @@ bash scripts/test-mcp-api.sh
 - [Private ACR](../registry/README.md) — Container registry setup
 - [APIM Standard v2](../apim/README.md) — API Management integration
 - [Core Infrastructure](../core-infrastructure/README.md) — VNet, DNS, VPN foundation
+- [Secure MCP Servers in APIM](https://learn.microsoft.com/en-us/azure/api-management/secure-mcp-servers) — Microsoft docs
+- [Expose Existing MCP Server](https://learn.microsoft.com/en-us/azure/api-management/expose-existing-mcp-server) — Microsoft docs
+- [Microsoft Entra Agent ID](https://learn.microsoft.com/en-us/entra/agent-id/identity-platform/what-is-agent-id) — Agent identity overview

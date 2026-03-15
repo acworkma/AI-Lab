@@ -295,7 +295,7 @@ show_outputs() {
     echo "  Endpoint:         https://${FQDN:-N/A}"
     echo "  Target Port:      $TARGET_PORT"
     echo "  Latest Revision:  ${LATEST_REVISION:-N/A}"
-    echo "  Ingress:          Internal only"
+    echo "  Ingress:          External (VNet-only)"
     echo ""
 
     echo "============================================"
@@ -305,8 +305,12 @@ show_outputs() {
     echo "  1. Connect to VPN"
     echo "  2. Validate infrastructure:"
     echo "     ./scripts/validate-mcp-server.sh"
-    echo "  3. Test MCP tools:"
+    echo "  3. Test MCP tools (direct over VPN):"
     echo "     python3 scripts/test-mcp-server.py --endpoint https://${FQDN:-<FQDN>}"
+    echo "  4. Deploy APIM API:"
+    echo "     ./scripts/deploy-mcp-api.sh"
+    echo "  5. Test through APIM:"
+    echo "     ./scripts/test-mcp-api.sh"
     echo ""
 }
 
