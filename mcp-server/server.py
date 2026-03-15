@@ -2,7 +2,7 @@ from mcp.server.fastmcp import FastMCP
 from datetime import datetime, timezone
 import socket
 
-mcp = FastMCP("Demo MCP Server")
+mcp = FastMCP("Demo MCP Server", host="0.0.0.0", port=3333)
 
 
 @mcp.tool()
@@ -21,4 +21,4 @@ def get_runtime_info() -> dict:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=3333)
+    mcp.run(transport="streamable-http")

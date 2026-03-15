@@ -212,7 +212,7 @@ deploy_container_app() {
             --environment "$ACA_ENV_NAME" \
             --image "$FULL_IMAGE" \
             --target-port "$TARGET_PORT" \
-            --ingress internal \
+            --ingress external \
             --registry-server "$ACR_LOGIN_SERVER" \
             --registry-identity system \
             --system-assigned \
