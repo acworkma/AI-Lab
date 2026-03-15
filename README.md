@@ -97,7 +97,7 @@ Solution projects consume deployed infrastructure to accomplish specific use cas
   OAuth-protected REST API for Azure Blob Storage operations through API Management. Uses APIM managed identity to authenticate to storage, with JWT validation for client access. Supports upload, list, download, and delete operations.
 
 - **[MCP Server on ACA](docs/mcp-server/README.md)**  
-  Demo MCP (Model Context Protocol) server deployed as a container app in the private ACA environment. Exposes tools over streamable HTTP (SSE) transport, built via `az acr build` into private ACR, with Python-based functional validation. Phase 1 of MCP → ACA → APIM → Copilot Studio pipeline.
+  Demo MCP (Model Context Protocol) server deployed as a container app in the private ACA environment, exposed publicly through APIM with Entra ID JWT authentication. Supports streamable HTTP (SSE) transport. Phase 2 complete: MCP → ACA → APIM. Next: Copilot Studio integration.
 
 ---
 

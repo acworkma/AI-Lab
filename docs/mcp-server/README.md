@@ -220,16 +220,65 @@ az containerapp show --name mcp-server --resource-group rg-ai-aca --query "ident
 az role assignment list --assignee <principal-id> --role AcrPull --all -o table
 ```
 
+## APIM Integration (Phase 2)
+
+The MCP server is exposed publicly through Azure API Management with Entra ID JWT authentication.
+
+### Architecture
+
+```
+┌──────────────┐    HTTPS + JWT    ┌──────────────────┐    VNet routing    ┌──────────────────┐
+│   Client /   │ ───────────────► │   APIM Gateway   │ ────────────────► │   ACA (private)  │
+│ Copilot      │                  │   (public)       │                   │   MCP Server     │
+│ Studio       │ ◄─────────────── │   JWT validation │ ◄──────────────── │   port 3333      │
+└──────────────┘   SSE stream     │   SSE passthru   │   SSE stream      └──────────────────┘
+                                  └──────────────────┘
+```
+
+### Public Endpoint
+
+```
+POST https://apim-ai-lab-0115.azure-api.net/mcp/
+Authorization: Bearer <JWT from Entra ID>
+Content-Type: application/json
+```
+
+### Deploy & Test
+
+```bash
+# Deploy MCP API to APIM
+./scripts/deploy-mcp-api.sh
+
+# End-to-end test through APIM
+bash scripts/test-mcp-api.sh
+```
+
+### Authentication
+
+- **Provider**: Entra ID (Azure AD)
+- **App Registration**: `apim-ai-lab-0115-devportal` (`6cb63aba-6d0d-4f06-957e-c584fdeb23d7`)
+- **Token endpoint**: `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/token`
+- **Scope**: `6cb63aba-6d0d-4f06-957e-c584fdeb23d7/.default`
+
+### Files
+
+| File | Purpose |
+|------|--------|
+| `bicep/mcp-api/main.bicep` | API definition + operations + policies |
+| `bicep/mcp-api/policies/jwt-validation.xml` | Entra ID JWT validation |
+| `bicep/mcp-api/policies/mcp-passthrough.xml` | SSE streaming passthrough |
+| `scripts/deploy-mcp-api.sh` | Deploy API to APIM |
+| `scripts/test-mcp-api.sh` | End-to-end validation |
+
 ## Next Steps (Future Phases)
 
-1. **APIM Integration** — Expose the MCP server through Azure API Management for external access
+1. ~~**APIM Integration**~~ — ✅ Complete (Phase 2)
 2. **Copilot Studio** — Connect Copilot Studio to the APIM endpoint for AI agent tool use
-3. **Authentication** — Add OAuth/JWT validation to the MCP server
-4. **Additional Tools** — Extend with Azure resource query tools, data lookup tools, etc.
+3. **Additional Tools** — Extend with Azure resource query tools, data lookup tools, etc.
 
 ## Related Documentation
 
 - [Private ACA Environment](../aca/README.md) — ACA environment deployment
 - [Private ACR](../registry/README.md) — Container registry setup
-- [APIM Standard v2](../apim/README.md) — API Management (future integration)
+- [APIM Standard v2](../apim/README.md) — API Management integration
 - [Core Infrastructure](../core-infrastructure/README.md) — VNet, DNS, VPN foundation
