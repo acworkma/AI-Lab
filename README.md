@@ -96,6 +96,9 @@ Solution projects consume deployed infrastructure to accomplish specific use cas
 - **[Storage API via APIM with OAuth](docs/storage-api/README.md)**  
   OAuth-protected REST API for Azure Blob Storage operations through API Management. Uses APIM managed identity to authenticate to storage, with JWT validation for client access. Supports upload, list, download, and delete operations.
 
+- **[MCP Server — ACA + APIM + Copilot Studio](docs/mcp-server/README.md)**  
+  MCP (Model Context Protocol) server deployed as a container app in the private ACA environment, exposed through APIM with Entra ID JWT authentication (both as a regular API and a native MCP server), and connected to Copilot Studio as an AI agent tool. Uses streamable HTTP (SSE) transport with an Entra Agent Identity for OAuth.
+
 ---
 
 ## 🚀 Getting Started
