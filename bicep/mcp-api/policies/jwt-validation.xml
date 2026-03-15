@@ -4,9 +4,8 @@
     Validates OAuth 2.0 bearer tokens from Entra ID
     Tenant: MngEnvMCAP818246.onmicrosoft.com
     API Resource: apim-ai-lab-0115-devportal (6cb63aba-6d0d-4f06-957e-c584fdeb23d7)
-    Authorized Clients:
+    Authorized Client:
       - Demo Agent (Copilot Studio): b159da1b-bbe5-461e-922a-ef22194461c3
-      - User tokens via az CLI (delegated flow)
 -->
 <policies>
     <inbound>
@@ -16,10 +15,13 @@
                                   header-name="Authorization"
                                   failed-validation-httpcode="401"
                                   failed-validation-error-message="Unauthorized. Access token is missing or invalid.">
-            <!-- Restrict to known client applications -->
             <client-application-ids>
                 <application-id>b159da1b-bbe5-461e-922a-ef22194461c3</application-id>
             </client-application-ids>
+            <audiences>
+                <audience>6cb63aba-6d0d-4f06-957e-c584fdeb23d7</audience>
+                <audience>api://6cb63aba-6d0d-4f06-957e-c584fdeb23d7</audience>
+            </audiences>
         </validate-azure-ad-token>
     </inbound>
     <backend>
@@ -30,7 +32,6 @@
     </outbound>
     <on-error>
         <base />
-        <!-- Return structured error for JWT validation failures -->
         <choose>
             <when condition="@(context.LastError.Source == &quot;validate-azure-ad-token&quot;)">
                 <return-response>
