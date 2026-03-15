@@ -59,14 +59,21 @@ sudo docker push $ACR_NAME/mcp-server:v1
 ./scripts/deploy-mcp-server.sh --skip-build --auto-approve
 ```
 
-### 2. Deploy MCP API to APIM
+### 2. Deploy MCP API to APIM (Regular API)
 
 ```bash
-# Deploy API definition with JWT validation and SSE passthrough policies
+# Deploy regular API definition with JWT validation and SSE passthrough policies
 ./scripts/deploy-mcp-api.sh
 ```
 
-### 3. Validate
+### 3. Deploy Native MCP Server to APIM
+
+```bash
+# Deploy native MCP server using APIM's protocol-aware MCP feature
+./scripts/deploy-mcp-native.sh
+```
+
+### 4. Validate
 
 ```bash
 # Infrastructure validation (requires VPN)
@@ -75,15 +82,18 @@ sudo docker push $ACR_NAME/mcp-server:v1
 # Functional test — direct to ACA (requires VPN)
 python3 scripts/test-mcp-server.py
 
-# End-to-end test — through APIM (public, requires Azure CLI login)
+# End-to-end test — regular API through APIM
 bash scripts/test-mcp-api.sh
+
+# End-to-end test — native MCP server through APIM
+MCP_CLIENT_SECRET="<agent-client-secret>" bash scripts/test-mcp-native.sh
 ```
 
-### 4. Connect Copilot Studio
+### 5. Connect Copilot Studio
 
 See [Copilot Studio Integration](#copilot-studio-integration) below.
 
-### 5. Cleanup
+### 6. Cleanup
 
 ```bash
 # Delete container app only (preserves ACA environment)
@@ -125,10 +135,12 @@ AI-Lab/
 │           └── mcp-passthrough.xml      # SSE streaming passthrough
 ├── scripts/
 │   ├── deploy-mcp-server.sh             # Build + deploy container app
-│   ├── deploy-mcp-api.sh               # Deploy API definition to APIM
+│   ├── deploy-mcp-api.sh               # Deploy regular API to APIM
+│   ├── deploy-mcp-native.sh             # Deploy native MCP server to APIM
 │   ├── validate-mcp-server.sh           # Infrastructure validation
 │   ├── test-mcp-server.py               # Functional test (direct to ACA)
-│   ├── test-mcp-api.sh                  # End-to-end test (through APIM)
+│   ├── test-mcp-api.sh                  # End-to-end test (regular API)
+│   ├── test-mcp-native.sh               # End-to-end test (native MCP)
 │   └── cleanup-mcp-server.sh            # Container app cleanup
 ├── docs/mcp-server/
 │   └── README.md                        # This file
@@ -192,7 +204,7 @@ The server uses **streamable HTTP** transport (MCP over HTTP with SSE):
 | get_current_time | Returns valid ISO 8601 timestamp |
 | get_runtime_info | Returns hostname + version "1.0.0" |
 
-### Functional — Through APIM (`test-mcp-api.sh`)
+### Functional — Regular API (`test-mcp-api.sh`)
 
 | Test | Validates |
 |------|----------|
@@ -200,6 +212,17 @@ The server uses **streamable HTTP** transport (MCP over HTTP with SSE):
 | MCP initialize | Returns serverInfo with valid token |
 | tools/list | Returns get_current_time and get_runtime_info |
 | tools/call | Invokes get_current_time, returns timestamp |
+
+### Functional — Native MCP Server (`test-mcp-native.sh`)
+
+| Test | Validates |
+|------|----------|
+| Unauthenticated request | Returns 401 Unauthorized |
+| MCP initialize | Returns serverInfo via SSE, session ID |
+| tools/list | Returns tools discovered through native MCP |
+| tools/call | Invokes get_current_time, returns timestamp |
+
+> The native test uses client credentials flow (agent identity token) rather than `az account get-access-token`.
 
 ## Troubleshooting
 
@@ -241,15 +264,19 @@ az role assignment list --assignee <principal-id> --role AcrPull --all -o table
 
 ## APIM Integration
 
-The MCP server is exposed publicly through Azure API Management with Entra ID JWT authentication using the `validate-azure-ad-token` policy.
+The MCP server is exposed through Azure API Management two ways:
 
-### Public Endpoint
+1. **Regular API** (`/mcp/`) — Standard `Microsoft.ApiManagement/service/apis` resource with a manual POST operation and policy-based SSE passthrough. Deployed via Bicep.
+2. **Native MCP Server** (`/mcp-native/mcp`) — APIM's protocol-aware MCP feature (`type: "mcp"`) that understands MCP natively — handles transport, session management, and tool routing. Deployed via REST API (`2025-03-01-preview`).
 
-```
-POST https://apim-ai-lab-0115.azure-api.net/mcp/
-Authorization: Bearer <JWT from Entra ID>
-Content-Type: application/json
-```
+Both apply identical JWT authentication and both route to the same ACA backend.
+
+### Endpoints
+
+| Endpoint | Type | Deploy Script |
+|----------|------|---------------|
+| `POST https://apim-ai-lab-0115.azure-api.net/mcp/` | Regular API | `deploy-mcp-api.sh` |
+| `POST https://apim-ai-lab-0115.azure-api.net/mcp-native/mcp` | Native MCP Server | `deploy-mcp-native.sh` |
 
 ### Authentication
 
@@ -261,9 +288,25 @@ Content-Type: application/json
 | Authorized Client | `b159da1b-bbe5-461e-922a-ef22194461c3` (Demo Agent — Copilot Studio) |
 | Delegated Scope | `api://6cb63aba-6d0d-4f06-957e-c584fdeb23d7/user_impersonation` |
 
+### Native MCP Server Details
+
+The native MCP server feature uses an APIM Backend resource + an API with `type: "mcp"` and `mcpProperties`. There is no Bicep/ARM resource type for this yet — the deploy script uses direct REST API calls (`api-version=2025-03-01-preview`).
+
+| Resource | Name | Purpose |
+|----------|------|--------|
+| Backend | `mcp-server-backend` | Points to ACA MCP server base URL |
+| API | `mcp-server-native` | Native MCP API, path `/mcp-native`, references backend |
+| Policy | API-level | JWT validation + `buffer-response="false"` |
+
+Key differences from the regular API:
+- No manual operation definitions — APIM handles MCP protocol natively
+- APIM manages `Mcp-Session-Id` headers and protocol routing
+- Tool discovery works through MCP protocol, not OpenAPI definition
+- `forward-request buffer-response="false"` is still required for SSE streaming
+
 ### SSE Streaming
 
-The operation-level policy uses `<forward-request buffer-response="false" />` to ensure APIM does not buffer SSE responses. This is critical for MCP streamable HTTP transport.
+Both APIs use `<forward-request buffer-response="false" />` to prevent APIM from buffering SSE responses. This is critical for MCP streamable HTTP transport.
 
 ## Copilot Studio Integration
 
@@ -305,7 +348,7 @@ Copilot Studio connects to the APIM-hosted MCP endpoint using OAuth 2.0 (Manual 
    |-------|-------|
    | Server name | `AI Lab MCP Server` |
    | Server description | `Demo MCP server with time and runtime info tools` |
-   | Server URL | `https://apim-ai-lab-0115.azure-api.net/mcp/` |
+   | Server URL | `https://apim-ai-lab-0115.azure-api.net/mcp-native/mcp` |
    | Authentication | OAuth 2.0 → **Manual** |
    | Client ID | `<agent-app-id>` |
    | Client secret | `<agent-client-secret>` |
