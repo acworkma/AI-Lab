@@ -1,0 +1,87 @@
+<!--
+    Managed Identity Authentication Policy for GitHub Copilot BYOK API
+    
+    Authenticates to Azure AI Foundry using APIM managed identity.
+    Forwards requests to the Foundry backend with Bearer token.
+    Applies rate limiting per subscription key.
+    
+    Flow:
+    1. GitHub Copilot sends request with APIM subscription key
+    2. APIM validates subscription key (handled by product-level subscription requirement)
+    3. APIM acquires Azure AD token via managed identity for Cognitive Services
+    4. APIM forwards request to Foundry with Bearer token
+    5. Foundry processes and returns response
+-->
+<policies>
+    <inbound>
+        <base />
+
+        <!-- Rate limiting: 60 requests per minute per subscription key -->
+        <rate-limit-by-key calls="60"
+                          renewal-period="60"
+                          counter-key="@(context.Subscription.Id)"
+                          increment-condition="@(context.Response.StatusCode >= 200)"
+                          retry-after-header-name="Retry-After" />
+
+        <!-- Authenticate to Azure AI Foundry using managed identity -->
+        <authentication-managed-identity resource="https://cognitiveservices.azure.com/"
+                                          output-token-variable-name="foundry-token"
+                                          ignore-error="false" />
+
+        <!-- Set the Authorization header for the Foundry backend -->
+        <set-header name="Authorization" exists-action="override">
+            <value>@($"Bearer {(string)context.Variables["foundry-token"]}")</value>
+        </set-header>
+
+        <!-- Remove the subscription key from the forwarded request -->
+        <set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" />
+    </inbound>
+
+    <backend>
+        <base />
+    </backend>
+
+    <outbound>
+        <base />
+    </outbound>
+
+    <on-error>
+        <base />
+        <choose>
+            <!-- Handle managed identity authentication failures -->
+            <when condition="@(context.LastError.Source == &quot;authentication-managed-identity&quot;)">
+                <return-response>
+                    <set-status code="502" reason="Bad Gateway" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-body>@{
+                        return new JObject(
+                            new JProperty("error", new JObject(
+                                new JProperty("code", "BackendAuthenticationFailed"),
+                                new JProperty("message", "Failed to authenticate to the AI model backend. Check APIM managed identity RBAC assignment.")
+                            ))
+                        ).ToString();
+                    }</set-body>
+                </return-response>
+            </when>
+            <!-- Handle rate limit exceeded -->
+            <when condition="@(context.LastError.Source == &quot;rate-limit-by-key&quot;)">
+                <return-response>
+                    <set-status code="429" reason="Too Many Requests" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-body>@{
+                        return new JObject(
+                            new JProperty("error", new JObject(
+                                new JProperty("code", "RateLimitExceeded"),
+                                new JProperty("message", "Rate limit exceeded. Please retry after the period indicated in the Retry-After header.")
+                            ))
+                        ).ToString();
+                    }</set-body>
+                </return-response>
+            </when>
+        </choose>
+    </on-error>
+</policies>

@@ -1,0 +1,122 @@
+# Feature Specification: GitHub Copilot BYOK via Azure Foundry + APIM
+
+**Feature Branch**: `feature/014-copilot-byok`  
+**Created**: 2026-03-31  
+**Status**: Implementing  
+**Input**: Enable GitHub Copilot Enterprise BYOK (Bring Your Own Key) by deploying a Codex model to the existing Foundry account and exposing it publicly through the existing APIM gateway.
+
+## Background
+
+GitHub Copilot Enterprise supports BYOK — organizations can bring their own LLM API keys so Copilot Chat uses their preferred models. For the "Microsoft Foundry" provider, GitHub requires a deployment URL pointing to an OpenAI-compatible endpoint and an API key.
+
+This solution project:
+1. Deploys a `gpt-5.1-codex-mini` model to the **existing** private Foundry account
+2. Creates an API on the **existing** APIM gateway that proxies requests to Foundry
+3. Uses APIM managed identity to authenticate to Foundry (no credentials exposed to GitHub)
+4. Provides an APIM subscription key that serves as the "API key" for GitHub Enterprise configuration
+
+**Reference**: [GitHub Docs — Using your LLM provider API keys with Copilot](https://docs.github.com/en/copilot/how-tos/administer-copilot/manage-for-enterprise/use-your-own-api-keys)
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 — Deploy Codex Model to Foundry (Priority: P1)
+
+As an infrastructure operator, I need to deploy the `gpt-5.1-codex-mini` model to the existing Foundry account so that it can serve inference requests for GitHub Copilot.
+
+**Why this priority**: Without the model deployed, there is no backend to proxy.
+
+**Independent Test**: Run the deploy script and verify the model appears in Foundry deployment list.
+
+**Acceptance Scenarios**:
+
+1. **Given** the Foundry account exists in `rg-ai-foundry`, **When** deploying `foundry-model.bicep`, **Then** a `gpt-5.1-codex-mini` deployment is created with 30 TPM GlobalStandard SKU
+2. **Given** the codex model is deployed, **When** listing deployments, **Then** both `gpt-4.1` and `gpt-5.1-codex-mini` appear (existing model untouched)
+3. **Given** the codex model is deployed, **When** calling the chat/completions API from VPN, **Then** the model responds successfully
+
+---
+
+### User Story 2 — Expose Foundry Model via APIM (Priority: P1)
+
+As an infrastructure operator, I need the Codex model to be accessible through the public APIM gateway with subscription key authentication, so GitHub Copilot can call it.
+
+**Why this priority**: This is the core integration — APIM must proxy GitHub's requests to Foundry.
+
+**Independent Test**: Deploy APIM resources and make a chat/completions call using the subscription key.
+
+**Acceptance Scenarios**:
+
+1. **Given** APIM exists in `rg-ai-apim`, **When** deploying `main.bicep`, **Then** a `copilot-byok-api` API is created with the native Foundry URL pattern
+2. **Given** the API is deployed, **When** calling `POST /openai/deployments/gpt-5.1-codex-mini/chat/completions` with subscription key, **Then** the request is forwarded to Foundry and a response is returned
+3. **Given** the API is deployed, **When** calling without a subscription key, **Then** a 401 Unauthorized response is returned
+4. **Given** the APIM managed identity has Cognitive Services OpenAI User role, **When** APIM proxies a request, **Then** it acquires a token via managed identity and authenticates to Foundry
+
+---
+
+### User Story 3 — Rate Limiting (Priority: P2)
+
+As an infrastructure operator, I need rate limiting on the APIM endpoint to control costs and prevent abuse.
+
+**Why this priority**: Cost control is important but not blocking for initial deployment.
+
+**Independent Test**: Send a burst of requests exceeding 60/min and verify 429 responses.
+
+**Acceptance Scenarios**:
+
+1. **Given** rate limiting is configured at 60 req/min, **When** a client sends 61 requests in one minute, **Then** the 61st request receives a 429 Too Many Requests response
+2. **Given** rate limiting triggers, **When** checking response headers, **Then** `Retry-After` header indicates when the client can retry
+
+---
+
+### User Story 4 — GitHub Enterprise Configuration (Priority: P1)
+
+As a GitHub Enterprise administrator, I need the deployment URL, API key, and model ID so I can configure BYOK in GitHub Enterprise settings.
+
+**Why this priority**: Without configuration on the GitHub side, the infrastructure is unused.
+
+**Independent Test**: The deploy script outputs all required values; manually configure GitHub Enterprise.
+
+**Acceptance Scenarios**:
+
+1. **Given** the deploy script completes, **When** checking `.env` output, **Then** `APIM_SUBSCRIPTION_KEY`, `APIM_GATEWAY_URL`, and `FOUNDRY_DEPLOYMENT_NAME` are populated
+2. **Given** the values from `.env`, **When** configuring GitHub Enterprise (Provider: Microsoft Foundry, Deployment URL, API Key, Model ID), **Then** the model appears in the Copilot Chat model picker
+3. **Given** a user selects the custom model in Copilot Chat, **When** sending a message, **Then** responses are generated by the `gpt-5.1-codex-mini` model via our infrastructure
+
+## Requirements
+
+- **FR-001**: Deploy `gpt-5.1-codex-mini` to existing Foundry account as a child resource (no modifications to Foundry infrastructure project)
+- **FR-002**: Create APIM API with native Foundry URL pattern (`/openai/deployments/{deployment-id}/chat/completions`)
+- **FR-003**: APIM subscription key authentication for inbound requests (GitHub sends this as the API key)
+- **FR-004**: APIM managed identity authentication to Foundry backend (`authentication-managed-identity` policy)
+- **FR-005**: Assign `Cognitive Services OpenAI User` role to APIM managed identity on Foundry account
+- **FR-006**: Create "GitHub Copilot" APIM product with subscription required
+- **FR-007**: Rate limiting at 60 requests/minute per subscription key
+- **FR-008**: Deploy script outputs subscription key and deployment URL to `.env` file (gitignored)
+- **FR-009**: `.env.example` template checked into source control
+
+### Dependencies
+- Foundry infrastructure project deployed (`rg-ai-foundry` with Foundry account)
+- APIM infrastructure project deployed (`rg-ai-apim` with APIM instance)
+- Core infrastructure deployed (VNet, DNS, VPN)
+
+### Assumptions
+- Foundry account name follows existing pattern: `fdryailab{suffix}`
+- APIM instance name follows existing pattern: `apim-ai-lab-0115`
+- Network connectivity exists between APIM subnet and Foundry private endpoint
+
+## Success Criteria
+
+- **SC-001**: `gpt-5.1-codex-mini` model deployed without affecting existing `gpt-4.1` model
+- **SC-002**: End-to-end chat/completions call succeeds via APIM subscription key
+- **SC-003**: Requests without subscription key are rejected with 401
+- **SC-004**: Rate limiting enforced at 60 req/min
+- **SC-005**: GitHub Copilot Chat successfully uses the custom model
+- **SC-006**: No infrastructure projects modified — solution project only
+
+## Out of Scope
+
+- Modifications to Foundry infrastructure project (`bicep/foundry/`)
+- Modifications to APIM infrastructure project (`bicep/apim/`)
+- Custom domain or TLS certificate on APIM gateway
+- WAF/DDoS protection beyond APIM Standard v2 built-in protection
+- Automated GitHub Enterprise configuration (manual step, documented)
+- Fine-tuning or customizing the Codex model

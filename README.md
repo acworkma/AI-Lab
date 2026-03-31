@@ -99,6 +99,9 @@ Solution projects consume deployed infrastructure to accomplish specific use cas
 - **[MCP Server — ACA + APIM + Copilot Studio](docs/mcp-server/README.md)**  
   MCP (Model Context Protocol) server deployed as a container app in the private ACA environment, exposed through APIM with Entra ID JWT authentication (both as a regular API and a native MCP server), and connected to Copilot Studio as an AI agent tool. Uses streamable HTTP (SSE) transport with an Entra Agent Identity for OAuth.
 
+- **[GitHub Copilot BYOK — Foundry + APIM](docs/copilot-byok/README.md)**  
+  Enable GitHub Copilot Enterprise to use a custom Azure AI Foundry model (`gpt-5.1-codex-mini`) via BYOK (Bring Your Own Key). Deploys the model to the existing Foundry account, exposes it through APIM with subscription key authentication and managed identity backend auth, and provides rate limiting at 60 req/min.
+
 ---
 
 ## 🚀 Getting Started
