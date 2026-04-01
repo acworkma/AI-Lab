@@ -1,0 +1,359 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "1391734461429816210"
+    }
+  },
+  "parameters": {
+    "apimName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing API Management instance"
+      }
+    },
+    "foundryEndpointUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Foundry account endpoint URL (e.g., https://fdryailab123456.cognitiveservices.azure.com)"
+      }
+    },
+    "apiDisplayName": {
+      "type": "string",
+      "defaultValue": "Copilot BYOK API",
+      "metadata": {
+        "description": "Display name for the API"
+      }
+    },
+    "apiPath": {
+      "type": "string",
+      "defaultValue": "openai",
+      "metadata": {
+        "description": "Path prefix for the API"
+      }
+    },
+    "apiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "API key for GitHub Copilot BYOK authentication (validated in policy)"
+      }
+    }
+  },
+  "variables": {
+    "$fxv#0": "<!--\n    GitHub Copilot BYOK API Policy\n    \n    Auth flow:\n    1. Extract API key from either api-key header or Authorization: Bearer header\n    2. Validate key against named value (no APIM subscription required)\n    3. Acquire Azure AD token via managed identity for Cognitive Services\n    4. Forward request to Foundry with Bearer token + Host header override\n-->\n<policies>\n    <inbound>\n        <!-- CORS must be first to handle preflight before any auth -->\n        <cors allow-credentials=\"false\">\n            <allowed-origins>\n                <origin>*</origin>\n            </allowed-origins>\n            <allowed-methods preflight-result-max-age=\"300\">\n                <method>GET</method>\n                <method>POST</method>\n                <method>OPTIONS</method>\n            </allowed-methods>\n            <allowed-headers>\n                <header>api-key</header>\n                <header>Content-Type</header>\n                <header>Authorization</header>\n            </allowed-headers>\n        </cors>\n        <base />\n        <!-- Extract key from api-key header or Authorization: Bearer -->\n        <set-variable name=\"client-api-key\" value=\"@(context.Request.Headers.GetValueOrDefault(&quot;api-key&quot;, &quot;&quot;) != &quot;&quot; ? context.Request.Headers.GetValueOrDefault(&quot;api-key&quot;, &quot;&quot;) : (context.Request.Headers.GetValueOrDefault(&quot;Authorization&quot;, &quot;&quot;).StartsWith(&quot;Bearer &quot;) ? context.Request.Headers.GetValueOrDefault(&quot;Authorization&quot;, &quot;&quot;).Substring(7).Trim() : &quot;&quot;))\" />\n        <!-- Validate against stored named value -->\n        <choose>\n            <when condition=\"@((string)context.Variables[&quot;client-api-key&quot;] != &quot;{{copilot-byok-api-key}}&quot;)\">\n                <return-response>\n                    <set-status code=\"401\" reason=\"Unauthorized\" />\n                    <set-header name=\"Content-Type\" exists-action=\"override\">\n                        <value>application/json</value>\n                    </set-header>\n                    <set-body>{\"error\":{\"message\":\"Invalid or missing API key. Provide via api-key header or Authorization: Bearer token.\",\"type\":\"invalid_request_error\",\"code\":\"invalid_api_key\"}}</set-body>\n                </return-response>\n            </when>\n        </choose>\n        <!-- Inject default api-version if not provided (Foundry requires it) -->\n        <set-query-parameter name=\"api-version\" exists-action=\"skip\">\n            <value>2024-06-01</value>\n        </set-query-parameter>\n        <!-- Replace client auth with managed identity token for Foundry -->\n        <authentication-managed-identity resource=\"https://cognitiveservices.azure.com/\" />\n        <set-header name=\"api-key\" exists-action=\"delete\" />\n        <set-header name=\"Ocp-Apim-Subscription-Key\" exists-action=\"delete\" />\n        <!-- Host header override for TLS (PE uses privatelink URL for routing) -->\n        <set-header name=\"Host\" exists-action=\"override\">\n            <value>foundry-acw.cognitiveservices.azure.com</value>\n        </set-header>\n        <!-- Rate limit: 60 requests per minute per key -->\n        <rate-limit-by-key calls=\"60\" renewal-period=\"60\" counter-key=\"@((string)context.Variables[&quot;client-api-key&quot;])\" />\n    </inbound>\n    <backend>\n        <forward-request timeout=\"120\" follow-redirects=\"true\" buffer-request-body=\"true\" />\n    </backend>\n    <outbound>\n        <base />\n    </outbound>\n    <on-error>\n        <base />\n    </on-error>\n</policies>\n"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ApiManagement/service/backends",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[format('{0}/{1}', parameters('apimName'), 'foundry-codex')]",
+      "properties": {
+        "title": "Azure AI Foundry - Codex",
+        "description": "Azure AI Foundry endpoint for GitHub Copilot BYOK (gpt-5.2)",
+        "url": "[parameters('foundryEndpointUrl')]",
+        "protocol": "http",
+        "tls": {
+          "validateCertificateChain": true,
+          "validateCertificateName": true
+        },
+        "circuitBreaker": {
+          "rules": [
+            {
+              "name": "foundry-breaker",
+              "failureCondition": {
+                "count": 5,
+                "interval": "PT60S",
+                "statusCodeRanges": [
+                  {
+                    "min": 500,
+                    "max": 599
+                  }
+                ]
+              },
+              "tripDuration": "PT30S"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/namedValues",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[format('{0}/{1}', parameters('apimName'), 'copilot-byok-api-key')]",
+      "properties": {
+        "displayName": "copilot-byok-api-key",
+        "value": "[parameters('apiKey')]",
+        "secret": true,
+        "tags": [
+          "copilot-byok"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[format('{0}/{1}', parameters('apimName'), 'copilot-byok-api')]",
+      "properties": {
+        "displayName": "[parameters('apiDisplayName')]",
+        "description": "GitHub Copilot BYOK API — proxies OpenAI-compatible requests to Azure AI Foundry. Auth validated in policy to support both api-key and Bearer token.",
+        "subscriptionRequired": false,
+        "path": "[parameters('apiPath')]",
+        "protocols": [
+          "https"
+        ],
+        "serviceUrl": "[format('{0}/openai', parameters('foundryEndpointUrl'))]",
+        "isCurrent": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/namedValues', parameters('apimName'), 'copilot-byok-api-key')]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis/operations",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('apimName'), 'copilot-byok-api', 'list-models')]",
+      "properties": {
+        "displayName": "List Models",
+        "description": "Lists available models. Used by GitHub to validate connectivity and discover models.",
+        "method": "GET",
+        "urlTemplate": "/models",
+        "request": {
+          "queryParameters": [
+            {
+              "name": "api-version",
+              "description": "API version",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "List of available models",
+            "representations": [
+              {
+                "contentType": "application/json"
+              }
+            ]
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', parameters('apimName'), 'copilot-byok-api')]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis/operations",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('apimName'), 'copilot-byok-api', 'list-deployments')]",
+      "properties": {
+        "displayName": "List Deployments",
+        "description": "Lists model deployments. Used by GitHub to discover available deployment IDs.",
+        "method": "GET",
+        "urlTemplate": "/deployments",
+        "request": {
+          "queryParameters": [
+            {
+              "name": "api-version",
+              "description": "API version",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "List of deployments",
+            "representations": [
+              {
+                "contentType": "application/json"
+              }
+            ]
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', parameters('apimName'), 'copilot-byok-api')]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis/operations",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('apimName'), 'copilot-byok-api', 'chat-completions')]",
+      "properties": {
+        "displayName": "Chat Completions",
+        "description": "Creates a chat completion for the specified model deployment. Compatible with OpenAI chat/completions API format.",
+        "method": "POST",
+        "urlTemplate": "/deployments/{deployment-id}/chat/completions",
+        "templateParameters": [
+          {
+            "name": "deployment-id",
+            "description": "The model deployment name (e.g., gpt-5.2)",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "request": {
+          "queryParameters": [
+            {
+              "name": "api-version",
+              "description": "API version (e.g., 2024-10-21)",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "representations": [
+            {
+              "contentType": "application/json"
+            }
+          ]
+        },
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Chat completion response",
+            "representations": [
+              {
+                "contentType": "application/json"
+              }
+            ]
+          },
+          {
+            "statusCode": 401,
+            "description": "Unauthorized — missing or invalid subscription key"
+          },
+          {
+            "statusCode": 429,
+            "description": "Rate limit exceeded"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', parameters('apimName'), 'copilot-byok-api')]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis/operations",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('apimName'), 'copilot-byok-api', 'completions')]",
+      "properties": {
+        "displayName": "Completions",
+        "description": "Creates a text completion for the specified model deployment. Used by code-generation models.",
+        "method": "POST",
+        "urlTemplate": "/deployments/{deployment-id}/completions",
+        "templateParameters": [
+          {
+            "name": "deployment-id",
+            "description": "The model deployment name (e.g., gpt-5.2)",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "request": {
+          "queryParameters": [
+            {
+              "name": "api-version",
+              "description": "API version",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "representations": [
+            {
+              "contentType": "application/json"
+            }
+          ]
+        },
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Completion response",
+            "representations": [
+              {
+                "contentType": "application/json"
+              }
+            ]
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', parameters('apimName'), 'copilot-byok-api')]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis/operations",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('apimName'), 'copilot-byok-api', 'responses')]",
+      "properties": {
+        "displayName": "Responses",
+        "description": "Creates a response using the Responses API. Model is specified in the request body (e.g., gpt-5.2).",
+        "method": "POST",
+        "urlTemplate": "/responses",
+        "request": {
+          "queryParameters": [
+            {
+              "name": "api-version",
+              "description": "API version",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "representations": [
+            {
+              "contentType": "application/json"
+            }
+          ]
+        },
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Response object",
+            "representations": [
+              {
+                "contentType": "application/json"
+              }
+            ]
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', parameters('apimName'), 'copilot-byok-api')]"
+      ]
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/apis/policies",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('apimName'), 'copilot-byok-api', 'policy')]",
+      "properties": {
+        "value": "[variables('$fxv#0')]",
+        "format": "xml"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service/apis', parameters('apimName'), 'copilot-byok-api')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "apiName": {
+      "type": "string",
+      "value": "copilot-byok-api"
+    },
+    "apiPath": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service/apis', parameters('apimName'), 'copilot-byok-api'), '2023-09-01-preview').path]"
+    },
+    "gatewayUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview').gatewayUrl]"
+    },
+    "baseApiUrl": {
+      "type": "string",
+      "value": "[format('{0}/{1}', reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview').gatewayUrl, parameters('apiPath'))]"
+    }
+  }
+}

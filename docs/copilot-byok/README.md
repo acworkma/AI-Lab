@@ -5,7 +5,7 @@ Enable GitHub Copilot Enterprise to use a custom Azure AI Foundry model by expos
 ## Overview
 
 This Solution Project deploys:
-- **Codex model** (`gpt-5.1-codex-mini`) on the existing Foundry account
+- **Chat model** (`gpt-5.2`) on the existing Foundry account
 - **APIM API** with native Foundry URL pattern for OpenAI-compatible chat/completions
 - **APIM product** ("GitHub Copilot") with subscription key requirement
 - **RBAC assignment** — APIM managed identity → Cognitive Services OpenAI User on Foundry
@@ -63,7 +63,7 @@ This Solution Project deploys:
 │  │  │                                          │   │   │
 │  │  │  Models:                                 │   │   │
 │  │  │  ├── gpt-4.1 (existing, untouched)       │   │   │
-│  │  │  └── gpt-5.1-codex-mini (new, 30 TPM)   │   │   │
+│  │  │  └── gpt-5.2 (new, 30 TPM)   │   │   │
 │  │  └──────────────────────────────────────────┘   │   │
 │  └──────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────┘
@@ -74,7 +74,7 @@ This Solution Project deploys:
 1. **GitHub → APIM**: GitHub Copilot sends requests with the APIM subscription key in the `api-key` header
 2. **APIM validates**: Subscription key checked against the "GitHub Copilot" product
 3. **APIM → Foundry**: APIM acquires an Azure AD token via its managed identity for the `https://cognitiveservices.azure.com/` audience
-4. **Foundry processes**: Request forwarded to the `gpt-5.1-codex-mini` model deployment
+4. **Foundry processes**: Request forwarded to the `gpt-5.2` model deployment
 5. **Response**: Model response flows back through APIM to GitHub Copilot
 
 **Key security properties**:
@@ -124,7 +124,7 @@ This deploys the Foundry model, RBAC, and APIM resources in sequence. On success
    - **Name**: AI-Lab Codex (or your preferred display name)
    - **API Key**: `source .env && echo $APIM_SUBSCRIPTION_KEY`
    - **Deployment URL**: `source .env && echo "https://$APIM_GATEWAY_URL/openai/deployments"`
-5. Under **Available models**, type `gpt-5.1-codex-mini` and click **Add model**
+5. Under **Available models**, type `gpt-5.2` and click **Add model**
 6. Click **Save**
 7. Optionally configure organization access under the **Access** tab
 
@@ -138,7 +138,7 @@ This deploys the Foundry model, RBAC, and APIM resources in sequence. On success
 |-----------|---------|-------------|
 | `foundryAccountName` | *auto-discovered* | Existing Foundry account name |
 | `apimName` | `apim-ai-lab-0115` | Existing APIM instance name |
-| `modelName` | `gpt-5.1-codex-mini` | Codex model deployment name |
+| `modelName` | `gpt-5.2` | Codex model deployment name |
 | `modelCapacity` | `30` | TPM (tokens per minute) capacity |
 | `modelSkuName` | `GlobalStandard` | Model SKU tier |
 | `apiPath` | `openai` | APIM API path prefix |
@@ -160,7 +160,7 @@ The default capacity is 30 TPM (GlobalStandard). To scale:
 az cognitiveservices account deployment show \
     --name <foundry-account> \
     --resource-group rg-ai-foundry \
-    --deployment-name gpt-5.1-codex-mini
+    --deployment-name gpt-5.2
 
 # Update capacity via Azure Portal or redeploy with modified parameter
 ```
@@ -171,7 +171,7 @@ az cognitiveservices account deployment show \
 |--------|-------------|
 | `APIM_SUBSCRIPTION_KEY` | Subscription key for the GitHub Copilot product (written to `.env`) |
 | `APIM_GATEWAY_URL` | APIM public gateway hostname (written to `.env`) |
-| `FOUNDRY_DEPLOYMENT_NAME` | Model deployment name (`gpt-5.1-codex-mini`) |
+| `FOUNDRY_DEPLOYMENT_NAME` | Model deployment name (`gpt-5.2`) |
 | `deploymentUrl` | Full deployment URL for GitHub Enterprise configuration |
 
 ## Scripts
@@ -241,7 +241,7 @@ az rest --method post \
 
 **Foundry model deployment fails**
 ```
-Model 'gpt-5.1-codex-mini' is not available in region 'eastus2'
+Model 'gpt-5.2' is not available in region 'eastus2'
 ```
 Solution: Check model availability in your region via `az cognitiveservices model list --location eastus2`. You may need a different model version or region.
 
@@ -304,7 +304,7 @@ az apim product delete --resource-group rg-ai-apim --service-name apim-ai-lab-01
 az cognitiveservices account deployment delete \
     --name <foundry-account> \
     --resource-group rg-ai-foundry \
-    --deployment-name gpt-5.1-codex-mini
+    --deployment-name gpt-5.2
 
 # Remove RBAC assignment (optional — harmless to leave)
 az role assignment delete --assignee <apim-principal-id> --scope <foundry-account-id> --role "Cognitive Services OpenAI User"

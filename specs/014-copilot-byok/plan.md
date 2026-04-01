@@ -2,7 +2,7 @@
 
 ## Summary
 
-Solution project that deploys a `gpt-5.1-codex-mini` model to the existing Foundry account and exposes it through the existing APIM gateway for GitHub Copilot Enterprise BYOK. Uses the `existing` keyword in Bicep to reference infrastructure without modifying it.
+Solution project that deploys a `gpt-4.1` model to the existing Foundry account and exposes it through the existing APIM gateway for GitHub Copilot Enterprise BYOK. Uses the `existing` keyword in Bicep to reference infrastructure without modifying it.
 
 ## Technical Context
 
@@ -14,7 +14,7 @@ Solution project that deploys a `gpt-5.1-codex-mini` model to the existing Found
 ## Implementation Phases
 
 ### Phase 1: Foundry Model Deployment
-1. Create `bicep/copilot-byok/foundry-model.bicep` — Reference existing Foundry account, add `gpt-5.1-codex-mini` as child deployment resource
+1. Create `bicep/copilot-byok/foundry-model.bicep` — Reference existing Foundry account, add `gpt-4.1` as child deployment resource
 
 ### Phase 2: APIM API + Product
 2. Create `bicep/copilot-byok/main.bicep` — Reference existing APIM, add backend + API + product + subscription

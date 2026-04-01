@@ -3,7 +3,7 @@
 # Deploy GitHub Copilot BYOK Solution
 #
 # This script deploys the copilot-byok solution project which:
-# 1. Deploys gpt-5.1-codex-mini model to existing Foundry account
+# 1. Deploys gpt-5.2 model to existing Foundry account
 # 2. Assigns RBAC (APIM managed identity → Foundry)
 # 3. Deploys APIM API, product, and subscription
 # 4. Outputs subscription key and deployment URL to .env
@@ -19,7 +19,7 @@ set -euo pipefail
 # Configuration
 APIM_NAME="apim-ai-lab-0115"
 APIM_RG="rg-ai-apim"
-FOUNDRY_RG="rg-ai-foundry"
+FOUNDRY_RG="rg-foundry"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BICEP_DIR="$REPO_ROOT/bicep/copilot-byok"
@@ -118,6 +118,10 @@ FOUNDRY_ENDPOINT=$(az cognitiveservices account show \
     --query "properties.endpoint" -o tsv)
 log_info "Foundry endpoint: $FOUNDRY_ENDPOINT"
 
+# Derive privatelink URL for APIM backend (APIM VNet can't reach public Foundry IP)
+FOUNDRY_PE_ENDPOINT="https://${FOUNDRY_ACCOUNT}.privatelink.cognitiveservices.azure.com"
+log_info "Foundry PE endpoint: $FOUNDRY_PE_ENDPOINT"
+
 # Get APIM managed identity principal ID
 APIM_PRINCIPAL_ID=$(az apim show \
     --name "$APIM_NAME" \
@@ -140,7 +144,7 @@ echo ""
 
 # ─── Step 1: Deploy Foundry Model ───────────────────────────────────────────
 
-log_info "[1/4] Deploying gpt-5.1-codex-mini model to Foundry..."
+log_info "[1/4] Deploying gpt-5.2 model to Foundry..."
 
 if [[ "$WHAT_IF_ONLY" == true ]]; then
     az deployment group what-if \
@@ -187,7 +191,7 @@ if [[ "$WHAT_IF_ONLY" == true ]]; then
         --resource-group "$APIM_RG" \
         --template-file "$BICEP_DIR/main.bicep" \
         --parameters apimName="$APIM_NAME" \
-              foundryEndpointUrl="$FOUNDRY_ENDPOINT"
+              foundryEndpointUrl="$FOUNDRY_PE_ENDPOINT"
     echo ""
     log_info "What-if analysis complete. No resources were deployed."
     exit 0
@@ -207,7 +211,7 @@ az deployment group create \
     --resource-group "$APIM_RG" \
     --template-file "$BICEP_DIR/main.bicep" \
     --parameters apimName="$APIM_NAME" \
-          foundryEndpointUrl="$FOUNDRY_ENDPOINT" \
+          foundryEndpointUrl="$FOUNDRY_PE_ENDPOINT" \
     --name "copilot-byok-apim-$(date +%Y%m%d-%H%M%S)" \
     --output table
 log_success "APIM resources deployed"
@@ -235,7 +239,7 @@ cat > "$ENV_FILE" << EOF
 
 APIM_SUBSCRIPTION_KEY=$SUBSCRIPTION_KEY
 APIM_GATEWAY_URL=$(echo "$GATEWAY_URL" | sed 's|https://||')
-FOUNDRY_DEPLOYMENT_NAME=gpt-5.1-codex-mini
+FOUNDRY_DEPLOYMENT_NAME=gpt-5.2
 EOF
 
 log_success ".env file written to $ENV_FILE"
@@ -249,7 +253,7 @@ echo "GitHub Enterprise Configuration:"
 echo "  Provider:       Microsoft Foundry"
 echo "  Deployment URL: ${GATEWAY_URL}/openai/deployments"
 echo "  API Key:        (stored in .env — run 'source .env && echo \$APIM_SUBSCRIPTION_KEY')"
-echo "  Model ID:       gpt-5.1-codex-mini"
+echo "  Model ID:       gpt-5.2"
 echo ""
 echo "Test with:"
 echo "  source .env"
@@ -257,7 +261,7 @@ echo "  curl -X POST \\"
 echo "    -H \"api-key: \$APIM_SUBSCRIPTION_KEY\" \\"
 echo "    -H \"Content-Type: application/json\" \\"
 echo "    -d '{\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}]}' \\"
-echo "    \"https://\$APIM_GATEWAY_URL/openai/deployments/gpt-5.1-codex-mini/chat/completions?api-version=2024-10-21\""
+echo "    \"https://\$APIM_GATEWAY_URL/openai/deployments/gpt-5.2/chat/completions?api-version=2024-10-21\""
 echo ""
 echo "Validate with:"
 echo "  ./scripts/validate-copilot-byok.sh"

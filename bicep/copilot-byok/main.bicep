@@ -1,13 +1,13 @@
-// GitHub Copilot BYOK — APIM API, Backend, Product & Subscription
+// GitHub Copilot BYOK — APIM API & Backend
 //
 // Adds to the EXISTING APIM instance:
 // - Named backend pointing to Foundry endpoint
-// - Copilot BYOK API with native Foundry URL pattern
-// - "GitHub Copilot" product with subscription requirement
-// - Named subscription (key = GitHub API key)
+// - Copilot BYOK API with OpenAI-compatible URL pattern
+// - Named value (secret) for API key validation in policy
 //
-// Operations:
-// - POST /openai/deployments/{deployment-id}/chat/completions  - Chat completions
+// Auth is handled in policy (not APIM subscription) to support both:
+//   - api-key header (Azure/Foundry style)
+//   - Authorization: Bearer (OpenAI-compatible style)
 //
 // Deploy to: rg-ai-apim
 
@@ -25,11 +25,9 @@ param apiDisplayName string = 'Copilot BYOK API'
 @description('Path prefix for the API')
 param apiPath string = 'openai'
 
-@description('Display name for the APIM product')
-param productDisplayName string = 'GitHub Copilot'
-
-@description('Display name for the subscription')
-param subscriptionDisplayName string = 'GitHub Copilot BYOK'
+@secure()
+@description('API key for GitHub Copilot BYOK authentication (validated in policy)')
+param apiKey string
 
 // Reference existing APIM instance — do NOT create or modify
 resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' existing = {
@@ -42,7 +40,7 @@ resource foundryBackend 'Microsoft.ApiManagement/service/backends@2023-09-01-pre
   name: 'foundry-codex'
   properties: {
     title: 'Azure AI Foundry - Codex'
-    description: 'Azure AI Foundry endpoint for GitHub Copilot BYOK (gpt-5.1-codex-mini)'
+    description: 'Azure AI Foundry endpoint for GitHub Copilot BYOK (gpt-5.2)'
     url: foundryEndpointUrl
     protocol: 'http'
     tls: {
@@ -70,32 +68,28 @@ resource foundryBackend 'Microsoft.ApiManagement/service/backends@2023-09-01-pre
   }
 }
 
-// "GitHub Copilot" product — groups the BYOK API and requires subscription
-resource copilotProduct 'Microsoft.ApiManagement/service/products@2023-09-01-preview' = {
+// Named value (secret) — stores the API key for policy-level validation
+resource apiKeyNamedValue 'Microsoft.ApiManagement/service/namedValues@2023-09-01-preview' = {
   parent: apim
-  name: 'github-copilot'
+  name: 'copilot-byok-api-key'
   properties: {
-    displayName: productDisplayName
-    description: 'GitHub Copilot BYOK — provides access to Azure AI Foundry models via APIM subscription key. Rate limited to 60 requests/minute.'
-    state: 'published'
-    subscriptionRequired: true
-    approvalRequired: false
-    subscriptionsLimit: 10
+    displayName: 'copilot-byok-api-key'
+    value: apiKey
+    secret: true
+    tags: [
+      'copilot-byok'
+    ]
   }
 }
 
-// Copilot BYOK API definition
+// Copilot BYOK API definition — no subscription required, auth handled in policy
 resource copilotByokApi 'Microsoft.ApiManagement/service/apis@2023-09-01-preview' = {
   parent: apim
   name: 'copilot-byok-api'
   properties: {
     displayName: apiDisplayName
-    description: 'GitHub Copilot BYOK API — proxies OpenAI-compatible chat/completions requests to Azure AI Foundry via managed identity authentication.'
-    subscriptionRequired: true
-    subscriptionKeyParameterNames: {
-      header: 'api-key'
-      query: 'api-key'
-    }
+    description: 'GitHub Copilot BYOK API — proxies OpenAI-compatible requests to Azure AI Foundry. Auth validated in policy to support both api-key and Bearer token.'
+    subscriptionRequired: false
     path: apiPath
     protocols: [
       'https'
@@ -103,12 +97,75 @@ resource copilotByokApi 'Microsoft.ApiManagement/service/apis@2023-09-01-preview
     serviceUrl: '${foundryEndpointUrl}/openai'
     isCurrent: true
   }
+  dependsOn: [
+    apiKeyNamedValue
+  ]
 }
 
-// Associate API with the GitHub Copilot product
-resource productApiLink 'Microsoft.ApiManagement/service/products/apis@2023-09-01-preview' = {
-  parent: copilotProduct
-  name: copilotByokApi.name
+// List models operation — GitHub calls this to validate the connection and discover models
+resource listModelsOperation 'Microsoft.ApiManagement/service/apis/operations@2023-09-01-preview' = {
+  parent: copilotByokApi
+  name: 'list-models'
+  properties: {
+    displayName: 'List Models'
+    description: 'Lists available models. Used by GitHub to validate connectivity and discover models.'
+    method: 'GET'
+    urlTemplate: '/models'
+    request: {
+      queryParameters: [
+        {
+          name: 'api-version'
+          description: 'API version'
+          type: 'string'
+          required: false
+        }
+      ]
+    }
+    responses: [
+      {
+        statusCode: 200
+        description: 'List of available models'
+        representations: [
+          {
+            contentType: 'application/json'
+          }
+        ]
+      }
+    ]
+  }
+}
+
+// List deployments operation — GitHub may call this to enumerate deployments
+resource listDeploymentsOperation 'Microsoft.ApiManagement/service/apis/operations@2023-09-01-preview' = {
+  parent: copilotByokApi
+  name: 'list-deployments'
+  properties: {
+    displayName: 'List Deployments'
+    description: 'Lists model deployments. Used by GitHub to discover available deployment IDs.'
+    method: 'GET'
+    urlTemplate: '/deployments'
+    request: {
+      queryParameters: [
+        {
+          name: 'api-version'
+          description: 'API version'
+          type: 'string'
+          required: false
+        }
+      ]
+    }
+    responses: [
+      {
+        statusCode: 200
+        description: 'List of deployments'
+        representations: [
+          {
+            contentType: 'application/json'
+          }
+        ]
+      }
+    ]
+  }
 }
 
 // Chat completions operation
@@ -123,7 +180,7 @@ resource chatCompletionsOperation 'Microsoft.ApiManagement/service/apis/operatio
     templateParameters: [
       {
         name: 'deployment-id'
-        description: 'The model deployment name (e.g., gpt-5.1-codex-mini)'
+        description: 'The model deployment name (e.g., gpt-5.2)'
         type: 'string'
         required: true
       }
@@ -165,6 +222,90 @@ resource chatCompletionsOperation 'Microsoft.ApiManagement/service/apis/operatio
   }
 }
 
+// Completions operation (for code-generation models like codex)
+resource completionsOperation 'Microsoft.ApiManagement/service/apis/operations@2023-09-01-preview' = {
+  parent: copilotByokApi
+  name: 'completions'
+  properties: {
+    displayName: 'Completions'
+    description: 'Creates a text completion for the specified model deployment. Used by code-generation models.'
+    method: 'POST'
+    urlTemplate: '/deployments/{deployment-id}/completions'
+    templateParameters: [
+      {
+        name: 'deployment-id'
+        description: 'The model deployment name (e.g., gpt-5.2)'
+        type: 'string'
+        required: true
+      }
+    ]
+    request: {
+      queryParameters: [
+        {
+          name: 'api-version'
+          description: 'API version'
+          type: 'string'
+          required: false
+        }
+      ]
+      representations: [
+        {
+          contentType: 'application/json'
+        }
+      ]
+    }
+    responses: [
+      {
+        statusCode: 200
+        description: 'Completion response'
+        representations: [
+          {
+            contentType: 'application/json'
+          }
+        ]
+      }
+    ]
+  }
+}
+
+// Responses operation (model specified in request body, not URL path)
+resource responsesOperation 'Microsoft.ApiManagement/service/apis/operations@2023-09-01-preview' = {
+  parent: copilotByokApi
+  name: 'responses'
+  properties: {
+    displayName: 'Responses'
+    description: 'Creates a response using the Responses API. Model is specified in the request body (e.g., gpt-5.2).'
+    method: 'POST'
+    urlTemplate: '/responses'
+    request: {
+      queryParameters: [
+        {
+          name: 'api-version'
+          description: 'API version'
+          type: 'string'
+          required: false
+        }
+      ]
+      representations: [
+        {
+          contentType: 'application/json'
+        }
+      ]
+    }
+    responses: [
+      {
+        statusCode: 200
+        description: 'Response object'
+        representations: [
+          {
+            contentType: 'application/json'
+          }
+        ]
+      }
+    ]
+  }
+}
+
 // API-level policy — managed identity auth + rate limiting
 resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-09-01-preview' = {
   parent: copilotByokApi
@@ -175,21 +316,7 @@ resource apiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-09-01-pre
   }
 }
 
-// Named subscription for GitHub Copilot
-resource copilotSubscription 'Microsoft.ApiManagement/service/subscriptions@2023-09-01-preview' = {
-  parent: apim
-  name: 'github-copilot-byok'
-  properties: {
-    displayName: subscriptionDisplayName
-    scope: copilotProduct.id
-    state: 'active'
-    allowTracing: false
-  }
-}
-
 output apiName string = copilotByokApi.name
 output apiPath string = copilotByokApi.properties.path
-output productName string = copilotProduct.name
-output subscriptionName string = copilotSubscription.name
 output gatewayUrl string = apim.properties.gatewayUrl
-output deploymentUrl string = '${apim.properties.gatewayUrl}/${apiPath}/deployments'
+output baseApiUrl string = '${apim.properties.gatewayUrl}/${apiPath}'

@@ -18,7 +18,7 @@ ENV_FILE="$REPO_ROOT/.env"
 
 APIM_NAME="apim-ai-lab-0115"
 APIM_RG="rg-ai-apim"
-FOUNDRY_RG="rg-ai-foundry"
+FOUNDRY_RG="rg-foundry"
 STRICT=false
 RUN_E2E=false
 VALIDATION_PASSED=true
@@ -81,24 +81,24 @@ else
     CODEX_MODEL=$(az cognitiveservices account deployment list \
         --name "$FOUNDRY_ACCOUNT" \
         --resource-group "$FOUNDRY_RG" \
-        --query "[?name=='gpt-5.1-codex-mini'].name" -o tsv 2>/dev/null)
+        --query "[?name=='gpt-5.2'].name" -o tsv 2>/dev/null)
 
-    if [[ "$CODEX_MODEL" == "gpt-5.1-codex-mini" ]]; then
-        log_success "Codex model deployed: gpt-5.1-codex-mini"
+    if [[ "$CODEX_MODEL" == "gpt-5.2" ]]; then
+        log_success "Model deployed: gpt-5.2"
     else
-        log_error "Codex model NOT found: gpt-5.1-codex-mini"
+        log_error "Model NOT found: gpt-5.2"
     fi
 
     # Check existing model still intact
     EXISTING_MODEL=$(az cognitiveservices account deployment list \
         --name "$FOUNDRY_ACCOUNT" \
         --resource-group "$FOUNDRY_RG" \
-        --query "[?name=='gpt-4.1'].name" -o tsv 2>/dev/null)
+        --query "[?name=='gpt-5.2'].name" -o tsv 2>/dev/null)
 
-    if [[ "$EXISTING_MODEL" == "gpt-4.1" ]]; then
-        log_success "Existing model intact: gpt-4.1"
+    if [[ "$EXISTING_MODEL" == "gpt-5.2" ]]; then
+        log_success "Existing model intact: gpt-5.2"
     else
-        log_warning "Existing model gpt-4.1 not found (may not have been deployed)"
+        log_warning "Existing model gpt-5.2 not found (may not have been deployed)"
     fi
 fi
 
@@ -190,7 +190,7 @@ if [[ "$RUN_E2E" == true ]]; then
                 -H "api-key: $APIM_SUBSCRIPTION_KEY" \
                 -H "Content-Type: application/json" \
                 -d '{"messages":[{"role":"user","content":"Say hello"}],"max_tokens":10}' \
-                "https://$APIM_GATEWAY_URL/openai/deployments/gpt-5.1-codex-mini/chat/completions?api-version=2024-10-21" \
+                "https://$APIM_GATEWAY_URL/openai/deployments/gpt-5.2/chat/completions?api-version=2024-10-21" \
                 --max-time 30 2>/dev/null || echo "000")
 
             if [[ "$HTTP_STATUS" == "200" ]]; then
@@ -206,7 +206,7 @@ if [[ "$RUN_E2E" == true ]]; then
                 -X POST \
                 -H "Content-Type: application/json" \
                 -d '{"messages":[{"role":"user","content":"Hello"}],"max_tokens":10}' \
-                "https://$APIM_GATEWAY_URL/openai/deployments/gpt-5.1-codex-mini/chat/completions?api-version=2024-10-21" \
+                "https://$APIM_GATEWAY_URL/openai/deployments/gpt-5.2/chat/completions?api-version=2024-10-21" \
                 --max-time 10 2>/dev/null || echo "000")
 
             if [[ "$NO_KEY_STATUS" == "401" ]]; then

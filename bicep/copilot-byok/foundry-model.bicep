@@ -1,6 +1,6 @@
 // Foundry Model Deployment for GitHub Copilot BYOK
 //
-// Deploys gpt-5.1-codex-mini to the EXISTING Foundry account.
+// Deploys gpt-5.2 to the EXISTING Foundry account.
 // Does NOT modify the Foundry account or existing model deployments.
 //
 // Deploy to: rg-ai-foundry
@@ -11,19 +11,19 @@ targetScope = 'resourceGroup'
 param foundryAccountName string
 
 @description('Model deployment name')
-param modelName string = 'gpt-5.1-codex-mini'
+param modelName string = 'gpt-5.2'
 
 @description('Model provider format')
 param modelFormat string = 'OpenAI'
 
 @description('Model version')
-param modelVersion string = '2025-04-14'
+param modelVersion string = '2025-12-11'
 
 @description('Model SKU name')
 param modelSkuName string = 'GlobalStandard'
 
 @description('Model capacity in TPM units')
-param modelCapacity int = 30
+param modelCapacity int = 50
 
 // Reference existing Foundry account — do NOT create or modify
 resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
