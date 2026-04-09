@@ -167,6 +167,8 @@ In the **Managed Environment** you created in Phase 0:
    | Client secret | `<your-app-client-secret>` |
    | Authorization URL | `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/authorize` |
    | Token URL | `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token` |
+   | Refresh URL | `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token` |
+   | Scope | `api://<your-api-audience>/.default` |
    | Resource URL | `<your-api-audience>` |
 
 5. Define the **MCP POST action** (Definition tab):
