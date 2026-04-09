@@ -140,15 +140,65 @@ In the Power Platform admin center:
 - Navigate to your environment → **Settings** → **Product** → **Virtual Network**
 - Status should show **Active** with the subnet name
 
-### Phase 3: Create Custom Connector in Copilot Studio
+### Phase 3: Copilot Studio Agent + Custom Connector
 
-#### 6. Create Standard HTTP Custom Connector
+#### 6. Create Agent in Copilot Studio
 
-In the **Managed Environment** you created in Phase 0:
+1. Open [Copilot Studio](https://copilotstudio.microsoft.com)
+2. Switch to your **AI Lab - Private** environment (top-right environment picker)
+3. Click **Create** → **New agent**
+4. Name: `Private MCP Agent` (or similar)
+5. Click **Create**
 
-1. Go to [https://make.powerapps.com](https://make.powerapps.com) → switch to your `AI Lab - Private` environment
-2. Navigate to **Custom connectors** → **+ New custom connector** → **Create from blank**
-3. Configure:
+When saved, Copilot Studio auto-provisions an **Entra Agent Identity** — a dedicated app registration for this agent. You'll need its Application (client) ID next.
+
+6. Find the agent's Application (client) ID:
+   - Go to [Entra Admin Center](https://entra.microsoft.com) → **Agent ID** → **All agent identities**
+   - Or: **App registrations** → search for the agent name
+   - Copy the **Application (client) ID**
+
+#### 7. Configure the Agent Identity
+
+Run these commands to set up the agent identity for OAuth. Replace `<agent-app-id>` with the client ID from step 6.
+
+```bash
+# Create a client secret (save the output — you'll need it for the connector)
+az ad app credential reset --id <agent-app-id> --append \
+  --display-name "private-mcp-connector" --years 1
+
+# Grant delegated permission (user_impersonation on the API resource)
+az ad app permission add --id <agent-app-id> \
+  --api 6cb63aba-6d0d-4f06-957e-c584fdeb23d7 \
+  --api-permissions faa0043a-3d8e-472b-bbc3-69aa95408184=Scope
+
+az ad app permission grant --id <agent-app-id> \
+  --api 6cb63aba-6d0d-4f06-957e-c584fdeb23d7 \
+  --scope user_impersonation
+```
+
+#### 8. Authorize the Agent in APIM JWT Policy
+
+Add the agent's client ID to `bicep/mcp-api-private/policies/jwt-validation.xml` inside the `<client-application-ids>` block:
+
+```xml
+<client-application-ids>
+    <application-id><agent-app-id></application-id>
+</client-application-ids>
+```
+
+Then redeploy:
+
+```bash
+./scripts/deploy-mcp-api-private.sh --auto-approve
+```
+
+#### 9. Create Standard HTTP Custom Connector
+
+In [https://make.powerapps.com](https://make.powerapps.com) → switch to your **AI Lab - Private** environment:
+
+1. Navigate to **Custom connectors** → **+ New custom connector** → **Create from blank**
+
+2. **General** tab:
 
    | Setting | Value |
    |---------|-------|
@@ -157,45 +207,54 @@ In the **Managed Environment** you created in Phase 0:
    | Base URL | `/mcp/` |
    | Scheme | HTTPS |
 
-4. Configure **Security** (OAuth 2.0):
+3. **Security** tab (OAuth 2.0):
 
    | Setting | Value |
    |---------|-------|
    | Authentication type | OAuth 2.0 |
    | Identity Provider | Azure Active Directory |
-   | Client ID | `<your-app-client-id>` |
-   | Client secret | `<your-app-client-secret>` |
-   | Authorization URL | `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/authorize` |
-   | Token URL | `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token` |
-   | Refresh URL | `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token` |
-   | Scope | `api://<your-api-audience>/user_impersonation` |
-   | Resource URL | `<your-api-audience>` |
+   | Client ID | `<agent-app-id>` |
+   | Client secret | `<secret from step 7>` |
+   | Authorization URL | `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/authorize` |
+   | Token URL | `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/token` |
+   | Refresh URL | `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/token` |
+   | Scope | `api://6cb63aba-6d0d-4f06-957e-c584fdeb23d7/user_impersonation` |
+   | Resource URL | `6cb63aba-6d0d-4f06-957e-c584fdeb23d7` |
 
-5. Define the **MCP POST action** (Definition tab):
-   - Action: `MCPCall`
-   - Request: `POST` to `/`
+4. After saving Security, copy the **Redirect URL** shown at the top of the Security page, then add it to the agent's app registration:
+
+   ```bash
+   az ad app update --id <agent-app-id> \
+     --web-redirect-uris "<redirect-url-from-connector>"
+   ```
+
+5. **Definition** tab — add the MCP POST action:
+   - Click **New action**
+   - Summary: `MCPCall`
+   - Request: click **Import from sample** → Method: `POST`, URL: `/`
    - Body: Raw JSON
 
-6. **Create connector** → **Test** the connection using OAuth flow
+6. Click **Create connector** → **Test** tab → create a new connection (sign in via OAuth)
 
 > **Why standard HTTP connector instead of MCP connector?** The standard custom connector has GA-level support for Power Platform VNet integration. Traffic routes through the delegated subnet and resolves the private endpoint via VNet DNS — no public network exposure at any point.
 
-#### 7. Add Connector to Copilot Studio Agent
+#### 10. Wire Connector to Agent
 
-1. Open **Copilot Studio** → create or open an agent in the `AI Lab - Private` environment
+1. Return to **Copilot Studio** → open your `Private MCP Agent`
 2. Go to **Actions** → **Add an action** → select your `MCP Server (Private)` connector
-3. Configure the action input/output mapping
-4. **Test** — the agent should be able to call the private MCP server
+3. Select the `MCPCall` action
+4. Configure input/output mapping as needed
+5. **Save** and **Test** — the agent should be able to call the private MCP server
 
 ### Phase 4: Validate End-to-End
 
-#### 8. Run Solution Validation
+#### 11. Run Solution Validation
 
 ```bash
 ./scripts/validate-mcp-private.sh
 ```
 
-#### 9. Test from VPN
+#### 12. Test from VPN
 
 ```bash
 # Resolve APIM through private DNS (requires VPN)
@@ -210,7 +269,7 @@ curl -X POST https://apim-ai-lab-private.azure-api.net/mcp/ \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 ```
 
-#### 10. Test from Copilot Studio
+#### 13. Test from Copilot Studio
 
 Ask the agent:
 - "What time is it?"
