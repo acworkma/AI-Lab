@@ -1,0 +1,41 @@
+<!--
+    JWT Validation Policy for MCP API (Private APIM)
+    
+    Validates OAuth 2.0 bearer tokens from Entra ID.
+    Used by the custom connector in the Managed Power Platform environment.
+    
+    TODO: Update tenant-id, client-application-ids, and audiences
+    with values from your Entra ID app registration for the private variant.
+    
+    Tenant: REPLACE_WITH_TENANT_ID
+    API Resource: REPLACE_WITH_APP_ID
+    Authorized Client:
+      - Copilot Studio custom connector: REPLACE_WITH_CLIENT_APP_ID
+-->
+<policies>
+    <inbound>
+        <base />
+        <!-- Validate JWT token from Entra ID -->
+        <validate-azure-ad-token tenant-id="REPLACE_WITH_TENANT_ID"
+                                  header-name="Authorization"
+                                  failed-validation-httpcode="401"
+                                  failed-validation-error-message="Unauthorized. Access token is missing or invalid.">
+            <client-application-ids>
+                <application-id>REPLACE_WITH_CLIENT_APP_ID</application-id>
+            </client-application-ids>
+            <audiences>
+                <audience>REPLACE_WITH_APP_ID</audience>
+                <audience>api://REPLACE_WITH_APP_ID</audience>
+            </audiences>
+        </validate-azure-ad-token>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

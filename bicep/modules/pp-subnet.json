@@ -1,0 +1,84 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "3594505319024940129"
+    }
+  },
+  "parameters": {
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "PowerPlatformSubnet",
+      "metadata": {
+        "description": "Name of the subnet"
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the parent VNet"
+      }
+    },
+    "subnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.1.0/27",
+      "metadata": {
+        "description": "Subnet address prefix (minimum /27 for production, ~25-30 IPs needed)"
+      }
+    },
+    "nsgId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Resource ID of the NSG to associate with this subnet (optional)"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2023-11-01",
+      "name": "[format('{0}/{1}', parameters('vnetName'), parameters('subnetName'))]",
+      "properties": {
+        "addressPrefix": "[parameters('subnetPrefix')]",
+        "networkSecurityGroup": "[if(not(empty(parameters('nsgId'))), createObject('id', parameters('nsgId')), null())]",
+        "delegations": [
+          {
+            "name": "delegation-powerplatform",
+            "properties": {
+              "serviceName": "Microsoft.PowerPlatform/enterprisePolicies"
+            }
+          }
+        ],
+        "privateEndpointNetworkPolicies": "Enabled",
+        "privateLinkServiceNetworkPolicies": "Enabled"
+      }
+    }
+  ],
+  "outputs": {
+    "subnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Power Platform delegated subnet"
+      },
+      "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
+    },
+    "subnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Power Platform delegated subnet"
+      },
+      "value": "[parameters('subnetName')]"
+    },
+    "subnetPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Subnet address prefix"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName')), '2023-11-01').addressPrefix]"
+    }
+  }
+}

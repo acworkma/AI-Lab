@@ -1,0 +1,1086 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "9048961401836669122"
+    }
+  },
+  "parameters": {
+    "apimName": {
+      "type": "string",
+      "defaultValue": "apim-ai-lab-private",
+      "metadata": {
+        "description": "Name of the API Management instance (must be globally unique)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus2",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "publisherEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Email address of the API publisher (required)"
+      }
+    },
+    "publisherName": {
+      "type": "string",
+      "defaultValue": "AI-Lab",
+      "metadata": {
+        "description": "Name of the API publisher organization"
+      }
+    },
+    "sku": {
+      "type": "string",
+      "defaultValue": "Standardv2",
+      "allowedValues": [
+        "Standardv2"
+      ],
+      "metadata": {
+        "description": "APIM pricing tier"
+      }
+    },
+    "skuCapacity": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "maxValue": 10,
+      "metadata": {
+        "description": "Number of scale units"
+      }
+    },
+    "sharedServicesVnetName": {
+      "type": "string",
+      "defaultValue": "vnet-ai-shared",
+      "metadata": {
+        "description": "Name of the shared services VNet"
+      }
+    },
+    "sharedServicesVnetResourceGroup": {
+      "type": "string",
+      "defaultValue": "rg-ai-core",
+      "metadata": {
+        "description": "Resource group containing the shared services VNet"
+      }
+    },
+    "apimSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.128/27",
+      "metadata": {
+        "description": "CIDR prefix for APIM integration subnet (outbound)"
+      }
+    },
+    "ppSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.1.0/27",
+      "metadata": {
+        "description": "CIDR prefix for Power Platform delegated subnet"
+      }
+    },
+    "privateEndpointSubnetName": {
+      "type": "string",
+      "defaultValue": "PrivateEndpointSubnet",
+      "metadata": {
+        "description": "Name of the private endpoint subnet (existing)"
+      }
+    },
+    "vpnClientAddressPool": {
+      "type": "string",
+      "defaultValue": "172.16.0.0/24",
+      "metadata": {
+        "description": "VPN client address pool for NSG rules"
+      }
+    },
+    "enableVnetIntegration": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable VNet integration for outbound backend access"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "environment": "dev",
+        "purpose": "Private API Management Gateway",
+        "owner": "platform-team"
+      },
+      "metadata": {
+        "description": "Resource tags"
+      }
+    }
+  },
+  "variables": {
+    "apimResourceGroupName": "rg-ai-apim-private",
+    "apimNsgName": "nsg-apim-private-integration",
+    "apimSubnetName": "ApimPrivateIntegrationSubnet",
+    "ppSubnetName": "PowerPlatformSubnet",
+    "apimDnsZoneName": "privatelink.azure-api.net"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('apimResourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]"
+    },
+    {
+      "condition": "[parameters('enableVnetIntegration')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-apim-private-nsg",
+      "resourceGroup": "[parameters('sharedServicesVnetResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "nsgName": {
+            "value": "[variables('apimNsgName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vpnClientAddressPool": {
+            "value": "[parameters('vpnClientAddressPool')]"
+          },
+          "apimSubnetPrefix": {
+            "value": "[parameters('apimSubnetPrefix')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "2081577727175711674"
+            }
+          },
+          "parameters": {
+            "nsgName": {
+              "type": "string",
+              "defaultValue": "nsg-apim-integration",
+              "metadata": {
+                "description": "Name of the NSG"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for deployment"
+              }
+            },
+            "vpnClientAddressPool": {
+              "type": "string",
+              "defaultValue": "172.16.0.0/24",
+              "metadata": {
+                "description": "VPN client address pool for inbound rules"
+              }
+            },
+            "apimSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.1.0.96/27",
+              "metadata": {
+                "description": "APIM subnet address prefix"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('nsgName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowVpnClientInbound",
+                    "properties": {
+                      "description": "Allow inbound traffic from VPN clients to developer portal/management",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRanges": [
+                        "443",
+                        "3443"
+                      ],
+                      "sourceAddressPrefix": "[parameters('vpnClientAddressPool')]",
+                      "destinationAddressPrefix": "[parameters('apimSubnetPrefix')]",
+                      "access": "Allow",
+                      "priority": 100,
+                      "direction": "Inbound"
+                    }
+                  },
+                  {
+                    "name": "AllowVnetInbound",
+                    "properties": {
+                      "description": "Allow inbound traffic from VNet (hub-spoke communication)",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "destinationAddressPrefix": "*",
+                      "access": "Allow",
+                      "priority": 110,
+                      "direction": "Inbound"
+                    }
+                  },
+                  {
+                    "name": "AllowAzureLoadBalancerInbound",
+                    "properties": {
+                      "description": "Allow Azure Load Balancer health probes",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "AzureLoadBalancer",
+                      "destinationAddressPrefix": "*",
+                      "access": "Allow",
+                      "priority": 120,
+                      "direction": "Inbound"
+                    }
+                  },
+                  {
+                    "name": "DenyAllInbound",
+                    "properties": {
+                      "description": "Deny all other inbound traffic",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "*",
+                      "destinationAddressPrefix": "*",
+                      "access": "Deny",
+                      "priority": 4096,
+                      "direction": "Inbound"
+                    }
+                  },
+                  {
+                    "name": "AllowStorageOutbound",
+                    "properties": {
+                      "description": "Allow outbound to Azure Storage for APIM dependencies",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "443",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "destinationAddressPrefix": "Storage",
+                      "access": "Allow",
+                      "priority": 100,
+                      "direction": "Outbound"
+                    }
+                  },
+                  {
+                    "name": "AllowKeyVaultOutbound",
+                    "properties": {
+                      "description": "Allow outbound to Azure Key Vault for secrets/certificates",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "443",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "destinationAddressPrefix": "AzureKeyVault",
+                      "access": "Allow",
+                      "priority": 110,
+                      "direction": "Outbound"
+                    }
+                  },
+                  {
+                    "name": "AllowSqlOutbound",
+                    "properties": {
+                      "description": "Allow outbound to Azure SQL for APIM configuration store",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "1433",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "destinationAddressPrefix": "Sql",
+                      "access": "Allow",
+                      "priority": 120,
+                      "direction": "Outbound"
+                    }
+                  },
+                  {
+                    "name": "AllowEventHubOutbound",
+                    "properties": {
+                      "description": "Allow outbound to Event Hub for logging",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRanges": [
+                        "5671",
+                        "5672",
+                        "443"
+                      ],
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "destinationAddressPrefix": "EventHub",
+                      "access": "Allow",
+                      "priority": 130,
+                      "direction": "Outbound"
+                    }
+                  },
+                  {
+                    "name": "AllowVnetOutbound",
+                    "properties": {
+                      "description": "Allow outbound to VNet for backend connectivity",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "access": "Allow",
+                      "priority": 140,
+                      "direction": "Outbound"
+                    }
+                  },
+                  {
+                    "name": "AllowAzureMonitorOutbound",
+                    "properties": {
+                      "description": "Allow outbound to Azure Monitor for diagnostics",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "443",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "destinationAddressPrefix": "AzureMonitor",
+                      "access": "Allow",
+                      "priority": 150,
+                      "direction": "Outbound"
+                    }
+                  },
+                  {
+                    "name": "AllowAzureActiveDirectoryOutbound",
+                    "properties": {
+                      "description": "Allow outbound to Azure AD for authentication",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "443",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "destinationAddressPrefix": "AzureActiveDirectory",
+                      "access": "Allow",
+                      "priority": 160,
+                      "direction": "Outbound"
+                    }
+                  },
+                  {
+                    "name": "DenyInternetOutbound",
+                    "properties": {
+                      "description": "Deny direct internet access (use service tags for Azure services)",
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "*",
+                      "destinationAddressPrefix": "Internet",
+                      "access": "Deny",
+                      "priority": 4096,
+                      "direction": "Outbound"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "outputs": {
+            "nsgId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the NSG"
+              },
+              "value": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgName'))]"
+            },
+            "nsgName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the NSG"
+              },
+              "value": "[parameters('nsgName')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "condition": "[parameters('enableVnetIntegration')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-apim-private-subnet",
+      "resourceGroup": "[parameters('sharedServicesVnetResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subnetName": {
+            "value": "[variables('apimSubnetName')]"
+          },
+          "vnetName": {
+            "value": "[parameters('sharedServicesVnetName')]"
+          },
+          "subnetPrefix": {
+            "value": "[parameters('apimSubnetPrefix')]"
+          },
+          "nsgId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('sharedServicesVnetResourceGroup')), 'Microsoft.Resources/deployments', 'deploy-apim-private-nsg'), '2025-04-01').outputs.nsgId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "10953109579189392780"
+            }
+          },
+          "parameters": {
+            "subnetName": {
+              "type": "string",
+              "defaultValue": "ApimIntegrationSubnet",
+              "metadata": {
+                "description": "Name of the subnet"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the parent VNet"
+              }
+            },
+            "subnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.1.0.96/27",
+              "metadata": {
+                "description": "Subnet address prefix (minimum /27, recommended /26)"
+              }
+            },
+            "nsgId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the NSG to associate with this subnet"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/{1}', parameters('vnetName'), parameters('subnetName'))]",
+              "properties": {
+                "addressPrefix": "[parameters('subnetPrefix')]",
+                "networkSecurityGroup": {
+                  "id": "[parameters('nsgId')]"
+                },
+                "delegations": [
+                  {
+                    "name": "delegation-web-serverfarms",
+                    "properties": {
+                      "serviceName": "Microsoft.Web/serverFarms"
+                    }
+                  }
+                ],
+                "serviceEndpoints": [
+                  {
+                    "service": "Microsoft.Storage"
+                  },
+                  {
+                    "service": "Microsoft.KeyVault"
+                  },
+                  {
+                    "service": "Microsoft.Sql"
+                  },
+                  {
+                    "service": "Microsoft.EventHub"
+                  }
+                ],
+                "privateEndpointNetworkPolicies": "Enabled",
+                "privateLinkServiceNetworkPolicies": "Enabled"
+              }
+            }
+          ],
+          "outputs": {
+            "subnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the APIM integration subnet"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
+            },
+            "subnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the APIM integration subnet"
+              },
+              "value": "[parameters('subnetName')]"
+            },
+            "subnetPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet address prefix"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName')), '2023-11-01').addressPrefix]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('sharedServicesVnetResourceGroup')), 'Microsoft.Resources/deployments', 'deploy-apim-private-nsg')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-pp-subnet",
+      "resourceGroup": "[parameters('sharedServicesVnetResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "subnetName": {
+            "value": "[variables('ppSubnetName')]"
+          },
+          "vnetName": {
+            "value": "[parameters('sharedServicesVnetName')]"
+          },
+          "subnetPrefix": {
+            "value": "[parameters('ppSubnetPrefix')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "3594505319024940129"
+            }
+          },
+          "parameters": {
+            "subnetName": {
+              "type": "string",
+              "defaultValue": "PowerPlatformSubnet",
+              "metadata": {
+                "description": "Name of the subnet"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the parent VNet"
+              }
+            },
+            "subnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.1.1.0/27",
+              "metadata": {
+                "description": "Subnet address prefix (minimum /27 for production, ~25-30 IPs needed)"
+              }
+            },
+            "nsgId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Resource ID of the NSG to associate with this subnet (optional)"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/{1}', parameters('vnetName'), parameters('subnetName'))]",
+              "properties": {
+                "addressPrefix": "[parameters('subnetPrefix')]",
+                "networkSecurityGroup": "[if(not(empty(parameters('nsgId'))), createObject('id', parameters('nsgId')), null())]",
+                "delegations": [
+                  {
+                    "name": "delegation-powerplatform",
+                    "properties": {
+                      "serviceName": "Microsoft.PowerPlatform/enterprisePolicies"
+                    }
+                  }
+                ],
+                "privateEndpointNetworkPolicies": "Enabled",
+                "privateLinkServiceNetworkPolicies": "Enabled"
+              }
+            }
+          ],
+          "outputs": {
+            "subnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Power Platform delegated subnet"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
+            },
+            "subnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Power Platform delegated subnet"
+              },
+              "value": "[parameters('subnetName')]"
+            },
+            "subnetPrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet address prefix"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName')), '2023-11-01').addressPrefix]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-apim-dns-zone",
+      "resourceGroup": "[parameters('sharedServicesVnetResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "zoneName": {
+            "value": "[variables('apimDnsZoneName')]"
+          },
+          "vnetId": {
+            "value": "[resourceId(parameters('sharedServicesVnetResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('sharedServicesVnetName'))]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "11124199584371221460"
+            }
+          },
+          "parameters": {
+            "zoneName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the private DNS zone (e.g., privatelink.azure-api.net)"
+              }
+            },
+            "vnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the VNet to link the DNS zone to"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "[parameters('zoneName')]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {}
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', parameters('zoneName'), format('{0}-link', split(parameters('vnetId'), '/')[8]))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('zoneName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "dnsZoneId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the private DNS zone"
+              },
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', parameters('zoneName'))]"
+            },
+            "dnsZoneName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the private DNS zone"
+              },
+              "value": "[parameters('zoneName')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-apim-private",
+      "resourceGroup": "[variables('apimResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "apimName": {
+            "value": "[parameters('apimName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "publisherEmail": {
+            "value": "[parameters('publisherEmail')]"
+          },
+          "publisherName": {
+            "value": "[parameters('publisherName')]"
+          },
+          "sku": {
+            "value": "[parameters('sku')]"
+          },
+          "skuCapacity": {
+            "value": "[parameters('skuCapacity')]"
+          },
+          "enableVnetIntegration": {
+            "value": "[parameters('enableVnetIntegration')]"
+          },
+          "vnetIntegrationSubnetId": "[if(parameters('enableVnetIntegration'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('sharedServicesVnetResourceGroup')), 'Microsoft.Resources/deployments', 'deploy-apim-private-subnet'), '2025-04-01').outputs.subnetId.value), createObject('value', ''))]",
+          "privateEndpointSubnetId": {
+            "value": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('sharedServicesVnetResourceGroup')), 'Microsoft.Network/virtualNetworks/subnets', split(format('{0}/{1}', parameters('sharedServicesVnetName'), parameters('privateEndpointSubnetName')), '/')[0], split(format('{0}/{1}', parameters('sharedServicesVnetName'), parameters('privateEndpointSubnetName')), '/')[1])]"
+          },
+          "privateDnsZoneId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('sharedServicesVnetResourceGroup')), 'Microsoft.Resources/deployments', 'deploy-apim-dns-zone'), '2025-04-01').outputs.dnsZoneId.value]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "8907191501323023397"
+            }
+          },
+          "parameters": {
+            "apimName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "metadata": {
+                "description": "Name of the API Management instance (must be globally unique)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for deployment"
+              }
+            },
+            "publisherEmail": {
+              "type": "string",
+              "metadata": {
+                "description": "Email address of the API publisher (required)"
+              }
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the subnet for private endpoint"
+              }
+            },
+            "privateDnsZoneId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the privatelink.azure-api.net DNS zone"
+              }
+            },
+            "publisherName": {
+              "type": "string",
+              "defaultValue": "AI-Lab",
+              "metadata": {
+                "description": "Name of the API publisher organization"
+              }
+            },
+            "sku": {
+              "type": "string",
+              "defaultValue": "Standardv2",
+              "allowedValues": [
+                "Standardv2"
+              ],
+              "metadata": {
+                "description": "APIM pricing tier"
+              }
+            },
+            "skuCapacity": {
+              "type": "int",
+              "defaultValue": 1,
+              "minValue": 1,
+              "maxValue": 10,
+              "metadata": {
+                "description": "Number of scale units"
+              }
+            },
+            "enableVnetIntegration": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable VNet integration (outbound to backends)"
+              }
+            },
+            "vnetIntegrationSubnetId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Resource ID of the subnet for VNet integration (outbound)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "variables": {
+            "privateEndpointName": "[format('{0}-pe', parameters('apimName'))]",
+            "privateLinkServiceConnectionName": "[format('{0}-plsc', parameters('apimName'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ApiManagement/service",
+              "apiVersion": "2023-09-01-preview",
+              "name": "[parameters('apimName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[parameters('sku')]",
+                "capacity": "[parameters('skuCapacity')]"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "publisherEmail": "[parameters('publisherEmail')]",
+                "publisherName": "[parameters('publisherName')]",
+                "virtualNetworkType": "[if(parameters('enableVnetIntegration'), 'External', 'None')]",
+                "virtualNetworkConfiguration": "[if(parameters('enableVnetIntegration'), createObject('subnetResourceId', parameters('vnetIntegrationSubnetId')), null())]",
+                "publicNetworkAccess": "Disabled",
+                "developerPortalStatus": "Enabled",
+                "legacyPortalStatus": "Disabled",
+                "apiVersionConstraint": {
+                  "minApiVersion": "2021-08-01"
+                },
+                "customProperties": {
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Ssl30": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Ciphers.TripleDes168": "False"
+                },
+                "certificates": []
+              }
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2023-11-01",
+              "name": "[variables('privateEndpointName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[parameters('privateEndpointSubnetId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[variables('privateLinkServiceConnectionName')]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]",
+                      "groupIds": [
+                        "Gateway"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/{1}', variables('privateEndpointName'), 'default')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "apim-dns-config",
+                    "properties": {
+                      "privateDnsZoneId": "[parameters('privateDnsZoneId')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "apimName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the deployed APIM instance"
+              },
+              "value": "[parameters('apimName')]"
+            },
+            "apimResourceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Full resource ID of APIM"
+              },
+              "value": "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]"
+            },
+            "gatewayUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Gateway URL (resolves to private IP via private DNS)"
+              },
+              "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview').gatewayUrl]"
+            },
+            "developerPortalUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Developer portal URL"
+              },
+              "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview').developerPortalUrl]"
+            },
+            "managementUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Management API URL"
+              },
+              "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview').managementApiUrl]"
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "System-assigned managed identity principal ID"
+              },
+              "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview', 'full').identity.principalId]"
+            },
+            "privateEndpointId": {
+              "type": "string",
+              "metadata": {
+                "description": "Private endpoint resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName'))]"
+            },
+            "privateEndpointIp": {
+              "type": "string",
+              "metadata": {
+                "description": "Private endpoint private IP address"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName')), '2023-11-01').customDnsConfigs[0].ipAddresses[0]]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('sharedServicesVnetResourceGroup')), 'Microsoft.Resources/deployments', 'deploy-apim-dns-zone')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('apimResourceGroupName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('sharedServicesVnetResourceGroup')), 'Microsoft.Resources/deployments', 'deploy-apim-private-subnet')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "apimName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the deployed APIM instance"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('apimResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-apim-private'), '2025-04-01').outputs.apimName.value]"
+    },
+    "apimResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of APIM"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('apimResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-apim-private'), '2025-04-01').outputs.apimResourceId.value]"
+    },
+    "gatewayUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Gateway URL (private — resolves via privatelink DNS)"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('apimResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-apim-private'), '2025-04-01').outputs.gatewayUrl.value]"
+    },
+    "principalId": {
+      "type": "string",
+      "metadata": {
+        "description": "System-assigned managed identity principal ID"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('apimResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-apim-private'), '2025-04-01').outputs.principalId.value]"
+    },
+    "privateEndpointIp": {
+      "type": "string",
+      "metadata": {
+        "description": "APIM private endpoint IP address"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('apimResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-apim-private'), '2025-04-01').outputs.privateEndpointIp.value]"
+    },
+    "ppSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Power Platform subnet ID (for enterprise policy setup)"
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('sharedServicesVnetResourceGroup')), 'Microsoft.Resources/deployments', 'deploy-pp-subnet'), '2025-04-01').outputs.subnetId.value]"
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "APIM resource group name"
+      },
+      "value": "[variables('apimResourceGroupName')]"
+    }
+  }
+}
