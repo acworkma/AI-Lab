@@ -155,14 +155,15 @@ When saved, Copilot Studio auto-provisions an **Entra Agent Identity** — a ded
 6. Find the agent's Application (client) ID:
    - Go to [Entra Admin Center](https://entra.microsoft.com) → **Agent ID** → **All agent identities**
    - Or: **App registrations** → search for the agent name
-   - Copy the **Application (client) ID**
+   - Copy the **Application (client) ID** — save this as `AGENT_CLIENT_ID`
 
 #### 7. Configure the Agent Identity
 
-Run these commands to set up the agent identity for OAuth. Replace `<agent-app-id>` with the client ID from step 6.
+Run these commands to set up the agent identity for OAuth. Replace `<agent-app-id>` with `AGENT_CLIENT_ID` from step 6.
 
 ```bash
-# Create a client secret (save the output — you'll need it for the connector)
+# Create a client secret — save the "password" value as AGENT_CLIENT_SECRET
+# (you cannot retrieve it again after this command)
 az ad app credential reset --id <agent-app-id> --append \
   --display-name "private-mcp-connector" --years 1
 
@@ -213,8 +214,8 @@ In [https://make.powerapps.com](https://make.powerapps.com) → switch to your *
    |---------|-------|
    | Authentication type | OAuth 2.0 |
    | Identity Provider | Azure Active Directory |
-   | Client ID | `<agent-app-id>` |
-   | Client secret | `<secret from step 7>` |
+   | Client ID | `AGENT_CLIENT_ID` from step 6 |
+   | Client secret | `AGENT_CLIENT_SECRET` from step 7 |
    | Authorization URL | `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/authorize` |
    | Token URL | `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/token` |
    | Refresh URL | `https://login.microsoftonline.com/38c1a7b0-f16b-45fd-a528-87d8720e868e/oauth2/v2.0/token` |
