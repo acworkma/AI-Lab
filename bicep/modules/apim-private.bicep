@@ -90,7 +90,10 @@ resource apim 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
       subnetResourceId: vnetIntegrationSubnetId
     } : null
     // Disable public network access — all inbound via private endpoint
-    publicNetworkAccess: 'Disabled'
+    // Note: Azure requires creating APIM with public access enabled first,
+    // then disabling it after creation. The deploy script handles setting
+    // publicNetworkAccess to Disabled post-creation.
+    publicNetworkAccess: 'Enabled'
     developerPortalStatus: 'Enabled'
     legacyPortalStatus: 'Disabled'
     apiVersionConstraint: {

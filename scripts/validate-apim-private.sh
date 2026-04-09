@@ -29,9 +29,9 @@ FAIL_COUNT=0
 WARN_COUNT=0
 
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_pass() { echo -e "${GREEN}[PASS]${NC} $1"; ((PASS_COUNT++)); }
-log_fail() { echo -e "${RED}[FAIL]${NC} $1"; ((FAIL_COUNT++)); }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; ((WARN_COUNT++)); }
+log_pass() { echo -e "${GREEN}[PASS]${NC} $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
+log_fail() { echo -e "${RED}[FAIL]${NC} $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; WARN_COUNT=$((WARN_COUNT + 1)); }
 
 echo ""
 echo "=============================================="
@@ -62,14 +62,17 @@ if az apim show --name "$APIM_NAME" --resource-group "$RESOURCE_GROUP" &> /dev/n
     
     # Check SKU
     SKU=$(az apim show --name "$APIM_NAME" --resource-group "$RESOURCE_GROUP" --query "sku.name" -o tsv)
-    if [ "$SKU" = "Standardv2" ]; then
-        log_pass "APIM SKU is Standardv2"
+    if [ "$SKU" = "StandardV2" ] || [ "$SKU" = "Standardv2" ]; then
+        log_pass "APIM SKU is $SKU"
     else
         log_warn "APIM SKU is $SKU (expected Standardv2)"
     fi
 
-    # Check public network access
-    PUBLIC_ACCESS=$(az apim show --name "$APIM_NAME" --resource-group "$RESOURCE_GROUP" --query "publicNetworkAccess" -o tsv 2>/dev/null || echo "unknown")
+    # Check public network access (use REST API with 2024-05-01 for Standard v2 support)
+    SUB_ID=$(az account show --query id -o tsv)
+    PUBLIC_ACCESS=$(az rest --method get \
+        --url "https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.ApiManagement/service/${APIM_NAME}?api-version=2024-05-01" \
+        --query "properties.publicNetworkAccess" -o tsv 2>/dev/null || echo "unknown")
     if [ "$PUBLIC_ACCESS" = "Disabled" ]; then
         log_pass "Public network access is DISABLED"
     else
@@ -108,9 +111,14 @@ if [ -n "$PE_EXISTS" ]; then
         log_fail "Private endpoint connection state: $PE_STATE (expected Approved)"
     fi
 
-    # Check private IP
+    # Check private IP (try multiple query paths as format varies by API version)
     PE_IP=$(az network private-endpoint show --name "$PE_NAME" --resource-group "$RESOURCE_GROUP" \
         --query "customDnsConfigs[0].ipAddresses[0]" -o tsv 2>/dev/null || echo "")
+    if [ -z "$PE_IP" ] || [ "$PE_IP" = "None" ]; then
+        # Fallback: check DNS A record
+        PE_IP=$(az network private-dns record-set a show --zone-name "privatelink.azure-api.net" \
+            --resource-group "$CORE_RG" --name "$APIM_NAME" --query "aRecords[0].ipv4Address" -o tsv 2>/dev/null || echo "")
+    fi
     if [ -n "$PE_IP" ]; then
         log_pass "Private endpoint IP: $PE_IP"
     else
@@ -167,17 +175,22 @@ fi
 # 6. PUBLIC ACCESS TEST
 # ============================================================================
 
-log_info "=== Public Access Test ==="
+log_info "=== Connectivity Test ==="
 
-GATEWAY_URL="https://${APIM_NAME}.azure-api.net/mcp/"
-log_info "Testing public access to $GATEWAY_URL ..."
+GATEWAY_URL="https://${APIM_NAME}.azure-api.net/status-0123456789abcdef"
+log_info "Testing connectivity to $GATEWAY_URL ..."
+log_info "(Running from within VNet — requests route via private endpoint)"
 
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "$GATEWAY_URL" 2>/dev/null || echo "000")
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "$GATEWAY_URL" 2>/dev/null) || true
 
-if [ "$HTTP_CODE" = "403" ]; then
+if [ "$HTTP_CODE" = "200" ]; then
+    log_pass "APIM reachable via private endpoint (HTTP 200)"
+elif [ "$HTTP_CODE" = "403" ]; then
     log_pass "Public access correctly blocked (HTTP 403)"
-elif [ "$HTTP_CODE" = "000" ]; then
-    log_pass "Public access blocked (connection refused/timeout)"
+elif [ "$HTTP_CODE" = "000" ] || [ -z "$HTTP_CODE" ]; then
+    log_warn "Connection refused/timeout — check private DNS resolution"
+elif [ "$HTTP_CODE" = "404" ]; then
+    log_pass "Reached APIM via private endpoint (HTTP 404)"
 else
     log_warn "Public access returned HTTP $HTTP_CODE (expected 403 or connection refused)"
 fi

@@ -132,7 +132,7 @@ module apimDnsZone '../modules/private-dns-zone.bicep' = {
   scope: resourceGroup(sharedServicesVnetResourceGroup)
   params: {
     zoneName: apimDnsZoneName
-    vnetId: resourceId(sharedServicesVnetResourceGroup, 'Microsoft.Network/virtualNetworks', sharedServicesVnetName)
+    vnetId: resourceId(subscription().subscriptionId, sharedServicesVnetResourceGroup, 'Microsoft.Network/virtualNetworks', sharedServicesVnetName)
     tags: tags
   }
 }
@@ -141,11 +141,8 @@ module apimDnsZone '../modules/private-dns-zone.bicep' = {
 // APIM INSTANCE WITH PRIVATE ENDPOINT
 // ============================================================================
 
-// Reference existing PE subnet
-resource peSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
-  name: '${sharedServicesVnetName}/${privateEndpointSubnetName}'
-  scope: resourceGroup(sharedServicesVnetResourceGroup)
-}
+// Construct PE subnet resource ID (can't use 'existing' at subscription scope without subscriptionId)
+var peSubnetId = resourceId(subscription().subscriptionId, sharedServicesVnetResourceGroup, 'Microsoft.Network/virtualNetworks/subnets', sharedServicesVnetName, privateEndpointSubnetName)
 
 // Deploy private APIM with inbound PE and public access disabled
 module apim '../modules/apim-private.bicep' = {
@@ -160,7 +157,7 @@ module apim '../modules/apim-private.bicep' = {
     skuCapacity: skuCapacity
     enableVnetIntegration: enableVnetIntegration
     vnetIntegrationSubnetId: enableVnetIntegration ? apimSubnet.outputs.subnetId : ''
-    privateEndpointSubnetId: peSubnet.id
+    privateEndpointSubnetId: peSubnetId
     privateDnsZoneId: apimDnsZone.outputs.dnsZoneId
     tags: tags
   }

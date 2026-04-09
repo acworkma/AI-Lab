@@ -240,6 +240,65 @@ deploy() {
     log_success "Private APIM deployment completed!"
 }
 
+disable_public_access() {
+    local apim_name=$(jq -r '.parameters.apimName.value // "apim-ai-lab-private"' "$PARAMETER_FILE")
+    local rg_name="rg-ai-apim-private"
+    local sub_id=$(az account show --query id -o tsv)
+    local apim_url="https://management.azure.com/subscriptions/${sub_id}/resourceGroups/${rg_name}/providers/Microsoft.ApiManagement/service/${apim_name}?api-version=2024-05-01"
+
+    log_info "Disabling public network access on $apim_name..."
+    log_info "(Azure requires APIM to be created with public access, then disabled)"
+
+    # Wait for APIM to finish any pending operations (PE setup causes Updating state)
+    local max_wait=60  # 60 x 15s = 15 minutes
+    local count=0
+    while true; do
+        local state=$(az rest --method get --url "$apim_url" \
+            --query "properties.provisioningState" -o tsv 2>/dev/null || echo "unknown")
+        if [ "$state" = "Succeeded" ]; then
+            break
+        fi
+        count=$((count + 1))
+        if [ $count -ge $max_wait ]; then
+            log_warning "APIM still in '$state' state after 15 minutes — attempting disable anyway"
+            break
+        fi
+        log_info "APIM provisioning state: $state — waiting 15s... ($count/$max_wait)"
+        sleep 15
+    done
+
+    # Use az rest with 2024-05-01 API version (az apim update doesn't support Standard v2)
+    az rest --method patch --url "$apim_url" \
+        --body '{"properties":{"publicNetworkAccess":"Disabled"}}' \
+        --output none 2>&1
+
+    # Wait for the update to complete
+    count=0
+    while true; do
+        local state=$(az rest --method get --url "$apim_url" \
+            --query "properties.provisioningState" -o tsv 2>/dev/null || echo "unknown")
+        if [ "$state" = "Succeeded" ]; then
+            break
+        fi
+        count=$((count + 1))
+        if [ $count -ge 40 ]; then
+            log_warning "APIM still in '$state' after update — check manually"
+            break
+        fi
+        log_info "Waiting for update to complete: $state ($count/40)"
+        sleep 15
+    done
+
+    # Verify
+    local public_access=$(az rest --method get --url "$apim_url" \
+        --query "properties.publicNetworkAccess" -o tsv 2>/dev/null || echo "unknown")
+    if [ "$public_access" = "Disabled" ]; then
+        log_success "Public network access disabled"
+    else
+        log_warning "Public network access is: $public_access — may need manual update"
+    fi
+}
+
 show_outputs() {
     log_info "Retrieving deployment outputs..."
     
@@ -331,6 +390,7 @@ fi
 # Confirm and deploy
 confirm_deployment
 deploy
+disable_public_access
 show_outputs
 show_post_deployment_steps
 
