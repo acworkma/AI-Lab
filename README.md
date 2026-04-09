@@ -84,6 +84,9 @@ Infrastructure projects deploy foundational capabilities that other projects con
 - **[Private Foundry](docs/foundry/README.md)**  
   Deploy Private Foundry network-secured infrastructure with delegated agent subnet, private endpoint subnet, centralized private DNS integration, and strict capability-host/account purge cleanup flow.
 
+- **[Azure API Management Standard v2 — Private](docs/apim-private/README.md)**  
+  Deploy a fully private APIM Standard v2 with inbound private endpoint, public access disabled, private DNS zone, and Power Platform–delegated subnet. Private counterpart to the public APIM.
+
 ---
 
 ### 🧩 Solution Projects
@@ -98,6 +101,9 @@ Solution projects consume deployed infrastructure to accomplish specific use cas
 
 - **[MCP Server — ACA + APIM + Copilot Studio](docs/mcp-server/README.md)**  
   MCP (Model Context Protocol) server deployed as a container app in the private ACA environment, exposed through APIM with Entra ID JWT authentication (both as a regular API and a native MCP server), and connected to Copilot Studio as an AI agent tool. Uses streamable HTTP (SSE) transport with an Entra Agent Identity for OAuth.
+
+- **[Private MCP Server — ACA + Private APIM + Copilot Studio](docs/mcp-private/README.md)**  
+  Connect Copilot Studio to the MCP server through the fully private APIM gateway via Power Platform VNet delegation. Zero public network exposure — all traffic stays within the VNet. Uses standard HTTP custom connector in a Managed PP Environment.
 
 ---
 
