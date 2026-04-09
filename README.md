@@ -75,6 +75,9 @@ Infrastructure projects deploy foundational capabilities that other projects con
 - **[Azure API Management Standard v2](docs/apim/README.md)**  
   Deploy Azure API Management Standard v2 as a centralized API gateway with public frontend and VNet-integrated backend for exposing internal APIs externally. Includes developer portal and VNet integration.
 
+- **[Azure API Management Standard v2 — Private](docs/apim-private/README.md)**  
+  Deploy a fully private APIM Standard v2 with inbound private endpoint, public access disabled, private DNS zone, and Power Platform–delegated subnet. Private counterpart to the public APIM.
+
 - **[Private Azure Kubernetes Service](docs/aks/README.md)**  
   Deploy a private AKS cluster with 3 nodes across availability zones, Azure Linux (CBL-Mariner) OS, Azure CNI Overlay networking, and ACR integration via managed identity. Accessible only via VPN.
 
@@ -83,9 +86,6 @@ Infrastructure projects deploy foundational capabilities that other projects con
 
 - **[Private Foundry](docs/foundry/README.md)**  
   Deploy Private Foundry network-secured infrastructure with delegated agent subnet, private endpoint subnet, centralized private DNS integration, and strict capability-host/account purge cleanup flow.
-
-- **[Azure API Management Standard v2 — Private](docs/apim-private/README.md)**  
-  Deploy a fully private APIM Standard v2 with inbound private endpoint, public access disabled, private DNS zone, and Power Platform–delegated subnet. Private counterpart to the public APIM.
 
 ---
 

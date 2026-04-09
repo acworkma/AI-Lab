@@ -66,7 +66,7 @@ DNS: privatelink.azure-api.net → private endpoint IP
 
 ### Key Difference from Public Variant
 
-| Aspect | Public APIM (006) | Private APIM (this) |
+| Aspect | Public APIM | Private APIM (this) |
 |--------|-------------------|---------------------|
 | Gateway access | Public URL over internet | Private endpoint only |
 | `publicNetworkAccess` | Enabled | **Disabled** |

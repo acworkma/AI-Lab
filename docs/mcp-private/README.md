@@ -40,10 +40,10 @@ Connect a Copilot Studio agent to the MCP server running in ACA through a **full
 
 | Requirement | Details |
 |-------------|---------|
-| Private APIM (015) | `rg-ai-apim-private` deployed via `deploy-apim-private.sh` |
-| ACA + MCP Server (013) | `mcp-server` container app in `rg-ai-aca` |
-| Core Infrastructure (001) | vWAN hub, shared services VNet, DNS resolver |
-| Private ACR (002) | Container registry with MCP server image |
+| Private APIM | `rg-ai-apim-private` deployed via `deploy-apim-private.sh` |
+| ACA + MCP Server | `mcp-server` container app in `rg-ai-aca` |
+| Core Infrastructure | vWAN hub, shared services VNet, DNS resolver |
+| Private ACR | Container registry with MCP server image |
 | Azure CLI | Version 2.50.0 or later |
 | PowerShell 7+ | For Power Platform enterprise policy setup |
 | Microsoft 365 | Copilot Studio license (includes Managed Environment) |
@@ -322,9 +322,9 @@ This is expected. When VNet support is enabled on a PP environment, ALL custom c
 
 ## Related Documentation
 
-- [Private APIM Infrastructure](../apim-private/README.md) — APIM deployment (015)
-- [MCP Server (Public)](../mcp-server/README.md) — Public variant of this solution (013)
-- [Public APIM](../apim/README.md) — Public APIM infrastructure (006)
+- [Private APIM Infrastructure](../apim-private/README.md)
+- [MCP Server (Public)](../mcp-server/README.md) — Public variant of this solution
+- [Public APIM](../apim/README.md)
 - [ACA Environment](../aca/README.md) — Container Apps environment
 - [Core Infrastructure](../core-infrastructure/README.md) — VNet, DNS, VPN
 - [Azure APIM Private Endpoint](https://learn.microsoft.com/en-us/azure/api-management/private-endpoint)
