@@ -1,0 +1,25 @@
+<!--
+    MCP Passthrough Policy for Private Azure API Management
+    
+    Simple passthrough for MCP streamable HTTP (SSE) transport.
+    Forwards POST body to the ACA backend, returns SSE responses
+    without buffering to support streaming.
+    
+    Identical to the public variant — the networking is what changes,
+    not the policy behavior.
+-->
+<policies>
+    <inbound>
+        <base />
+    </inbound>
+    <backend>
+        <!-- Forward to backend without buffering the response (critical for SSE streaming) -->
+        <forward-request timeout="120" buffer-response="false" />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

@@ -75,6 +75,9 @@ Infrastructure projects deploy foundational capabilities that other projects con
 - **[Azure API Management Standard v2](docs/apim/README.md)**  
   Deploy Azure API Management Standard v2 as a centralized API gateway with public frontend and VNet-integrated backend for exposing internal APIs externally. Includes developer portal and VNet integration.
 
+- **[Azure API Management Standard v2 — Private](docs/apim-private/README.md)**  
+  Deploy a fully private APIM Standard v2 with inbound private endpoint, public access disabled, private DNS zone, and Power Platform–delegated subnet. Private counterpart to the public APIM.
+
 - **[Private Azure Kubernetes Service](docs/aks/README.md)**  
   Deploy a private AKS cluster with 3 nodes across availability zones, Azure Linux (CBL-Mariner) OS, Azure CNI Overlay networking, and ACR integration via managed identity. Accessible only via VPN.
 
@@ -98,6 +101,9 @@ Solution projects consume deployed infrastructure to accomplish specific use cas
 
 - **[MCP Server — ACA + APIM + Copilot Studio](docs/mcp-server/README.md)**  
   MCP (Model Context Protocol) server deployed as a container app in the private ACA environment, exposed through APIM with Entra ID JWT authentication (both as a regular API and a native MCP server), and connected to Copilot Studio as an AI agent tool. Uses streamable HTTP (SSE) transport with an Entra Agent Identity for OAuth.
+
+- **[Private MCP Server — ACA + Private APIM + Copilot Studio](docs/mcp-private/README.md)**  
+  Connect Copilot Studio to the MCP server through the fully private APIM gateway via Power Platform VNet delegation. Zero public network exposure — all traffic stays within the VNet. Uses standard HTTP custom connector in a Managed PP Environment.
 
 ---
 

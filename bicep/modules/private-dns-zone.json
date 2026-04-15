@@ -1,0 +1,74 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "11124199584371221460"
+    }
+  },
+  "parameters": {
+    "zoneName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the private DNS zone (e.g., privatelink.azure-api.net)"
+      }
+    },
+    "vnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the VNet to link the DNS zone to"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to resources"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2020-06-01",
+      "name": "[parameters('zoneName')]",
+      "location": "global",
+      "tags": "[parameters('tags')]",
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2020-06-01",
+      "name": "[format('{0}/{1}', parameters('zoneName'), format('{0}-link', split(parameters('vnetId'), '/')[8]))]",
+      "location": "global",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "registrationEnabled": false,
+        "virtualNetwork": {
+          "id": "[parameters('vnetId')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', parameters('zoneName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "dnsZoneId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the private DNS zone"
+      },
+      "value": "[resourceId('Microsoft.Network/privateDnsZones', parameters('zoneName'))]"
+    },
+    "dnsZoneName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the private DNS zone"
+      },
+      "value": "[parameters('zoneName')]"
+    }
+  }
+}

@@ -1,0 +1,236 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "8907191501323023397"
+    }
+  },
+  "parameters": {
+    "apimName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50,
+      "metadata": {
+        "description": "Name of the API Management instance (must be globally unique)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "publisherEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Email address of the API publisher (required)"
+      }
+    },
+    "privateEndpointSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the subnet for private endpoint"
+      }
+    },
+    "privateDnsZoneId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the privatelink.azure-api.net DNS zone"
+      }
+    },
+    "publisherName": {
+      "type": "string",
+      "defaultValue": "AI-Lab",
+      "metadata": {
+        "description": "Name of the API publisher organization"
+      }
+    },
+    "sku": {
+      "type": "string",
+      "defaultValue": "Standardv2",
+      "allowedValues": [
+        "Standardv2"
+      ],
+      "metadata": {
+        "description": "APIM pricing tier"
+      }
+    },
+    "skuCapacity": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "maxValue": 10,
+      "metadata": {
+        "description": "Number of scale units"
+      }
+    },
+    "enableVnetIntegration": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable VNet integration (outbound to backends)"
+      }
+    },
+    "vnetIntegrationSubnetId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Resource ID of the subnet for VNet integration (outbound)"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags to apply to resources"
+      }
+    }
+  },
+  "variables": {
+    "privateEndpointName": "[format('{0}-pe', parameters('apimName'))]",
+    "privateLinkServiceConnectionName": "[format('{0}-plsc', parameters('apimName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ApiManagement/service",
+      "apiVersion": "2023-09-01-preview",
+      "name": "[parameters('apimName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "sku": {
+        "name": "[parameters('sku')]",
+        "capacity": "[parameters('skuCapacity')]"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "publisherEmail": "[parameters('publisherEmail')]",
+        "publisherName": "[parameters('publisherName')]",
+        "virtualNetworkType": "[if(parameters('enableVnetIntegration'), 'External', 'None')]",
+        "virtualNetworkConfiguration": "[if(parameters('enableVnetIntegration'), createObject('subnetResourceId', parameters('vnetIntegrationSubnetId')), null())]",
+        "publicNetworkAccess": "Disabled",
+        "developerPortalStatus": "Enabled",
+        "legacyPortalStatus": "Disabled",
+        "apiVersionConstraint": {
+          "minApiVersion": "2021-08-01"
+        },
+        "customProperties": {
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Ssl30": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
+          "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Ciphers.TripleDes168": "False"
+        },
+        "certificates": []
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('privateEndpointName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "subnet": {
+          "id": "[parameters('privateEndpointSubnetId')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[variables('privateLinkServiceConnectionName')]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]",
+              "groupIds": [
+                "Gateway"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[format('{0}/{1}', variables('privateEndpointName'), 'default')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "apim-dns-config",
+            "properties": {
+              "privateDnsZoneId": "[parameters('privateDnsZoneId')]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "apimName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the deployed APIM instance"
+      },
+      "value": "[parameters('apimName')]"
+    },
+    "apimResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of APIM"
+      },
+      "value": "[resourceId('Microsoft.ApiManagement/service', parameters('apimName'))]"
+    },
+    "gatewayUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Gateway URL (resolves to private IP via private DNS)"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview').gatewayUrl]"
+    },
+    "developerPortalUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Developer portal URL"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview').developerPortalUrl]"
+    },
+    "managementUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Management API URL"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview').managementApiUrl]"
+    },
+    "principalId": {
+      "type": "string",
+      "metadata": {
+        "description": "System-assigned managed identity principal ID"
+      },
+      "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('apimName')), '2023-09-01-preview', 'full').identity.principalId]"
+    },
+    "privateEndpointId": {
+      "type": "string",
+      "metadata": {
+        "description": "Private endpoint resource ID"
+      },
+      "value": "[resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName'))]"
+    },
+    "privateEndpointIp": {
+      "type": "string",
+      "metadata": {
+        "description": "Private endpoint private IP address"
+      },
+      "value": "[reference(resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName')), '2023-11-01').customDnsConfigs[0].ipAddresses[0]]"
+    }
+  }
+}

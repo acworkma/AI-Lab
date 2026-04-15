@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "apimName": {
+      "value": "apim-ai-lab-private",
+      "metadata": {
+        "description": "Globally unique APIM instance name for private variant"
+      }
+    },
+    "location": {
+      "value": "eastus2"
+    },
+    "publisherEmail": {
+      "value": "admin@MngEnvMCAP818246.onmicrosoft.com",
+      "metadata": {
+        "description": "REQUIRED: Replace with a valid email address"
+      }
+    },
+    "publisherName": {
+      "value": "AI-Lab"
+    },
+    "sku": {
+      "value": "Standardv2"
+    },
+    "skuCapacity": {
+      "value": 1
+    },
+    "sharedServicesVnetName": {
+      "value": "vnet-ai-shared"
+    },
+    "sharedServicesVnetResourceGroup": {
+      "value": "rg-ai-core"
+    },
+    "apimSubnetPrefix": {
+      "value": "10.1.0.128/27",
+      "metadata": {
+        "description": "APIM integration subnet (outbound). Must not overlap with existing subnets."
+      }
+    },
+    "ppSubnetPrefix": {
+      "value": "10.1.1.0/27",
+      "metadata": {
+        "description": "Power Platform delegated subnet. /27 minimum for production (~25-30 IPs)."
+      }
+    },
+    "privateEndpointSubnetName": {
+      "value": "PrivateEndpointSubnet"
+    },
+    "vpnClientAddressPool": {
+      "value": "172.16.0.0/24"
+    },
+    "enableVnetIntegration": {
+      "value": true
+    },
+    "tags": {
+      "value": {
+        "environment": "dev",
+        "purpose": "Private API Management Gateway",
+        "owner": "platform-team"
+      }
+    }
+  }
+}
