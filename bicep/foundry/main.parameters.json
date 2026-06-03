@@ -24,7 +24,7 @@
       "value": "snet-foundry-agent"
     },
     "agentSubnetPrefix": {
-      "value": "10.1.0.128/25"
+      "value": "10.1.1.128/25"
     },
     "privateEndpointSubnetName": {
       "value": "PrivateEndpointSubnet"
@@ -68,6 +68,12 @@
     "tags": {
       "value": {
         "deployedBy": "manual"
+      }
+    },
+    "aiSearchLocation": {
+      "value": "eastus",
+      "metadata": {
+        "description": "eastus2 AI Search capacity exhausted; using eastus as fallback"
       }
     }
   }

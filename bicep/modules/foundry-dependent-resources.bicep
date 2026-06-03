@@ -3,6 +3,9 @@ targetScope = 'resourceGroup'
 @description('Deployment location')
 param location string
 
+@description('AI Search location (may differ from primary if region is capacity-constrained)')
+param aiSearchLocation string = location
+
 @description('AI Search name')
 param aiSearchName string
 
@@ -30,7 +33,7 @@ var storageSku = contains(noZrsRegions, location) ? {
 
 resource aiSearch 'Microsoft.Search/searchServices@2024-06-01-preview' = {
   name: aiSearchName
-  location: location
+  location: aiSearchLocation
   identity: {
     type: 'SystemAssigned'
   }

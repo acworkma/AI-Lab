@@ -151,8 +151,14 @@ Before deploying the DNS Private Resolver, ensure:
 2. **Private DNS Zones Created**:
    - `privatelink.azurecr.io` (for Azure Container Registry)
    - `privatelink.vaultcore.azure.net` (for Key Vault)
-   - `privatelink.blob.core.windows.net` (for Storage)
+   - `privatelink.blob.core.windows.net` (for Blob Storage)
+   - `privatelink.file.core.windows.net` (for File Storage)
    - `privatelink.azure-api.net` (for API Management)
+   - `privatelink.cognitiveservices.azure.com` (for AI Services / Foundry)
+   - `privatelink.openai.azure.com` (for OpenAI)
+   - `privatelink.services.ai.azure.com` (for AI Services)
+   - `privatelink.search.windows.net` (for AI Search)
+   - `privatelink.documents.azure.com` (for Cosmos DB)
    - Additional zones as needed
 
 3. **Private DNS Zone Links**:
