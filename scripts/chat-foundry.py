@@ -15,7 +15,7 @@ import os
 from openai import AzureOpenAI
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
-APIM_ENDPOINT = "https://apim-ai-lab-private.azure-api.net/openai"
+APIM_ENDPOINT = "https://apim-ai-lab-private.azure-api.net"
 DEPLOYMENT = os.environ.get("FOUNDRY_DEPLOYMENT", "gpt-4.1")
 API_VERSION = "2024-10-21"
 
