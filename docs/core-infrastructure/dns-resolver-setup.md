@@ -152,6 +152,7 @@ Before deploying the DNS Private Resolver, ensure:
    - `privatelink.azurecr.io` (for Azure Container Registry)
    - `privatelink.vaultcore.azure.net` (for Key Vault)
    - `privatelink.blob.core.windows.net` (for Storage)
+   - `privatelink.azure-api.net` (for API Management)
    - Additional zones as needed
 
 3. **Private DNS Zone Links**:
@@ -487,13 +488,57 @@ To explicitly use the resolver:
 sudo bash -c 'echo "nameserver 10.1.0.68" > /etc/resolv.conf'
 ```
 
+### Windows (P2S VPN Client)
+
+The Azure VPN Client does not allow manually setting DNS servers on the VPN adapter.
+Instead, use a **Name Resolution Policy Table (NRPT)** rule to route DNS queries
+through the private resolver.
+
+**Setup (run in elevated PowerShell)**:
+
+```powershell
+# Route all DNS through the Azure DNS Private Resolver
+Add-DnsClientNrptRule -Namespace "." -NameServers "10.1.0.68"
+```
+
+> **Why a catch-all ("." namespace)?**
+> NRPT matches on the *original query name*, not CNAME targets. Clients query
+> `service.azure-api.net` which CNAMEs to `service.privatelink.azure-api.net`.
+> A `.privatelink` rule won't match because "privatelink" only appears after
+> the first CNAME hop. A catch-all rule ensures all queries go through the
+> resolver, which handles both private zones (returning private IPs) and public
+> domains (recursive resolution).
+
+**Verify**:
+
+```powershell
+# Should return private IP (e.g., 10.1.0.14), not a public IP
+Resolve-DnsName apim-ai-lab-private.azure-api.net
+
+# Confirm public DNS still works
+Resolve-DnsName google.com
+```
+
+**Manage rules**:
+
+```powershell
+# List NRPT rules
+Get-DnsClientNrptRule | Select-Object Namespace, NameServers
+
+# Remove a rule (if needed)
+Get-DnsClientNrptRule | Where-Object { $_.NameServers -contains "10.1.0.68" } | Remove-DnsClientNrptRule -Force
+```
+
+> **Note**: NRPT rules persist across reboots. You only need to set this once
+> per machine. The rule is only effective while the VPN is connected and the
+> resolver IP (10.1.0.68) is reachable.
+
 ### Other P2S Clients
 
 Any P2S client can use the resolver by setting DNS to `10.1.0.68`:
 
 - **macOS**: System Preferences → Network → VPN → Advanced → DNS → Add `10.1.0.68`
 - **Linux**: Edit `/etc/resolv.conf` or NetworkManager connection settings
-- **Windows**: Network Adapter Settings → VPN Properties → DNS Servers → Add `10.1.0.68`
 
 ---
 
