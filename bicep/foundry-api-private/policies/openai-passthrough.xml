@@ -1,0 +1,33 @@
+<!--
+    OpenAI Passthrough Policy for Private APIM → Foundry
+    
+    - Injects APIM managed identity token for backend auth to Foundry
+    - Sets api-version query parameter
+    - Disables response buffering (critical for SSE streaming)
+    - No API keys — purely managed identity based
+-->
+<policies>
+    <inbound>
+        <base />
+        <!-- Acquire managed identity token for Cognitive Services -->
+        <authentication-managed-identity resource="https://cognitiveservices.azure.com" output-token-variable-name="msi-access-token" ignore-error="false" />
+        <!-- Set Authorization header with managed identity token -->
+        <set-header name="Authorization" exists-action="override">
+            <value>@("Bearer " + (string)context.Variables["msi-access-token"])</value>
+        </set-header>
+        <!-- Ensure api-version is set -->
+        <set-query-parameter name="api-version" exists-action="skip">
+            <value>{{foundry-api-version}}</value>
+        </set-query-parameter>
+    </inbound>
+    <backend>
+        <!-- Forward without buffering to support SSE streaming -->
+        <forward-request timeout="120" buffer-response="false" />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>
