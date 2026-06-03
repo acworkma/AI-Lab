@@ -35,7 +35,7 @@ param sharedVnetName string = 'vnet-ai-shared'
 param agentSubnetName string = 'snet-foundry-agent'
 
 @description('Delegated Agent subnet address prefix')
-param agentSubnetPrefix string = '10.1.0.128/25'
+param agentSubnetPrefix string = '10.1.1.128/25'
 
 @description('Private Endpoint subnet name for Foundry resources')
 param privateEndpointSubnetName string = 'PrivateEndpointSubnet'
@@ -81,6 +81,9 @@ param accountCapHostName string = 'caphostaccount'
 
 @description('Create account capability host resource. Set false when service auto-creates one for the same client identity.')
 param createAccountCapabilityHost bool = false
+
+@description('AI Search location (override when primary region is capacity-constrained)')
+param aiSearchLocation string = location
 
 var allTags = union({
   environment: environment
@@ -143,6 +146,7 @@ module foundryDependencies '../modules/foundry-dependent-resources.bicep' = {
   scope: foundryResourceGroup
   params: {
     location: location
+    aiSearchLocation: aiSearchLocation
     aiSearchName: aiSearchName
     storageAccountName: storageAccountName
     cosmosDbName: cosmosDbName
