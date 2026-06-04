@@ -87,6 +87,9 @@ Infrastructure projects deploy foundational capabilities that other projects con
 - **[Private Foundry](docs/foundry/README.md)**  
   Deploy Private Foundry network-secured infrastructure with delegated agent subnet, private endpoint subnet, centralized private DNS integration, and strict capability-host/account purge cleanup flow.
 
+- **[Private Azure OpenAI (Legacy)](docs/aoai-private/README.md)**  
+  Deploy a legacy Azure OpenAI service (kind=OpenAI, S0) with private endpoint, gpt-4.1 model deployment, and DNS zone integration. Lightweight alternative to Foundry for simple LLM access without platform overhead.
+
 ---
 
 ### 🧩 Solution Projects
@@ -104,6 +107,12 @@ Solution projects consume deployed infrastructure to accomplish specific use cas
 
 - **[Private MCP Server — ACA + Private APIM + Copilot Studio](docs/mcp-private/README.md)**  
   Connect Copilot Studio to the MCP server through the fully private APIM gateway via Power Platform VNet delegation. Zero public network exposure — all traffic stays within the VNet. Uses standard HTTP custom connector in a Managed PP Environment.
+
+- **[Foundry LLM API via Private APIM](docs/foundry-api/README.md)**  
+  Expose Azure AI Foundry's OpenAI-compatible endpoints through private APIM at `/openai`. Uses managed identity authentication to Foundry backend with JWT validation for consumers. Supports streaming (SSE).
+
+- **[Azure OpenAI (Legacy) API via Private APIM](docs/aoai-api/README.md)**  
+  Expose the legacy Azure OpenAI service through private APIM at `/aoai`. Same pattern as the Foundry API — managed identity backend auth, JWT consumer auth, SSE streaming support.
 
 ---
 
