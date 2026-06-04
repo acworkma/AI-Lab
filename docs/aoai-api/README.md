@@ -36,17 +36,27 @@ APIM validates the JWT, then uses its own managed identity to call the backend. 
 
 ## Usage Examples
 
-### PowerShell (Chat-AOAI.ps1)
+### Python (chat-aoai.py)
 
-```powershell
+```bash
 # Single message
-.\scripts\Chat-AOAI.ps1 "What is Azure OpenAI?"
+python scripts/chat-aoai.py "What is Azure OpenAI?"
 
 # Streaming
-.\scripts\Chat-AOAI.ps1 -Stream "Tell me a joke"
+python scripts/chat-aoai.py --stream "Tell me a joke"
 
 # Interactive
-.\scripts\Chat-AOAI.ps1
+python scripts/chat-aoai.py
+```
+
+### Bash (chat-aoai.sh)
+
+```bash
+# Single message
+./scripts/chat-aoai.sh "What is Azure OpenAI?"
+
+# Streaming
+./scripts/chat-aoai.sh --stream "Tell me a joke"
 ```
 
 ### curl
