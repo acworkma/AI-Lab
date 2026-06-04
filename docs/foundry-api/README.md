@@ -46,6 +46,19 @@ Base URL: `https://apim-ai-lab-private.azure-api.net/openai`
 ### Chat Completions Example
 
 ```bash
+# Python client (interactive + streaming)
+python scripts/chat-foundry.py "What is Azure AI Foundry?"
+python scripts/chat-foundry.py --stream "Tell me a joke"
+python scripts/chat-foundry.py  # interactive mode
+
+# Bash client
+./scripts/chat-foundry.sh "What is Azure AI Foundry?"
+./scripts/chat-foundry.sh --stream "Tell me a joke"
+```
+
+### curl Example
+
+```bash
 TOKEN=$(az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken -o tsv)
 
 curl -X POST "https://apim-ai-lab-private.azure-api.net/openai/deployments/gpt-4.1/chat/completions?api-version=2024-10-21" \
