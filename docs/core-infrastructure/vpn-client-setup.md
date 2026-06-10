@@ -10,6 +10,17 @@ This guide explains how to configure and use the **Point-to-Site (P2S) VPN Gatew
 - **Flexible Connectivity**: Connect from anywhere using the Azure VPN Client
 - **No On-Premises Hardware**: Client-based solution requiring no additional infrastructure
 
+> **⚠️ Audience migration (Microsoft-registered Azure VPN Client)**
+>
+> This gateway has been migrated to the **Microsoft-registered** Azure VPN Client audience:
+>
+> | | Audience (Application ID) |
+> | --- | --- |
+> | **Current (Microsoft-registered, all clouds)** | `c632b3df-fb67-4d84-bdcf-b95ad541b5c8` |
+> | Legacy (manually-registered, Azure Public) — no longer used | `41b23e61-6c1e-4545-b367-cd054e0ed4b4` |
+>
+> Any Azure VPN Client configured before the migration must update its **Audience** value (or re-import a freshly downloaded profile) — see [Update an existing VPN client](#update-an-existing-vpn-client-after-the-audience-migration) below. Reference: [Migrate to Microsoft-registered Azure VPN client](https://learn.microsoft.com/en-us/azure/vpn-gateway/point-to-site-entra-gateway-update).
+
 ## Prerequisites
 
 ### Azure Infrastructure (Completed)
@@ -138,6 +149,32 @@ Download and install the Azure VPN Client for your operating system:
    ping <private-ip-of-azure-vm>
    ```
 
+## Update an existing VPN client after the audience migration
+
+The gateway's **Audience** value was migrated from the legacy manually-registered value
+(`41b23e61-6c1e-4545-b367-cd054e0ed4b4`) to the Microsoft-registered value
+(`c632b3df-fb67-4d84-bdcf-b95ad541b5c8`). Clients configured before the migration will fail
+authentication until they are updated. You have two options.
+
+### Option A — Update the existing profile in place
+
+1. Launch the **Azure VPN Client** app.
+2. Select the VPN connection profile for this gateway.
+3. Click **...** → **Configure**.
+4. Set the **Audience** field to `c632b3df-fb67-4d84-bdcf-b95ad541b5c8`.
+5. Leave **Tenant** and **Issuer** unchanged (the tenant did not change).
+6. Click **Save**, then reconnect.
+
+### Option B — Re-import a fresh profile
+
+1. Regenerate and download a new client profile (see [Step 1](#step-1-download-vpn-client-profile)).
+2. In the Azure VPN Client, remove the old profile and import the new `azurevpnconfig.xml`.
+3. Connect and sign in with Microsoft Entra ID.
+
+> After every client is migrated, you may optionally remove the old manually-registered Azure VPN
+> Client app from the tenant. This isn't required for connectivity but is good hygiene. See the
+> [migration article](https://learn.microsoft.com/en-us/azure/vpn-gateway/point-to-site-entra-gateway-update).
+
 ## Troubleshooting
 
 ### Connection Fails with Authentication Error
@@ -149,6 +186,7 @@ Download and install the Azure VPN Client for your operating system:
 2. Check that your account has access to the subscription
 3. Ensure Azure VPN Client is up to date
 4. Clear browser cache and try again
+5. **Audience mismatch**: confirm the client's **Audience** is `c632b3df-fb67-4d84-bdcf-b95ad541b5c8` (the migrated Microsoft-registered value). Clients still set to the legacy `41b23e61-...` audience will fail — see [Update an existing VPN client](#update-an-existing-vpn-client-after-the-audience-migration).
 
 ### Cannot Access Azure Resources After Connecting
 
