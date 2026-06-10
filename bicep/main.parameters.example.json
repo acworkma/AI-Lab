@@ -77,7 +77,7 @@
     "aadAudience": {
       "value": "c632b3df-fb67-4d84-bdcf-b95ad541b5c8",
       "metadata": {
-        "description": "Azure VPN Client Application ID / Audience. Default: c632b3df-fb67-4d84-bdcf-b95ad541b5c8 (Microsoft-registered Azure VPN Client, all clouds). Legacy manually-registered Azure Public audience was 41b23e61-6c1e-4545-b367-cd054e0ed4b4. See https://learn.microsoft.com/en-us/azure/vpn-gateway/point-to-site-entra-gateway-update"
+        "description": "Azure VPN Client Application ID / Audience. Default: c632b3df-fb67-4d84-bdcf-b95ad541b5c8 (Microsoft-registered Azure VPN Client, valid across all Azure clouds)."
       }
     },
     "aadIssuer": {
