@@ -94,6 +94,15 @@
         "description": "VPN client address pool (CIDR notation)"
       }
     },
+    "vpnCustomDnsServers": {
+      "type": "array",
+      "defaultValue": [
+        "10.1.0.68"
+      ],
+      "metadata": {
+        "description": "Custom DNS servers pushed to P2S VPN clients. Default is the DNS Private Resolver inbound endpoint (10.1.0.68) so clients resolve private endpoint FQDNs to their private IPs."
+      }
+    },
     "sharedServicesVnetName": {
       "type": "string",
       "defaultValue": "vnet-ai-shared",
@@ -699,6 +708,9 @@
           },
           "vpnGatewayScaleUnit": {
             "value": "[parameters('vpnGatewayScaleUnit')]"
+          },
+          "customDnsServers": {
+            "value": "[parameters('vpnCustomDnsServers')]"
           },
           "tags": {
             "value": "[variables('allTags')]"

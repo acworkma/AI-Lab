@@ -50,6 +50,11 @@ param vpnServerConfigName string = 'vpnconfig-ai-hub'
 @description('VPN client address pool (CIDR notation)')
 param vpnClientAddressPool string = '172.16.0.0/24'
 
+@description('Custom DNS servers pushed to P2S VPN clients. Default is the DNS Private Resolver inbound endpoint (10.1.0.68) so clients resolve private endpoint FQDNs to their private IPs.')
+param vpnCustomDnsServers array = [
+  '10.1.0.68'
+]
+
 @description('Shared services VNet name')
 param sharedServicesVnetName string = 'vnet-ai-shared'
 
@@ -179,6 +184,7 @@ module vpnGateway 'modules/vpn-gateway.bicep' = {
     vpnServerConfigurationId: vpnServerConfig.outputs.vpnServerConfigId
     vpnClientAddressPool: vpnClientAddressPool
     vpnGatewayScaleUnit: vpnGatewayScaleUnit
+    customDnsServers: vpnCustomDnsServers
     tags: allTags
   }
 }
