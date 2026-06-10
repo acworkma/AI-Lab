@@ -177,6 +177,8 @@ Edit `bicep/main.parameters.json`:
 
 **IMPORTANT**: `aadTenantId` and `aadIssuer` are required for VPN authentication. Find your tenant ID in Azure Portal > Microsoft Entra ID > Overview.
 
+> **VPN audience (`aadAudience`)**: defaults to `c632b3df-fb67-4d84-bdcf-b95ad541b5c8`, the Microsoft-registered Azure VPN Client audience (valid across all Azure clouds). The client's Audience must match this value to authenticate.
+
 For all available parameters, see `bicep/main.parameters.example.json`.
 
 ### Step 2: Run Deployment Script

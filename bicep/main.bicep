@@ -62,8 +62,8 @@ param privateEndpointSubnetPrefix string = '10.1.0.0/26'
 @description('Microsoft Entra ID Tenant ID for VPN authentication')
 param aadTenantId string
 
-@description('Azure VPN Client Application ID (Microsoft Entra ID)')
-param aadAudience string = '41b23e61-6c1e-4545-b367-cd054e0ed4b4'
+@description('Azure VPN Client Application ID / Audience (Microsoft Entra ID). Default is the Microsoft-registered Azure VPN Client audience, valid across all Azure clouds.')
+param aadAudience string = 'c632b3df-fb67-4d84-bdcf-b95ad541b5c8'
 
 @description('Microsoft Entra ID Issuer URL')
 param aadIssuer string

@@ -149,6 +149,7 @@ Download and install the Azure VPN Client for your operating system:
 2. Check that your account has access to the subscription
 3. Ensure Azure VPN Client is up to date
 4. Clear browser cache and try again
+5. **Audience mismatch**: confirm the client's **Audience** is `c632b3df-fb67-4d84-bdcf-b95ad541b5c8`, matching the gateway. A wrong Audience value causes authentication to fail.
 
 ### Cannot Access Azure Resources After Connecting
 
