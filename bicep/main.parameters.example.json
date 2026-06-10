@@ -68,6 +68,14 @@
         "description": "VPN client address pool (CIDR notation). IP addresses assigned to VPN clients. Default: 172.16.0.0/24"
       }
     },
+    "vpnCustomDnsServers": {
+      "value": [
+        "10.1.0.68"
+      ],
+      "metadata": {
+        "description": "Custom DNS servers pushed to P2S VPN clients. Default: 10.1.0.68 (DNS Private Resolver inbound endpoint) so clients resolve private endpoint FQDNs to private IPs."
+      }
+    },
     "aadTenantId": {
       "value": "YOUR_ENTRA_TENANT_ID",
       "metadata": {
