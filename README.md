@@ -38,6 +38,8 @@ AI-Lab is a collection of modular Azure infrastructure projects, all connected t
 
 ## 📚 Projects
 
+- **[GPU Scanner](gpu-scanner/README.md)**: Standalone PowerShell tool for GPU SKU access, regional vCPU quota, and Spot capacity signals. Read-only by default, requires no lab infrastructure, and never deploys VMs.
+
 ### 🏗️ Core Infrastructure (Foundation)
 
 **Status**: ✅ Ready  
