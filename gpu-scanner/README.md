@@ -90,7 +90,10 @@ Each invocation writes `output\<subscriptionId>\<UTC timestamp>\` (or under `-Ou
 Only requested/prerequisite stages are produced. Stage JSON uses a versioned envelope with subscription,
 regions, filter, UTC time, collection status/error, and a `Rows` array (including `[]` for empty results).
 Catalog collection failure is persisted and stops dependent stages. Per-region quota errors and per-batch
-Spot errors are warnings with Unknown/Forbidden/Error rows; other requests continue. A successful empty
+Spot errors are warnings with Unknown/Forbidden/Error rows; other requests continue. **HTTP 429 (throttling)
+is different: the scanner stops sending the remaining Spot requests for that run**, marks unscored rows
+`RateLimited`, and reports Azure's retry delay (which can be an hour), since more calls can extend throttling.
+Catalog and quota results remain valid. Retry later and use `-GpuFilter`/`-Regions` to reduce request count. A successful empty
 catalog is distinct from a failed collection; inspect the stage envelope when the report is empty.
 
 Quota/capacity stages reuse the newest **successful matching catalog/quota cache no older than 30 minutes**,

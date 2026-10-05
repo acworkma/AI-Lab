@@ -198,13 +198,30 @@ Describe 'GPU scanner offline behavior' {
             @($result | Where-Object SpotScore -EQ 'High').Count | Should -Be 1
             Should -Invoke Invoke-AzRestMethod -Times 2 -Exactly
         }
-        It 'surfaces malformed responses and throttling as errors rather than capacity success' {
+        It 'surfaces malformed responses as errors and throttling as rate limited' {
             Mock Invoke-AzRestMethod { @{ StatusCode = 200; Content = 'not json' } }
             @(Get-GpuCapacity -Catalog $catalog -Quota $quota)[0].CapacityStatus | Should -Be 'Error'
-            Mock Invoke-AzRestMethod { @{ StatusCode = 429; Content = 'TooManyRequests' } }
+            Mock Invoke-AzRestMethod { @{ StatusCode = 429; Content = 'Please try again after 3600 seconds.' } }
             $result = @(Get-GpuCapacity -Catalog $catalog -Quota $quota)
-            $result[0].CapacityStatus | Should -Be 'Error'
-            $result[0].Error | Should -Match '429'
+            $result[0].CapacityStatus | Should -Be 'RateLimited'
+            $result[0].Error | Should -Match '429.*60 minute'
+        }
+        It 'stops sending Spot requests after the first throttled batch' {
+            $many = @(foreach ($region in Get-GpuScannerRegion) {
+                foreach ($n in 1..6) { [pscustomobject]@{ Region = $region; SKU = "Standard_NC$n"; CatalogStatus = 'Available' } }
+            })
+            Mock Invoke-AzRestMethod { @{ StatusCode = 429; Content = 'Please try again after 3600 seconds.' } }
+            $result = @(Get-GpuCapacity -Catalog $many -Quota @() -SubscriptionId $context.Subscription.Id)
+            Should -Invoke Invoke-AzRestMethod -Times 1 -Exactly
+            @($result | Where-Object CapacityStatus -EQ 'RateLimited').Count | Should -Be 54
+            @($result | Where-Object Error -Match 'Skipped after throttling').Count | Should -Be 14
+        }
+        It 'also stops after a thrown throttling exception' {
+            $many = @(foreach ($n in 1..6) { [pscustomobject]@{ Region = 'eastus'; SKU = "Standard_NC$n" } })
+            Mock Invoke-AzRestMethod { throw 'TooManyRequests' }
+            $result = @(Get-GpuCapacity -Catalog $many -Quota @())
+            Should -Invoke Invoke-AzRestMethod -Times 1 -Exactly
+            @($result | Where-Object CapacityStatus -EQ 'RateLimited').Count | Should -Be 6
         }
         It 'requires explicit probe confirmation before any Azure call' {
             Mock Read-Host { 'no' }

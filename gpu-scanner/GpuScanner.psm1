@@ -28,6 +28,7 @@ function Get-GpuType {
 function Get-GpuErrorStatus {
     param([string]$Message)
     switch -Regex ($Message) {
+        '429|TooManyRequests|maximum number of requests' { return 'RateLimited' }
         '403|Forbidden|AuthorizationFailed' { return 'Forbidden' }
         'AllocationFailed|ZonalAllocationFailed' { return 'AllocationFailed' }
         'Quota|OperationNotAllowed.*(core|limit)' { return 'QuotaError' }
@@ -156,11 +157,17 @@ function Get-GpuCapacity {
     })
     $regions = @($Catalog.Region | Sort-Object -Unique)
     $sizes = @($Catalog.SKU | Sort-Object -Unique)
+    $rateLimitMessage = ''
     for ($r = 0; $r -lt $regions.Count; $r += 8) {
         $regionBatch = @($regions[$r..([Math]::Min($r + 7, $regions.Count - 1))])
         for ($s = 0; $s -lt $sizes.Count; $s += 5) {
             $sizeBatch = @($sizes[$s..([Math]::Min($s + 4, $sizes.Count - 1))])
             $batchRows = @($rows | Where-Object { $_.Region -in $regionBatch -and $_.SKU -in $sizeBatch })
+            if ($rateLimitMessage) {
+                # Further calls during throttling can extend the retry window.
+                foreach ($row in $batchRows) { $row.CapacityStatus = 'RateLimited'; $row.Error = "Skipped after throttling. $rateLimitMessage" }
+                continue
+            }
             $payload = @{
                 availabilityZones = $false; desiredCount = 1; desiredLocations = $regionBatch
                 desiredSizes = @($sizeBatch | ForEach-Object { @{ sku = $_ } })
@@ -168,6 +175,17 @@ function Get-GpuCapacity {
             try {
                 $path = "/subscriptions/$SubscriptionId/providers/Microsoft.Compute/locations/$($regionBatch[0])/placementScores/spot/generate?api-version=2025-06-05"
                 $response = Invoke-AzRestMethod -Path $path -Method POST -Payload $payload -DefaultProfile $Context -ErrorAction Stop
+                if ($response.StatusCode -eq 429) {
+                    $retrySeconds = $null
+                    $retryHeader = $response.Headers.RetryAfter
+                    if ($retryHeader.Delta) { $retrySeconds = [int]$retryHeader.Delta.TotalSeconds }
+                    elseif ("$($response.Content)" -match 'after (\d+) seconds') { $retrySeconds = [int]$Matches[1] }
+                    $retryText = if ($retrySeconds) {
+                        "Retry after about $([Math]::Ceiling($retrySeconds / 60)) minute(s) (~$([datetime]::Now.AddSeconds($retrySeconds).ToString('t')) local)."
+                    } else { 'Retry later.' }
+                    $rateLimitMessage = "HTTP 429 from Spot Placement Score API. $retryText Use -GpuFilter or -Regions to reduce request count."
+                    throw $rateLimitMessage
+                }
                 if ($response.StatusCode -ne 200) { throw "HTTP $($response.StatusCode): $($response.Content)" }
                 $scores = ($response.Content | ConvertFrom-Json -ErrorAction Stop).placementScores
                 foreach ($row in $batchRows) {
@@ -178,7 +196,11 @@ function Get-GpuCapacity {
                     } else { $row.Error = 'No matching Spot score returned.'; Write-Warning "$($row.Region)/$($row.SKU): $($row.Error)" }
                 }
             } catch {
+                if (-not $rateLimitMessage -and (Get-GpuErrorStatus $_.Exception.Message) -eq 'RateLimited') {
+                    $rateLimitMessage = "Spot Placement Score API throttled: $($_.Exception.Message) Use -GpuFilter or -Regions to reduce request count."
+                }
                 Write-Warning "Spot placement batch: $($_.Exception.Message)"
+                if ($rateLimitMessage) { Write-Warning 'Stopping remaining Spot requests for this run; catalog and quota results remain valid.' }
                 foreach ($row in $batchRows) { $row.CapacityStatus = Get-GpuErrorStatus $_.Exception.Message; $row.Error = $_.Exception.Message }
             }
         }
