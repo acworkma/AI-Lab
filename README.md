@@ -38,8 +38,6 @@ AI-Lab is a collection of modular Azure infrastructure projects, all connected t
 
 ## 📚 Projects
 
-- **[GPU Scanner](gpu-scanner/README.md)**: Standalone PowerShell tool for GPU SKU access, regional vCPU quota, and Spot capacity signals. Read-only by default, requires no lab infrastructure, and never deploys VMs.
-
 ### 🏗️ Core Infrastructure (Foundation)
 
 **Status**: ✅ Ready  
@@ -115,6 +113,9 @@ Solution projects consume deployed infrastructure to accomplish specific use cas
 
 - **[Azure OpenAI (Legacy) API via Private APIM](docs/aoai-api/README.md)**  
   Expose the legacy Azure OpenAI service through private APIM at `/aoai`. Same pattern as the Foundry API — managed identity backend auth, JWT consumer auth, SSE streaming support.
+
+- **[GPU Scanner](gpu-scanner/README.md)**  
+  Standalone PowerShell tool showing which Azure GPU VM SKUs a subscription can deploy in US regions: catalog access, regional vCPU quota, and Spot capacity signals. Read-only by default, requires no lab infrastructure, and never deploys VMs.
 
 ---
 
