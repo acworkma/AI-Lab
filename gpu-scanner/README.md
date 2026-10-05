@@ -8,8 +8,20 @@ A standalone customer handoff for answering three different questions in an Azur
 Use PowerShell 7+ (`pwsh`) and current Az modules:
 
 ```powershell
+# From the gpu-scanner folder:
+.\Test-GpuScannerPrerequisites.ps1                 # Check only, no installs or sign-in
+.\Test-GpuScannerPrerequisites.ps1 -InstallMissing # Explicitly install missing modules
+# Or provision modules directly:
 Install-Module Az.Accounts,Az.Compute,Az.Resources -Scope CurrentUser -Repository PSGallery
 ```
+
+Pre-flight checks all three modules and confirms they can be imported, then returns a `Ready` boolean
+and per-module results. `-InstallMissing` installs only missing modules in **CurrentUser** scope using
+PSGallery (including their dependencies); repository/provider trust prompts may appear. It does not
+change repository trust, bypass publisher checks, require administrator access, or upgrade installed modules.
+Use `-WhatIf` to preview installation or `-Confirm` to approve each install. Installation errors include
+proxy/policy guidance. No Azure login, cloud calls, network tests, or permission checks happen in pre-flight.
+Organizations can instead provision approved modules through their own distribution process.
 
 Catalog and quota need subscription **Reader**. Spot placement scoring additionally needs
 `Microsoft.Compute/locations/placementScores/spot/generate/action`; Microsoft's documented
@@ -115,7 +127,7 @@ VM capacity. The tool never tries VM deployment as a fallback.
 
 ```powershell
 Install-Module Pester,PSScriptAnalyzer -Scope CurrentUser -Repository PSGallery
-Invoke-Pester .\tests\GpuScanner.Tests.ps1 -Output Detailed
+Invoke-Pester .\tests -Output Detailed
 Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning,Error
 ```
 

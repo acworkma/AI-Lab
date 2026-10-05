@@ -15,7 +15,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) { throw 'PowerShell 7+ required. Inst
 if ($ProbeCapacity -and $Stage -and $Stage -notin @('All', 'Capacity')) { throw '-ProbeCapacity requires -Stage Capacity or All.' }
 foreach ($module in @('Az.Accounts', 'Az.Compute', 'Az.Resources')) {
     if (-not (Get-Module -ListAvailable -Name $module)) {
-        throw "Missing $module. Run: Install-Module Az.Accounts,Az.Compute,Az.Resources -Scope CurrentUser -Repository PSGallery"
+        throw "Missing $module. Run .\Test-GpuScannerPrerequisites.ps1 -InstallMissing from the gpu-scanner folder, or run: Install-Module Az.Accounts,Az.Compute,Az.Resources -Scope CurrentUser -Repository PSGallery"
     }
     Import-Module $module -ErrorAction Stop
 }
