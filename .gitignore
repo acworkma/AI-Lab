@@ -42,6 +42,7 @@ node_modules/
 # Testing
 coverage/
 .nyc_output/
+gpu-scanner/output/
 
 # Python
 __pycache__/
@@ -60,4 +61,3 @@ ENV/
 # Bicep parameter files - keep environment-specific configs private
 bicep/main.parameters.json
 bicep/main.parameters.*.json
-
