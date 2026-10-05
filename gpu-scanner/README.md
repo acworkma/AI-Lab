@@ -57,6 +57,18 @@ Default regions: `eastus`, `eastus2`, `centralus`, `northcentralus`, `southcentr
 GPU type is inferred from the SKU name (H100/H200/A100/MI300X/T4/A10/V100/L40S and older V100 series).
 Unrecognized names remain **Unknown**, not a guessed GPU model. GPU count can be fractional.
 
+### Spot request safeguards
+
+The Spot Placement Score API is rate-limited per subscription (a 429 can block it for an hour), so Stage 3:
+
+- **Scores only region/SKU pairs that are catalog `Available` and `QuotaOK`.** Other rows are `NotEligible`
+  (no request sent); their verdict comes from catalog/quota (e.g. QuotaNeeded, RequestAccess). If nothing
+  has quota, no Spot requests are sent. Request quota first.
+- Prints the number of requests needed and sends at most `-MaxSpotRequests` (default 10, max 100). Rows
+  beyond the cap are `Skipped`; narrow with `-GpuFilter`/`-Regions` or raise the cap.
+- On HTTP 429, stops immediately and saves the retry time to `output\<subscriptionId>\spot-throttle.json`.
+  Later runs send no Spot requests until that time passes (delete the file to override).
+
 ### Optional on-demand reservation probe
 
 ```powershell
@@ -93,7 +105,7 @@ Catalog collection failure is persisted and stops dependent stages. Per-region q
 Spot errors are warnings with Unknown/Forbidden/Error rows; other requests continue. **HTTP 429 (throttling)
 is different: the scanner stops sending the remaining Spot requests for that run**, marks unscored rows
 `RateLimited`, and reports Azure's retry delay (which can be an hour), since more calls can extend throttling.
-Catalog and quota results remain valid. Retry later and use `-GpuFilter`/`-Regions` to reduce request count. A successful empty
+Catalog and quota results remain valid. See [Spot request safeguards](#spot-request-safeguards). A successful empty
 catalog is distinct from a failed collection; inspect the stage envelope when the report is empty.
 
 Quota/capacity stages reuse the newest **successful matching catalog/quota cache no older than 30 minutes**,

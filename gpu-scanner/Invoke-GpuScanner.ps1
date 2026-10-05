@@ -7,7 +7,8 @@ param(
     [string]$GpuFilter,
     [string]$OutputPath = (Join-Path $PSScriptRoot 'output'),
     [switch]$ProbeCapacity,
-    [switch]$Force
+    [switch]$Force,
+    [ValidateRange(1, 100)][int]$MaxSpotRequests = 10
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,7 +49,8 @@ Write-Host "Subscription: $SubscriptionId. Read-only unless -ProbeCapacity is ex
 $scan = @{
     SubscriptionId = $SubscriptionId; Regions = $Regions; GpuFilter = $GpuFilter
     OutputPath = $OutputPath; Context = $context; ProbeCapacity = $ProbeCapacity; Force = $Force
-}
+        MaxSpotRequests = $MaxSpotRequests
+    }
 if ($Stage) { Invoke-GpuScan -Stage $Stage @scan; return }
 while ($true) {
     Write-Host "`n1 Catalog | 2 Quota | 3 Capacity | 4 Run all + report | 5 View last report | Q Quit"

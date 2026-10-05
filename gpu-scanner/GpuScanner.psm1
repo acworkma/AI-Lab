@@ -138,7 +138,8 @@ function Get-GpuCapacity {
     [CmdletBinding()]
     param(
         [AllowEmptyCollection()][object[]]$Catalog, [AllowEmptyCollection()][object[]]$Quota,
-        [string]$SubscriptionId, [object]$Context, [switch]$ProbeCapacity, [switch]$Force
+        [string]$SubscriptionId, [object]$Context, [switch]$ProbeCapacity, [switch]$Force,
+        [ValidateRange(1, 100)][int]$MaxSpotRequests = 10, [string]$ThrottleStatePath
     )
     if ($ProbeCapacity) {
         Write-Warning 'Probes require Contributor, reserve one VM worth of capacity, and incur brief billing. No VMs are deployed.'
@@ -155,54 +156,110 @@ function Get-GpuCapacity {
             Signal = 'Spot capacity recommendation for one nonzonal VM; not an on-demand guarantee.'
         }
     })
-    $regions = @($Catalog.Region | Sort-Object -Unique)
-    $sizes = @($Catalog.SKU | Sort-Object -Unique)
-    $rateLimitMessage = ''
+    $quotaByKey = @{}
+    foreach ($q in $Quota) { $quotaByKey["$($q.Region)|$($q.SKU)"] = $q }
+    $eligible = [System.Collections.Generic.List[object]]::new()
+    for ($i = 0; $i -lt $rows.Count; $i++) {
+        $sku = $Catalog[$i]; $row = $rows[$i]; $q = $quotaByKey["$($row.Region)|$($row.SKU)"]
+        if ($sku.CatalogStatus -ne 'Available') {
+            $row.CapacityStatus = 'NotEligible'; $row.SpotScore = 'NotChecked'
+            $row.Error = "Not checked: catalog status $($sku.CatalogStatus)$(if ($sku.CatalogHint) { " ($($sku.CatalogHint))" })."
+        } elseif ($q.QuotaStatus -ne 'QuotaOK') {
+            $row.CapacityStatus = 'NotEligible'; $row.SpotScore = 'NotChecked'
+            $row.Error = "Not checked: quota status $(if ($q.QuotaStatus) { $q.QuotaStatus } else { 'not collected' })."
+        } else { $eligible.Add($row) }
+    }
+    $batches = [System.Collections.Generic.List[object]]::new()
+    $regions = @($eligible.Region | Sort-Object -Unique)
+    $sizes = @($eligible.SKU | Sort-Object -Unique)
     for ($r = 0; $r -lt $regions.Count; $r += 8) {
         $regionBatch = @($regions[$r..([Math]::Min($r + 7, $regions.Count - 1))])
         for ($s = 0; $s -lt $sizes.Count; $s += 5) {
             $sizeBatch = @($sizes[$s..([Math]::Min($s + 4, $sizes.Count - 1))])
-            $batchRows = @($rows | Where-Object { $_.Region -in $regionBatch -and $_.SKU -in $sizeBatch })
-            if ($rateLimitMessage) {
-                # Further calls during throttling can extend the retry window.
-                foreach ($row in $batchRows) { $row.CapacityStatus = 'RateLimited'; $row.Error = "Skipped after throttling. $rateLimitMessage" }
-                continue
+            $batchRows = @($eligible | Where-Object { $_.Region -in $regionBatch -and $_.SKU -in $sizeBatch })
+            if ($batchRows.Count) { $batches.Add([pscustomobject]@{ Regions = $regionBatch; Sizes = $sizeBatch; Rows = $batchRows }) }
+        }
+    }
+    if ($rows.Count) {
+        if ($eligible.Count) {
+            Write-Information "Spot checks: $($eligible.Count) of $($rows.Count) region/SKU pairs have catalog access and quota; $($batches.Count) request(s) needed (cap $MaxSpotRequests)." -InformationAction Continue
+        } else {
+            Write-Information 'Spot checks: no region/SKU pair has both catalog access and quota. Request quota first; no Spot requests sent.' -InformationAction Continue
+        }
+    }
+    if ($batches.Count -gt $MaxSpotRequests) {
+        Write-Warning "Spot checks need $($batches.Count) requests; only the first $MaxSpotRequests will be sent. Narrow with -GpuFilter/-Regions or raise -MaxSpotRequests."
+    }
+    $rateLimitMessage = ''; $priorThrottle = $false
+    if ($batches.Count -and $ThrottleStatePath -and (Test-Path -LiteralPath $ThrottleStatePath)) {
+        try {
+            $until = ([datetime](Get-Content -LiteralPath $ThrottleStatePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop).RetryAfterUtc).ToUniversalTime()
+            if ($until -gt [datetime]::UtcNow) {
+                $priorThrottle = $true
+                $rateLimitMessage = "Spot Placement Score API is throttled until ~$($until.ToLocalTime().ToString('t')) local (HTTP 429 in a previous run); no requests sent. Delete $ThrottleStatePath to override."
+                Write-Warning $rateLimitMessage
             }
-            $payload = @{
-                availabilityZones = $false; desiredCount = 1; desiredLocations = $regionBatch
-                desiredSizes = @($sizeBatch | ForEach-Object { @{ sku = $_ } })
-            } | ConvertTo-Json -Depth 5
-            try {
-                $path = "/subscriptions/$SubscriptionId/providers/Microsoft.Compute/locations/$($regionBatch[0])/placementScores/spot/generate?api-version=2025-06-05"
-                $response = Invoke-AzRestMethod -Path $path -Method POST -Payload $payload -DefaultProfile $Context -ErrorAction Stop
-                if ($response.StatusCode -eq 429) {
-                    $retrySeconds = $null
-                    $retryHeader = $response.Headers.RetryAfter
-                    if ($retryHeader.Delta) { $retrySeconds = [int]$retryHeader.Delta.TotalSeconds }
-                    elseif ("$($response.Content)" -match 'after (\d+) seconds') { $retrySeconds = [int]$Matches[1] }
-                    $retryText = if ($retrySeconds) {
-                        "Retry after about $([Math]::Ceiling($retrySeconds / 60)) minute(s) (~$([datetime]::Now.AddSeconds($retrySeconds).ToString('t')) local)."
-                    } else { 'Retry later.' }
-                    $rateLimitMessage = "HTTP 429 from Spot Placement Score API. $retryText Use -GpuFilter or -Regions to reduce request count."
-                    throw $rateLimitMessage
-                }
-                if ($response.StatusCode -ne 200) { throw "HTTP $($response.StatusCode): $($response.Content)" }
-                $scores = ($response.Content | ConvertFrom-Json -ErrorAction Stop).placementScores
-                foreach ($row in $batchRows) {
-                    $score = $scores | Where-Object { $_.region -eq $row.Region -and $_.sku -eq $row.SKU } | Select-Object -First 1
-                    if ($score) {
-                        $row.SpotScore = $score.score; $row.SpotQuotaAvailable = $score.isQuotaAvailable
-                        $row.CapacityStatus = 'SpotSignal'
-                    } else { $row.Error = 'No matching Spot score returned.'; Write-Warning "$($row.Region)/$($row.SKU): $($row.Error)" }
-                }
-            } catch {
-                if (-not $rateLimitMessage -and (Get-GpuErrorStatus $_.Exception.Message) -eq 'RateLimited') {
-                    $rateLimitMessage = "Spot Placement Score API throttled: $($_.Exception.Message) Use -GpuFilter or -Regions to reduce request count."
-                }
-                Write-Warning "Spot placement batch: $($_.Exception.Message)"
-                if ($rateLimitMessage) { Write-Warning 'Stopping remaining Spot requests for this run; catalog and quota results remain valid.' }
-                foreach ($row in $batchRows) { $row.CapacityStatus = Get-GpuErrorStatus $_.Exception.Message; $row.Error = $_.Exception.Message }
+        } catch { Write-Warning "Ignoring invalid throttle state ${ThrottleStatePath}: $($_.Exception.Message)" }
+    }
+    for ($b = 0; $b -lt $batches.Count; $b++) {
+        $batch = $batches[$b]; $batchRows = $batch.Rows
+        if ($rateLimitMessage) {
+            # Further calls during throttling can extend the retry window.
+            foreach ($row in $batchRows) {
+                $row.CapacityStatus = 'RateLimited'
+                $row.Error = if ($priorThrottle) { $rateLimitMessage } else { "Skipped after throttling. $rateLimitMessage" }
             }
+            continue
+        }
+        if ($b -ge $MaxSpotRequests) {
+            foreach ($row in $batchRows) {
+                $row.CapacityStatus = 'Skipped'; $row.SpotScore = 'NotChecked'
+                $row.Error = "Not checked: request cap of $MaxSpotRequests reached. Narrow with -GpuFilter/-Regions or raise -MaxSpotRequests."
+            }
+            continue
+        }
+        $payload = @{
+            availabilityZones = $false; desiredCount = 1; desiredLocations = $batch.Regions
+            desiredSizes = @($batch.Sizes | ForEach-Object { @{ sku = $_ } })
+        } | ConvertTo-Json -Depth 5
+        $retrySeconds = $null
+        try {
+            $path = "/subscriptions/$SubscriptionId/providers/Microsoft.Compute/locations/$($batch.Regions[0])/placementScores/spot/generate?api-version=2025-06-05"
+            $response = Invoke-AzRestMethod -Path $path -Method POST -Payload $payload -DefaultProfile $Context -ErrorAction Stop
+            if ($response.StatusCode -eq 429) {
+                $retryHeader = $response.Headers.RetryAfter
+                if ($retryHeader.Delta) { $retrySeconds = [int]$retryHeader.Delta.TotalSeconds }
+                throw "HTTP 429: $($response.Content)"
+            }
+            if ($response.StatusCode -ne 200) { throw "HTTP $($response.StatusCode): $($response.Content)" }
+            $scores = ($response.Content | ConvertFrom-Json -ErrorAction Stop).placementScores
+            foreach ($row in $batchRows) {
+                $score = $scores | Where-Object { $_.region -eq $row.Region -and $_.sku -eq $row.SKU } | Select-Object -First 1
+                if ($score) {
+                    $row.SpotScore = $score.score; $row.SpotQuotaAvailable = $score.isQuotaAvailable
+                    $row.CapacityStatus = 'SpotSignal'
+                } else { $row.Error = 'No matching Spot score returned.'; Write-Warning "$($row.Region)/$($row.SKU): $($row.Error)" }
+            }
+        } catch {
+            $message = $_.Exception.Message
+            $status = Get-GpuErrorStatus $message
+            if ($status -eq 'RateLimited') {
+                if (-not $retrySeconds -and $message -match 'after (\d+) seconds') { $retrySeconds = [int]$Matches[1] }
+                $retryText = if ($retrySeconds) {
+                    "Retry after about $([Math]::Ceiling($retrySeconds / 60)) minute(s) (~$([datetime]::Now.AddSeconds($retrySeconds).ToString('t')) local)."
+                } else { 'Retry in about 60 minutes.' }
+                $message = "Spot Placement Score API throttled (HTTP 429). $retryText Use -GpuFilter or -Regions to reduce request count."
+                $rateLimitMessage = $message
+                if ($ThrottleStatePath) {
+                    try {
+                        @{ RetryAfterUtc = [datetime]::UtcNow.AddSeconds($(if ($retrySeconds) { $retrySeconds } else { 3600 })).ToString('o') } |
+                            ConvertTo-Json | Set-Content -LiteralPath $ThrottleStatePath -Encoding utf8 -ErrorAction Stop
+                    } catch { Write-Warning "Could not save throttle state: $($_.Exception.Message)" }
+                }
+                Write-Warning $message
+                Write-Warning 'Stopping remaining Spot requests for this run; catalog and quota results remain valid.'
+            } else { Write-Warning "Spot placement batch: $message" }
+            foreach ($row in $batchRows) { $row.CapacityStatus = $status; $row.Error = $message }
         }
     }
     if ($ProbeCapacity) {
@@ -298,7 +355,8 @@ function Invoke-GpuScan {
     param(
         [ValidateSet('Catalog', 'Quota', 'Capacity', 'All')][string]$Stage,
         [string]$SubscriptionId, [string[]]$Regions = $script:DefaultRegions, [string]$GpuFilter,
-        [string]$OutputPath, [object]$Context, [switch]$ProbeCapacity, [switch]$Force
+        [string]$OutputPath, [object]$Context, [switch]$ProbeCapacity, [switch]$Force,
+        [ValidateRange(1, 100)][int]$MaxSpotRequests = 10
     )
     $root = Join-Path $OutputPath $SubscriptionId
     $directory = Join-Path $root ([datetime]::UtcNow.ToString('yyyyMMddTHHmmssfffffffZ'))
@@ -317,13 +375,13 @@ function Invoke-GpuScan {
                 switch ($name) {
                     'Catalog' { @(Get-GpuCatalog -Regions $Regions -GpuFilter $GpuFilter -Context $Context) }
                     'Quota' { @(Get-GpuQuota -Catalog $catalog -Context $Context) }
-                    'Capacity' { @(Get-GpuCapacity -Catalog $catalog -Quota $quota -SubscriptionId $SubscriptionId -Context $Context -ProbeCapacity:$ProbeCapacity -Force:$Force) }
+                    'Capacity' { @(Get-GpuCapacity -Catalog $catalog -Quota $quota -SubscriptionId $SubscriptionId -Context $Context -ProbeCapacity:$ProbeCapacity -Force:$Force -MaxSpotRequests $MaxSpotRequests -ThrottleStatePath (Join-Path $root 'spot-throttle.json')) }
                 }
             }
             $rows = @($rows)
             if ($name -eq 'Quota' -and @($rows | Where-Object QuotaStatus -In @('Unknown', 'Forbidden', 'Error')).Count) { $status = 'Partial' }
             if ($name -eq 'Capacity' -and @($rows | Where-Object {
-                $_.CapacityStatus -ne 'SpotSignal' -or $_.CleanupStatus -eq 'Failed' -or $_.ProbeStatus -in @('NotAttempted', 'Error', 'Forbidden', 'QuotaError', 'AllocationFailed')
+                $_.CapacityStatus -notin @('SpotSignal', 'NotEligible') -or $_.CleanupStatus -eq 'Failed' -or $_.ProbeStatus -in @('NotAttempted', 'Error', 'Forbidden', 'QuotaError', 'AllocationFailed')
             }).Count) { $status = 'Partial' }
         } catch {
             $rows = @(); $status = 'Failed'; $errorMessage = $_.Exception.Message

@@ -171,7 +171,8 @@ Describe 'GPU scanner offline behavior' {
             $many = @(foreach ($region in Get-GpuScannerRegion) {
                 foreach ($n in 1..6) { [pscustomobject]@{ Region = $region; SKU = "Standard_NC$n"; CatalogStatus = 'Available' } }
             })
-            @(Get-GpuCapacity -Catalog $many -Quota @() -Context $context -SubscriptionId $context.Subscription.Id).Count | Should -Be 54
+            $okQuota = @($many | ForEach-Object { [pscustomobject]@{ Region = $_.Region; SKU = $_.SKU; QuotaStatus = 'QuotaOK' } })
+            @(Get-GpuCapacity -Catalog $many -Quota $okQuota -Context $context -SubscriptionId $context.Subscription.Id).Count | Should -Be 54
             Should -Invoke Invoke-AzRestMethod -Times 4 -Exactly -ParameterFilter {
                 $body = $Payload | ConvertFrom-Json
                 $body.desiredLocations.Count -le 8 -and $body.desiredSizes.Count -le 5
@@ -191,9 +192,11 @@ Describe 'GPU scanner offline behavior' {
             Should -Invoke Invoke-AzRestMethod -Times 0 -Exactly
         }
         It 'continues to the next region batch after a Spot authorization failure' {
-            $many = @(foreach ($region in Get-GpuScannerRegion) { @{ Region = $region; SKU = 'Standard_NC40ads_H100_v5' } })
+            $many = @(foreach ($region in Get-GpuScannerRegion) { @{ Region = $region; SKU = 'Standard_NC40ads_H100_v5'; CatalogStatus = 'Available' } })
+            $okQuota = @($many | ForEach-Object { [pscustomobject]@{ Region = $_.Region; SKU = $_.SKU; QuotaStatus = 'QuotaOK' } })
             Mock Invoke-AzRestMethod { throw 'HTTP 403 Forbidden' } -ParameterFilter { $Path -like '*/locations/centralus/*' }
-            $result = @(Get-GpuCapacity -Catalog $many -Quota @() -SubscriptionId $context.Subscription.Id)
+            $okQuota = @($many | ForEach-Object { [pscustomobject]@{ Region = $_.Region; SKU = $_.SKU; QuotaStatus = 'QuotaOK' } })
+            $result = @(Get-GpuCapacity -Catalog $many -Quota $okQuota -SubscriptionId $context.Subscription.Id -MaxSpotRequests 100)
             @($result | Where-Object CapacityStatus -EQ 'Forbidden').Count | Should -Be 8
             @($result | Where-Object SpotScore -EQ 'High').Count | Should -Be 1
             Should -Invoke Invoke-AzRestMethod -Times 2 -Exactly
@@ -211,17 +214,58 @@ Describe 'GPU scanner offline behavior' {
                 foreach ($n in 1..6) { [pscustomobject]@{ Region = $region; SKU = "Standard_NC$n"; CatalogStatus = 'Available' } }
             })
             Mock Invoke-AzRestMethod { @{ StatusCode = 429; Content = 'Please try again after 3600 seconds.' } }
-            $result = @(Get-GpuCapacity -Catalog $many -Quota @() -SubscriptionId $context.Subscription.Id)
+            $okQuota = @($many | ForEach-Object { [pscustomobject]@{ Region = $_.Region; SKU = $_.SKU; QuotaStatus = 'QuotaOK' } })
+            $result = @(Get-GpuCapacity -Catalog $many -Quota $okQuota -SubscriptionId $context.Subscription.Id -MaxSpotRequests 100)
             Should -Invoke Invoke-AzRestMethod -Times 1 -Exactly
             @($result | Where-Object CapacityStatus -EQ 'RateLimited').Count | Should -Be 54
             @($result | Where-Object Error -Match 'Skipped after throttling').Count | Should -Be 14
         }
         It 'also stops after a thrown throttling exception' {
-            $many = @(foreach ($n in 1..6) { [pscustomobject]@{ Region = 'eastus'; SKU = "Standard_NC$n" } })
+            $many = @(foreach ($n in 1..6) { [pscustomobject]@{ Region = 'eastus'; SKU = "Standard_NC$n"; CatalogStatus = 'Available' } })
+            $okQuota = @($many | ForEach-Object { [pscustomobject]@{ Region = $_.Region; SKU = $_.SKU; QuotaStatus = 'QuotaOK' } })
             Mock Invoke-AzRestMethod { throw 'TooManyRequests' }
-            $result = @(Get-GpuCapacity -Catalog $many -Quota @())
+            $result = @(Get-GpuCapacity -Catalog $many -Quota $okQuota)
             Should -Invoke Invoke-AzRestMethod -Times 1 -Exactly
             @($result | Where-Object CapacityStatus -EQ 'RateLimited').Count | Should -Be 6
+        }
+        It 'only scores SKUs with catalog access and quota and sends nothing otherwise' {
+            Mock Get-AzVMUsage { New-TestUsage -FamilyLimit 0 }
+            $noQuota = @(Get-GpuQuota -Catalog $catalog)
+            $result = @(Get-GpuCapacity -Catalog $catalog -Quota $noQuota)
+            Should -Invoke Invoke-AzRestMethod -Times 0 -Exactly
+            $result.CapacityStatus | Should -Be @('NotEligible', 'NotEligible')
+            $result[0].Error | Should -Match 'quota status NoQuota'
+            $mixed = @($catalog[0], $catalog[1])
+            $mixedQuota = @([pscustomobject]@{ Region = $mixed[0].Region; SKU = $mixed[0].SKU; QuotaStatus = 'QuotaOK' })
+            $result = @(Get-GpuCapacity -Catalog $mixed -Quota $mixedQuota)
+            Should -Invoke Invoke-AzRestMethod -Times 1 -Exactly -ParameterFilter { ($Payload | ConvertFrom-Json).desiredLocations.Count -eq 1 }
+            $result[0].CapacityStatus | Should -Be 'SpotSignal'
+            $result[1].CapacityStatus | Should -Be 'NotEligible'
+            (Get-GpuReport -Catalog $mixed -Quota $mixedQuota -Capacity $result)[1].Verdict | Should -Be 'Unknown'
+        }
+        It 'caps Spot requests and labels the rest as skipped' {
+            $many = @(foreach ($region in Get-GpuScannerRegion) {
+                foreach ($n in 1..6) { [pscustomobject]@{ Region = $region; SKU = "Standard_NC$n"; CatalogStatus = 'Available' } }
+            })
+            $okQuota = @($many | ForEach-Object { [pscustomobject]@{ Region = $_.Region; SKU = $_.SKU; QuotaStatus = 'QuotaOK' } })
+            $result = @(Get-GpuCapacity -Catalog $many -Quota $okQuota -MaxSpotRequests 2)
+            Should -Invoke Invoke-AzRestMethod -Times 2 -Exactly
+            @($result | Where-Object CapacityStatus -EQ 'Skipped').Count | Should -Be 6
+            @($result | Where-Object CapacityStatus -EQ 'Skipped')[0].Error | Should -Match 'request cap of 2'
+        }
+        It 'remembers throttling across runs and sends nothing until the retry time' {
+            $state = Join-Path $TestDrive 'spot-throttle.json'
+            Mock Invoke-AzRestMethod { @{ StatusCode = 429; Content = 'Please try again after 3600 seconds.' } }
+            Get-GpuCapacity -Catalog $catalog -Quota $quota -ThrottleStatePath $state | Out-Null
+            ([datetime](Get-Content $state -Raw | ConvertFrom-Json).RetryAfterUtc).ToUniversalTime() | Should -BeGreaterThan ([datetime]::UtcNow.AddMinutes(59))
+            $result = @(Get-GpuCapacity -Catalog $catalog -Quota $quota -ThrottleStatePath $state)
+            Should -Invoke Invoke-AzRestMethod -Times 1 -Exactly
+            $result[0].CapacityStatus | Should -Be 'RateLimited'
+            $result[0].Error | Should -Match 'previous run'
+            @{ RetryAfterUtc = [datetime]::UtcNow.AddMinutes(-1).ToString('o') } | ConvertTo-Json | Set-Content $state
+            Mock Invoke-AzRestMethod { @{ StatusCode = 200; Content = '{"placementScores":[]}' } }
+            Get-GpuCapacity -Catalog $catalog -Quota $quota -ThrottleStatePath $state | Out-Null
+            Should -Invoke Invoke-AzRestMethod -Times 2 -Exactly
         }
         It 'requires explicit probe confirmation before any Azure call' {
             Mock Read-Host { 'no' }
