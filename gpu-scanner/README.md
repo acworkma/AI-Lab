@@ -138,17 +138,6 @@ Spot scores evaluate one nonzonal VM and are valid only when requested; High/Med
 allocation or protection from eviction. Reservation failures can mean unsupported reservations, not unavailable
 VM capacity. The tool never tries VM deployment as a fallback.
 
-## Offline validation
-
-```powershell
-Install-Module Pester,PSScriptAnalyzer -Scope CurrentUser -Repository PSGallery
-Invoke-Pester .\tests -Output Detailed
-Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning,Error
-```
-
-Tests use Pester 5+ and mock Az commands with local signatures, so Az installation and live login are not
-required. No live capacity or reservation tests run.
-
 ## Microsoft Learn references
 
 Verified October 5, 2026. Stable Spot API **2025-06-05** is used (not the newer preview), with at most
