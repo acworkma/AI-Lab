@@ -36,26 +36,95 @@ Use an existing Azure cloud context; Spot scoring is documented for public Azure
 
 ## Usage
 
+### Start the interactive menu
+
+Open **PowerShell 7**, navigate to the `gpu-scanner` folder, and run:
+
 ```powershell
 Set-Location .\gpu-scanner
-.\Invoke-GpuScanner.ps1                          # Sign in, choose subscription, menu
-.\Invoke-GpuScanner.ps1 -Stage All -SubscriptionId '00000000-0000-0000-0000-000000000000'
-.\Invoke-GpuScanner.ps1 -Stage Catalog -GpuFilter H100
-.\Invoke-GpuScanner.ps1 -Stage Quota -Regions eastus,westus3 -GpuFilter A100
-.\Invoke-GpuScanner.ps1 -Stage Capacity -OutputPath 'C:\Temp\gpu-results'
+.\Invoke-GpuScanner.ps1
 ```
 
-Menu: **1 Catalog**, **2 Quota**, **3 Capacity**, **4 Run all + report**, **5 View last report**, **Q Quit**.
-Without `-SubscriptionId`, automation uses the current subscription; interactive mode lists subscriptions.
-Pre-authenticate unattended runs with `Connect-AzAccount` using the customer's preferred identity.
-The tool disables context autosave for its process and passes the selected context explicitly to Az calls.
-It never installs modules automatically; missing modules produce install guidance.
+If you are not already signed in to Azure PowerShell, the script prompts you to sign in.
+It then lists your accessible subscriptions; enter the number for the subscription you want to scan.
+Azure CLI's `az login` is separate from Azure PowerShell sign-in.
 
-Default regions: `eastus`, `eastus2`, `centralus`, `northcentralus`, `southcentralus`, `westcentralus`,
-`westus`, `westus2`, `westus3`. `-Regions` replaces these and can include other Azure region identifiers.
-`-GpuFilter` is a case-insensitive literal substring of GPU type or SKU name.
+You will see:
+
+```text
+1 Catalog | 2 Quota | 3 Capacity | 4 Run all + report | 5 View last report | Q Quit
+Select:
+```
+
+Type a menu number and press Enter. After the scan finishes, the menu returns so you can choose another
+option. Type `Q` to exit. **All options are read-only unless you explicitly start with `-ProbeCapacity`.**
+The script never installs modules automatically; if prerequisites are missing, follow the guidance above.
+
+### What each menu option does
+
+| Option | Question it answers | What happens |
+| --- | --- | --- |
+| **1 Catalog** | Which GPU VM sizes exist in these regions, and is my subscription allowed to use them? | Lists GPU specifications and subscription/zone restrictions. `Available` means no catalog restriction was found, **not** that quota or physical capacity is available. |
+| **2 Quota** | Does my subscription have enough unused vCPU allowance for at least one of these VMs? | Checks both the GPU family's quota and the total regional quota. Reports the estimated number of VMs that fit within the remaining allowance. Zero or insufficient quota means you need a quota increase; quota is **not** physical capacity. |
+| **3 Capacity** | Is there a current signal that Azure has room to allocate a matching GPU VM? | Requests Spot placement scores only for region/size pairs that passed catalog and quota checks. High/Medium scores are a **Spot-capacity signal**, not an on-demand deployment guarantee. No resources are created in default mode. |
+| **4 Run all + report** | What is the combined picture for my subscription? | Refreshes Catalog, then Quota, then Capacity, and combines the results into a console summary and JSON/CSV reports. |
+| **5 View last report** | What did the most recent scan find? | Displays the last saved report for this subscription under the selected output folder. It makes no new Azure checks; the results are historical. |
+| **Q Quit** | How do I leave the menu? | Exits the script. |
+
+**Suggested first run:** choose **4** for the full picture, or work through **1**, **2**, then **3** to
+inspect each step separately. You do not have to run them in order: Quota automatically obtains Catalog,
+and Capacity automatically obtains both Catalog and Quota when no suitable recent results are saved.
+Every scan option (1-4) writes a report; options 1 and 2 leave later stages unchecked.
+The script prints the output folder when each scan finishes.
+
+If no sizes pass the catalog and quota checks, option 3 sends **no Spot requests**. Address the report's
+access restrictions or quota shortfall before checking capacity again.
+
+### Narrow the scan
+
+Filters are chosen when you start the script and apply to every scan you run from that menu.
+For example, to check only H100 sizes in two regions:
+
+```powershell
+.\Invoke-GpuScanner.ps1 -GpuFilter H100 -Regions eastus,westus3
+```
+
+To change the filters or subscription, quit and restart with different arguments.
+
+| Argument | Default and meaning |
+| --- | --- |
+| `-SubscriptionId` | Uses the specified subscription instead of asking you to select one. With `-Stage` and no ID, uses the current Azure PowerShell subscription. |
+| `-Regions` | Defaults to `eastus`, `eastus2`, `centralus`, `northcentralus`, `southcentralus`, `westcentralus`, `westus`, `westus2`, `westus3`. Replaces that list; use identifiers such as `eastus`, not display names such as `East US`. Other Azure regions may be supplied. |
+| `-GpuFilter` | No filter by default. Matches a case-insensitive literal substring of the GPU type or SKU name, such as `H100` or `A100`. |
+| `-OutputPath` | Saves results under the script's `output` folder by default. Use another folder to collect reports elsewhere. |
+| `-MaxSpotRequests` | Limits Spot API requests per scan to 10 by default (allowed range 1-100). See the safeguards below. |
+
 GPU type is inferred from the SKU name (H100/H200/A100/MI300X/T4/A10/V100/L40S and older V100 series).
-Unrecognized names remain **Unknown**, not a guessed GPU model. GPU count can be fractional.
+Unrecognized types remain **Unknown** rather than being guessed. GPU count can be fractional.
+
+### Run a stage without the menu
+
+Add `-Stage Catalog`, `-Stage Quota`, `-Stage Capacity`, or `-Stage All` to run once and exit.
+These correspond to menu options 1-4. Run the examples below from the `gpu-scanner` folder:
+
+```powershell
+# Full scan of a specific subscription; replace the example ID with your subscription ID.
+.\Invoke-GpuScanner.ps1 -Stage All -SubscriptionId '00000000-0000-0000-0000-000000000000'
+
+# Catalog only for H100 sizes, using the current Azure PowerShell subscription.
+.\Invoke-GpuScanner.ps1 -Stage Catalog -GpuFilter H100
+
+# Quota for A100 sizes in two regions; obtains Catalog first if needed.
+.\Invoke-GpuScanner.ps1 -Stage Quota -Regions eastus,westus3 -GpuFilter A100
+
+# Capacity signal for H100 sizes; obtains Catalog and Quota first if needed.
+.\Invoke-GpuScanner.ps1 -Stage Capacity -GpuFilter H100 -OutputPath 'C:\Temp\gpu-results'
+```
+
+For unattended runs, pre-authenticate with `Connect-AzAccount` using your organization's preferred identity
+and specify `-SubscriptionId` to avoid checking the wrong subscription. `-Stage` bypasses the menu, but
+does not bypass sign-in if there is no authenticated context. The script disables context autosave for its
+process and passes the selected context explicitly to Azure commands.
 
 ### Spot request safeguards
 
